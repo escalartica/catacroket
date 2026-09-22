@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../arte/croqui.dart';
+import '../core/theme/components/boton.dart';
 import '../core/theme/components/pegatina.dart';
 import '../core/theme/tokens/app_colors.dart';
+import '../core/theme/tokens/app_spacing.dart';
+import '../core/theme/tokens/app_typography.dart';
 import '../features/vitrina/vitrina_page.dart';
 import '../features/bienvenida/bienvenida_page.dart';
 import '../features/como_comes/como_comes_page.dart';
@@ -24,6 +28,11 @@ import 'concha.dart';
 /// es lo que lo deja claro sin decirlo.
 final GoRouter router = GoRouter(
   initialLocation: '/bienvenida',
+  // Una ruta que no existe no debe sacar la pantalla de error de go_router,
+  // que es un volcado de pila sobre fondo blanco. Aquí se cae con la cara de
+  // la app y un camino de vuelta.
+  errorBuilder: (BuildContext context, GoRouterState state) =>
+      const _SinBarra(child: _RutaPerdida()),
   routes: <RouteBase>[
     GoRoute(
       path: '/bienvenida',
@@ -150,6 +159,44 @@ CustomTransitionPage<void> _apareciendo(GoRouterState state, Widget hijo) {
     ) =>
         FadeTransition(opacity: animacion, child: hijo),
   );
+}
+
+/// Lo que se ve cuando se navega a algo que no existe.
+///
+/// No dice "error 404" ni enseña la ruta que ha fallado: a quien está catando
+/// croquetas no le sirve de nada. Dice que se ha perdido y le da la vuelta.
+class _RutaPerdida extends StatelessWidget {
+  const _RutaPerdida();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.pantalla,
+          vertical: AppSpacing.xl,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Croqui(ancho: 150),
+            const SizedBox(height: AppSpacing.l),
+            Text(
+              'Esta croqueta no está en la vitrina.\nSe habrá caído por el camino.',
+              textAlign: TextAlign.center,
+              style: AppTypography.cuerpo,
+            ),
+            const SizedBox(height: AppSpacing.l),
+            BotonPegatina(
+              texto: 'Volver a la vitrina',
+              icono: Icons.arrow_back,
+              onTap: () => context.go('/'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Pantalla a pantalla completa, con el fondo de la app pero sin pestañas.

@@ -10,7 +10,6 @@ import 'package:go_router/go_router.dart';
 // rompería el pico del globo. Aquí sólo hace falta LatLng.
 import 'package:latlong2/latlong.dart' show LatLng;
 
-import '../../core/data/datos_demo.dart';
 import '../../core/models/cata.dart';
 import '../../core/models/lugar.dart';
 import '../../core/models/persona.dart';
@@ -29,11 +28,7 @@ import '../../core/utils/formato.dart';
 import '../vitrina/widgets/tarjeta_cata.dart';
 import '../../core/providers/visto_provider.dart';
 import '../../core/theme/components/pista.dart';
-
-/// Qué se enseña en el mapa.
-enum FiltroRuta { todas, mias, libres }
-
-final filtroRutaProvider = StateProvider<FiltroRuta>((ref) => FiltroRuta.todas);
+import 'ruta_providers.dart';
 
 /// RUTA CROQUETERA — el mapa.
 ///
@@ -242,17 +237,8 @@ class _RutaPageState extends ConsumerState<RutaPage> {
     setState(() => _seleccionada = null);
     // Un frame de margen para que la lista ya filtrada esté construida.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _encuadrar(_filtrar(conSitio, filtro));
+      _encuadrar(filtrarRuta(conSitio, filtro));
     });
-  }
-
-  static List<Cata> _filtrar(List<Cata> catas, FiltroRuta filtro) {
-    return switch (filtro) {
-      FiltroRuta.todas => catas,
-      FiltroRuta.mias =>
-        catas.where((Cata c) => c.autorId == DatosDemo.yo).toList(),
-      FiltroRuta.libres => catas.where((Cata c) => c.tieneDietas).toList(),
-    };
   }
 
   /// Centra el mapa donde estás. No guarda nada ni lo sube a ningún sitio:
@@ -286,23 +272,18 @@ class _RutaPageState extends ConsumerState<RutaPage> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Cata> todas = ref.watch(catasProvider);
-    final List<Cata> conSitio =
-        todas.where((Cata c) => c.tieneUbicacion).toList();
-    final int sinSitio = todas.length - conSitio.length;
-
+    // Todo lo derivado vive en providers (ruta_providers.dart) y no aquí:
+    // esta pantalla tiene estado local —globo elegido, hoja plegada, GPS— y
+    // cada setState volvía a filtrar y a ordenar la lista entera.
+    final List<Cata> conSitio = ref.watch(catasConSitioProvider);
+    final int sinSitio = ref.watch(catasSinSitioProvider);
     final FiltroRuta filtro = ref.watch(filtroRutaProvider);
-    final List<Cata> visibles = _filtrar(conSitio, filtro);
-
-    final List<Cata> porNota = <Cata>[...visibles]
-      ..sort((Cata a, Cata b) => b.puntuacion.compareTo(a.puntuacion));
+    final List<Cata> visibles = ref.watch(catasVisiblesProvider);
+    final List<Cata> porNota = ref.watch(catasRutaOrdenadasProvider);
+    final ResumenRuta resumen = ref.watch(resumenRutaProvider);
 
     final Map<String, Persona> personas = ref.watch(personasProvider);
     final Cata? inicial = _inicial(visibles);
-
-    final int ciudades =
-        conSitio.map((Cata c) => c.ciudad).where((String c) => c.isNotEmpty).toSet().length;
-    final int paises = conSitio.map((Cata c) => c.pais).toSet().length;
 
     return Column(
       children: <Widget>[
@@ -322,8 +303,8 @@ class _RutaPageState extends ConsumerState<RutaPage> {
           subtitulo: conSitio.isEmpty
               ? 'Aún no has apuntado dónde catabas'
               : '${Formato.plural(conSitio.length, 'cata', 'catas')} · '
-                  '${Formato.plural(ciudades, 'ciudad', 'ciudades')} · '
-                  '${Formato.plural(paises, 'país', 'países')}',
+                  '${Formato.plural(resumen.ciudades, 'ciudad', 'ciudades')} · '
+                  '${Formato.plural(resumen.paises, 'país', 'países')}',
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(
