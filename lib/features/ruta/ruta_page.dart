@@ -117,8 +117,6 @@ class _RutaPageState extends ConsumerState<RutaPage> {
     );
   }
 
-  static const LatLng _sevilla = LatLng(37.3886, -5.9885);
-
   @override
   void initState() {
     super.initState();
@@ -325,270 +323,39 @@ class _RutaPageState extends ConsumerState<RutaPage> {
           child: Stack(
             children: <Widget>[
               Positioned.fill(
-                child: FlutterMap(
-                  mapController: _mapa,
-                  options: MapOptions(
-                    // Si se llega desde una ficha, el mapa abre en ese bar;
-                    // si no, encuadra todas.
-                    initialCenter: inicial == null
-                        ? _sevilla
-                        : LatLng(inicial.lat!, inicial.lon!),
-                    initialZoom: inicial == null ? 13 : 15,
-                    initialCameraFit:
-                        inicial == null ? _encuadreInicial(visibles) : null,
-                    minZoom: 2,
-                    maxZoom: 18,
-                    // El gris de fábrica de flutter_map parecía una pantalla
-                    // rota. Con el crema de la app, un mapa que tarda se ve
-                    // como un mapa que tarda.
-                    backgroundColor: AppColors.fondo,
-                    onMapReady: () => _alAbrir(porNota),
-                  ),
-                  children: <Widget>[
-                    teselasOsm(
-                      onFallo: _teselaFallida,
-                      onPedida: _teselaPedida,
-                    ),
-                    if (_yo != null)
-                      MarkerLayer(
-                        markers: <Marker>[
-                          Marker(
-                            point: _yo!,
-                            width: 26,
-                            height: 26,
-                            child: const _PuntoYo(),
-                          ),
-                        ],
-                      ),
-                    MarkerLayer(
-                      markers: <Marker>[
-                        for (final Cata c in visibles)
-                          Marker(
-                            point: LatLng(c.lat!, c.lon!),
-                            width: 78,
-                            height: 62,
-                            alignment: Alignment.topCenter,
-                            child: _Globo(
-                              cata: c,
-                              activo: _seleccionada == c.id,
-                              apagado: _seleccionada != null &&
-                                  _seleccionada != c.id,
-                              onTap: () => _seleccionar(c, porNota),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const AtribucionOsm(),
-                  ],
+                child: _CapaMapa(
+                  controlador: _mapa,
+                  inicial: inicial,
+                  visibles: visibles,
+                  yo: _yo,
+                  seleccionada: _seleccionada,
+                  encuadreInicial: _encuadreInicial(visibles),
+                  onListo: () => _alAbrir(porNota),
+                  onGlobo: (Cata c) => _seleccionar(c, porNota),
+                  onTeselaPedida: _teselaPedida,
+                  onTeselaFallida: _teselaFallida,
                 ),
               ),
-
-              // ── Filtros ─────────────────────────────────────────────────
-              Positioned(
-                top: AppSpacing.s,
-                left: 0,
-                right: 0,
-                // Un `Wrap` y no un carrusel: tres pastillas caben en el
-                // móvil más estrecho, un scroll horizontal aquí le robaría al
-                // mapa los arrastres de la franja de arriba, y si algún día
-                // no cupieran, pasan a una segunda línea en vez de desbordar.
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.pantalla,
-                  ),
-                  child: Wrap(
-                    alignment: WrapAlignment.center,
-                    spacing: AppSpacing.s,
-                    runSpacing: AppSpacing.s,
-                    children: <Widget>[
-                      for (final MapEntry<FiltroRuta, (String, String, Color)> e
-                          in _opciones.entries)
-                        OpcionPildora(
-                          texto: e.value.$1,
-                          emoji: e.value.$2,
-                          activa: filtro == e.key,
-                          colorActiva: e.value.$3,
-                          onTap: () => _cambiarFiltro(e.key, conSitio),
-                        ),
-                    ],
-                  ),
-                ),
+              _Filtros(
+                activo: filtro,
+                onElegir: (FiltroRuta f) => _cambiarFiltro(f, conSitio),
               ),
-
-              // ── Aviso de mapa caído ─────────────────────────────────────
               if (_falloTeselas != null)
-                Positioned(
-                  top: 64,
-                  left: AppSpacing.pantalla,
-                  right: AppSpacing.pantalla,
-                  child: Pegatina(
-                    color: AppColors.sol,
-                    padding: const EdgeInsets.all(AppSpacing.m),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          'El mapa no carga',
-                          style: AppTypography.tituloS.copyWith(fontSize: 16),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _pedidas == 0
-                              ? 'Los globos están donde tienen que estar, '
-                                  'pero el dibujo del mapa ni siquiera se ha '
-                                  'llegado a pedir.'
-                              : 'Los globos con las notas siguen estando '
-                                  'donde tienen que estar; lo que no llega es '
-                                  'el dibujo del mapa. Suele ser la conexión.',
-                          style: AppTypography.cuerpoS.copyWith(
-                            fontSize: 12.5,
-                            height: 1.3,
-                            color: AppColors.tinta,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _falloTeselas!,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.etiqueta.copyWith(
-                            fontSize: 10.5,
-                            color: AppColors.tinta,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-              // ── Centrarme ───────────────────────────────────────────────
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeOutCubic,
-                right: AppSpacing.pantalla,
-                bottom: (_plegada ? 96 : _alturaHoja) + AppSpacing.m,
-                child: BotonRedondo(
-                  icono: _buscandoGps
-                      ? Icons.hourglass_top_rounded
-                      : Icons.my_location_rounded,
-                  etiqueta: 'Centrar donde estoy',
-                  onTap: _centrarEnMi,
-                ),
+                _AvisoMapaCaido(motivo: _falloTeselas!, pedidas: _pedidas),
+              _BotonCentrarme(
+                abajo: (_plegada ? 96 : _alturaHoja) + AppSpacing.m,
+                buscando: _buscandoGps,
+                onTap: _centrarEnMi,
               ),
-
-              // ── Hoja de resultados ──────────────────────────────────────
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeOutCubic,
-                left: 0,
-                right: 0,
-                bottom: _plegada
-                    ? -(MediaQuery.sizeOf(context).height * 0.34)
-                    : 0,
-                height: _alturaHoja,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: AppColors.fondo,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(AppShape.radioXL),
-                    ),
-                    border: Border(
-                      top: BorderSide(
-                        color: AppColors.tinta,
-                        width: AppShape.borde,
-                      ),
-                      left: BorderSide(
-                        color: AppColors.tinta,
-                        width: AppShape.borde,
-                      ),
-                      right: BorderSide(
-                        color: AppColors.tinta,
-                        width: AppShape.borde,
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    children: <Widget>[
-                      Semantics(
-                        button: true,
-                        label: _plegada
-                            ? 'Abrir la lista de catas'
-                            : 'Plegar la lista de catas',
-                        child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => setState(() => _plegada = !_plegada),
-                        // 19 de relleno para que el tirador se toque en 45 px:
-                        // antes eran 27 y había que afinar mucho.
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 19),
-                          alignment: Alignment.center,
-                          child: Container(
-                            width: 56,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: AppColors.tinta,
-                              borderRadius: BorderRadius.circular(99),
-                            ),
-                          ),
-                        ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.pantalla,
-                        ),
-                        child: Row(
-                          children: <Widget>[
-                            Expanded(
-                              child: Text(
-                                'ORDENADAS POR NOTA',
-                                style: AppTypography.antetitulo.copyWith(
-                                  color:
-                                      AppColors.tintaSuave,
-                                ),
-                              ),
-                            ),
-                            if (sinSitio > 0)
-                              Text(
-                                '$sinSitio sin sitio',
-                                style: AppTypography.etiqueta.copyWith(
-                                  fontSize: 11,
-                                  color:
-                                      AppColors.tintaSuave,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.m),
-                      Expanded(
-                        child: porNota.isEmpty
-                            ? _Vacio(filtro: filtro, sinSitio: sinSitio)
-                            : ListView.separated(
-                                controller: _lista,
-                                padding: const EdgeInsets.fromLTRB(
-                                  AppSpacing.pantalla,
-                                  0,
-                                  AppSpacing.pantalla,
-                                  AppSpacing.huecoBarra,
-                                ),
-                                itemCount: porNota.length,
-                                separatorBuilder: (_, _) =>
-                                    const SizedBox(height: AppSpacing.m),
-                                itemBuilder: (BuildContext context, int i) {
-                                  final Cata c = porNota[i];
-                                  return TarjetaCata(
-                                    cata: c,
-                                    autor: personas[c.autorId] ??
-                                        Persona.desconocida,
-                                    onTap: () => context.push('/cata/${c.id}'),
-                                  );
-                                },
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
+              _HojaResultados(
+                plegada: _plegada,
+                altura: _alturaHoja,
+                catas: porNota,
+                personas: personas,
+                filtro: filtro,
+                sinSitio: sinSitio,
+                controlador: _lista,
+                onTirador: () => setState(() => _plegada = !_plegada),
               ),
             ],
           ),
@@ -596,6 +363,98 @@ class _RutaPageState extends ConsumerState<RutaPage> {
       ],
     );
   }
+}
+
+/// El mapa y lo que se pinta encima: tu punto y un globo por cata.
+class _CapaMapa extends StatelessWidget {
+  const _CapaMapa({
+    required this.controlador,
+    required this.inicial,
+    required this.visibles,
+    required this.yo,
+    required this.seleccionada,
+    required this.encuadreInicial,
+    required this.onListo,
+    required this.onGlobo,
+    required this.onTeselaPedida,
+    required this.onTeselaFallida,
+  });
+
+  /// Dónde se abre si no se llega desde ninguna ficha.
+  static const LatLng _sevilla = LatLng(37.3886, -5.9885);
+
+  final MapController controlador;
+  final Cata? inicial;
+  final List<Cata> visibles;
+  final LatLng? yo;
+  final String? seleccionada;
+  final CameraFit? encuadreInicial;
+  final VoidCallback onListo;
+  final ValueChanged<Cata> onGlobo;
+  final VoidCallback onTeselaPedida;
+  final ValueChanged<Object> onTeselaFallida;
+
+  @override
+  Widget build(BuildContext context) {
+    return FlutterMap(
+      mapController: controlador,
+      options: MapOptions(
+        // Si se llega desde una ficha, el mapa abre en ese bar;
+        // si no, encuadra todas.
+        initialCenter: inicial == null
+            ? _sevilla
+            : LatLng(inicial!.lat!, inicial!.lon!),
+        initialZoom: inicial == null ? 13 : 15,
+        initialCameraFit: inicial == null ? encuadreInicial : null,
+        minZoom: 2,
+        maxZoom: 18,
+        // El gris de fábrica de flutter_map parecía una pantalla rota. Con el
+        // crema de la app, un mapa que tarda se ve como un mapa que tarda.
+        backgroundColor: AppColors.fondo,
+        onMapReady: onListo,
+      ),
+      children: <Widget>[
+        teselasOsm(onFallo: onTeselaFallida, onPedida: onTeselaPedida),
+        if (yo != null)
+          MarkerLayer(
+            markers: <Marker>[
+              Marker(
+                point: yo!,
+                width: 26,
+                height: 26,
+                child: const _PuntoYo(),
+              ),
+            ],
+          ),
+        MarkerLayer(
+          markers: <Marker>[
+            for (final Cata c in visibles)
+              Marker(
+                point: LatLng(c.lat!, c.lon!),
+                width: 78,
+                height: 62,
+                alignment: Alignment.topCenter,
+                child: _Globo(
+                  cata: c,
+                  activo: seleccionada == c.id,
+                  apagado: seleccionada != null && seleccionada != c.id,
+                  onTap: () => onGlobo(c),
+                ),
+              ),
+          ],
+        ),
+        const AtribucionOsm(),
+      ],
+    );
+  }
+}
+
+/// Las pastillas de filtro, flotando sobre la franja de arriba del mapa.
+class _Filtros extends StatelessWidget {
+  const _Filtros({required this.activo, required this.onElegir});
+
+  final FiltroRuta activo;
+  final ValueChanged<FiltroRuta> onElegir;
 
   /// Texto, emoji y color de cada filtro.
   static const Map<FiltroRuta, (String, String, Color)> _opciones =
@@ -604,6 +463,263 @@ class _RutaPageState extends ConsumerState<RutaPage> {
     FiltroRuta.mias: ('Mías', '✍️', AppColors.chicle),
     FiltroRuta.libres: ('Barra Libre', '🌱', AppColors.menta),
   };
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: AppSpacing.s,
+      left: 0,
+      right: 0,
+      // Un `Wrap` y no un carrusel: tres pastillas caben en el móvil más
+      // estrecho, un scroll horizontal aquí le robaría al mapa los arrastres
+      // de la franja de arriba, y si algún día no cupieran, pasan a una
+      // segunda línea en vez de desbordar.
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pantalla),
+        child: Wrap(
+          alignment: WrapAlignment.center,
+          spacing: AppSpacing.s,
+          runSpacing: AppSpacing.s,
+          children: <Widget>[
+            for (final MapEntry<FiltroRuta, (String, String, Color)> e
+                in _opciones.entries)
+              OpcionPildora(
+                texto: e.value.$1,
+                emoji: e.value.$2,
+                activa: activo == e.key,
+                colorActiva: e.value.$3,
+                onTap: () => onElegir(e.key),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Lo que se dice cuando las teselas no llegan.
+///
+/// Un mapa en blanco no se distingue de un mapa sobre el mar. Esto separa los
+/// dos fallos posibles: si se pidieron teselas y no llegaron, es la conexión;
+/// si no se pidió ninguna, el problema está antes.
+class _AvisoMapaCaido extends StatelessWidget {
+  const _AvisoMapaCaido({required this.motivo, required this.pedidas});
+
+  final String motivo;
+  final int pedidas;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 64,
+      left: AppSpacing.pantalla,
+      right: AppSpacing.pantalla,
+      child: Pegatina(
+        color: AppColors.sol,
+        padding: const EdgeInsets.all(AppSpacing.m),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'El mapa no carga',
+              style: AppTypography.tituloS.copyWith(fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              pedidas == 0
+                  ? 'Los globos están donde tienen que estar, pero el dibujo '
+                      'del mapa ni siquiera se ha llegado a pedir.'
+                  : 'Los globos con las notas siguen estando donde tienen que '
+                      'estar; lo que no llega es el dibujo del mapa. Suele ser '
+                      'la conexión.',
+              style: AppTypography.cuerpoS.copyWith(
+                fontSize: 12.5,
+                height: 1.3,
+                color: AppColors.tinta,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              motivo,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.etiqueta.copyWith(
+                fontSize: 10.5,
+                color: AppColors.tinta,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// El botón de centrarse. Sube y baja con la hoja para no quedar debajo.
+class _BotonCentrarme extends StatelessWidget {
+  const _BotonCentrarme({
+    required this.abajo,
+    required this.buscando,
+    required this.onTap,
+  });
+
+  final double abajo;
+  final bool buscando;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      right: AppSpacing.pantalla,
+      bottom: abajo,
+      child: BotonRedondo(
+        icono: buscando
+            ? Icons.hourglass_top_rounded
+            : Icons.my_location_rounded,
+        etiqueta: 'Centrar donde estoy',
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+/// La hoja de abajo: las catas visibles ordenadas por nota.
+class _HojaResultados extends StatelessWidget {
+  const _HojaResultados({
+    required this.plegada,
+    required this.altura,
+    required this.catas,
+    required this.personas,
+    required this.filtro,
+    required this.sinSitio,
+    required this.controlador,
+    required this.onTirador,
+  });
+
+  final bool plegada;
+  final double altura;
+  final List<Cata> catas;
+  final Map<String, Persona> personas;
+  final FiltroRuta filtro;
+  final int sinSitio;
+  final ScrollController controlador;
+  final VoidCallback onTirador;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      left: 0,
+      right: 0,
+      bottom: plegada ? -(MediaQuery.sizeOf(context).height * 0.34) : 0,
+      height: altura,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: AppColors.fondo,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppShape.radioXL),
+          ),
+          border: Border(
+            top: BorderSide(color: AppColors.tinta, width: AppShape.borde),
+            left: BorderSide(color: AppColors.tinta, width: AppShape.borde),
+            right: BorderSide(color: AppColors.tinta, width: AppShape.borde),
+          ),
+        ),
+        child: Column(
+          children: <Widget>[
+            _Tirador(plegada: plegada, onTap: onTirador),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.pantalla,
+              ),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      'ORDENADAS POR NOTA',
+                      style: AppTypography.antetitulo.copyWith(
+                        color: AppColors.tintaSuave,
+                      ),
+                    ),
+                  ),
+                  if (sinSitio > 0)
+                    Text(
+                      '$sinSitio sin sitio',
+                      style: AppTypography.etiqueta.copyWith(
+                        fontSize: 11,
+                        color: AppColors.tintaSuave,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.m),
+            Expanded(
+              child: catas.isEmpty
+                  ? _Vacio(filtro: filtro, sinSitio: sinSitio)
+                  : ListView.separated(
+                      controller: controlador,
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.pantalla,
+                        0,
+                        AppSpacing.pantalla,
+                        AppSpacing.huecoBarra,
+                      ),
+                      itemCount: catas.length,
+                      separatorBuilder: (_, _) =>
+                          const SizedBox(height: AppSpacing.m),
+                      itemBuilder: (BuildContext context, int i) {
+                        final Cata c = catas[i];
+                        return TarjetaCata(
+                          cata: c,
+                          autor: personas[c.autorId] ?? Persona.desconocida,
+                          onTap: () => context.push('/cata/${c.id}'),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// El asa de la hoja. Se toca en 45 px: antes eran 27 y había que afinar.
+class _Tirador extends StatelessWidget {
+  const _Tirador({required this.plegada, required this.onTap});
+
+  final bool plegada;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: plegada
+          ? 'Abrir la lista de catas'
+          : 'Plegar la lista de catas',
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 19),
+          alignment: Alignment.center,
+          child: Container(
+            width: 56,
+            height: 7,
+            decoration: BoxDecoration(
+              color: AppColors.tinta,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _Vacio extends StatelessWidget {
