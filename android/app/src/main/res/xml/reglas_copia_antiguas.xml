@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lo mismo que reglas_copia.xml, para Android 11 y anteriores, que usan
+     el formato viejo. Ver allí el porqué. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="catacroket.midieta.v1.xml"/>
+    <exclude domain="sharedpref" path="catacroket.evitar.v1.xml"/>
+</full-backup-content>

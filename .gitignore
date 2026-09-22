@@ -1,0 +1,13 @@
+.DS_Store
+.dart_tool/
+.packages
+build/
+.idea/
+.vscode/
+*.iml
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+android/.gradle/
+android/local.properties

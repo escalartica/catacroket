@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Qué entra en la copia de seguridad automática de Android (Android 12+).
+
+  Entra: las catas, las mesas y las fotos. Son el trabajo del usuario y no hay
+  nube donde recuperarlas: sin copia, cambiar de móvil significa perder años
+  de croquetas.
+
+  NO entra: cómo come. Las dietas y la lista de "esto no me lo pongas" son
+  alergias e intolerancias, y eso es información de salud. Viajaría a Google
+  Drive sin que el usuario lo haya pedido, obligaría a declararlo en el
+  formulario de seguridad de datos de Play, y no compensa: se vuelve a marcar
+  en diez segundos desde la pantalla de bienvenida.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="catacroket.midieta.v1.xml"/>
+        <exclude domain="sharedpref" path="catacroket.evitar.v1.xml"/>
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="catacroket.midieta.v1.xml"/>
+        <exclude domain="sharedpref" path="catacroket.evitar.v1.xml"/>
+    </device-transfer>
+</data-extraction-rules>
