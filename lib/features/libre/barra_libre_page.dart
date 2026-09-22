@@ -144,6 +144,7 @@ class _BarraLibrePageState extends ConsumerState<BarraLibrePage> {
               itemBuilder: (BuildContext context, int i) {
                 final Cata cata = catas[i];
                 return Entrada(
+                  key: ValueKey<String>(cata.id),
                   indice: i,
                   child: TarjetaCata(
                     cata: cata,

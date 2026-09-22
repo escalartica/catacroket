@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/paises.dart';
@@ -398,7 +400,7 @@ class BorradorNotifier extends StateNotifier<Borrador> {
   /// siendo la de antes y tiene que poder enseñar su foto.
   void quitarMedio(Medio medio) {
     if (!state.mediosOriginales.contains(medio.ruta)) {
-      MediosService.borrar(medio);
+      unawaited(MediosService.borrar(medio));
     }
     state = state.copyWith(
       medios: state.medios.where((Medio m) => m.ruta != medio.ruta).toList(),

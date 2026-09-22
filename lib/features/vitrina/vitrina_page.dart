@@ -106,6 +106,7 @@ class VitrinaPage extends ConsumerWidget {
               itemBuilder: (BuildContext context, int i) {
                 final Cata cata = feed[i];
                 return Entrada(
+                  key: ValueKey<String>(cata.id),
                   indice: i,
                   child: TarjetaCata(
                     cata: cata,

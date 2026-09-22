@@ -3,11 +3,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/router.dart';
+import 'core/errores.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/tokens/app_colors.dart';
 
-Future<void> main() async {
+void main() {
+  // Todo el arranque va dentro de la zona vigilada, no sólo el runApp: el
+  // binding tiene que inicializarse en la misma zona que luego lo usa.
+  Errores.arrancar(_arrancar);
+}
+
+Future<void> _arrancar() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Errores.instalar();
 
   // La app está pensada en vertical: el formulario de cata y el mapa con la
   // hoja de resultados no tienen sentido apaisados en un móvil.
@@ -27,7 +35,12 @@ Future<void> main() async {
     ),
   );
 
-  runApp(const ProviderScope(child: CatacroketApp()));
+  runApp(
+    const ProviderScope(
+      observers: <ProviderObserver>[ObservadorErrores()],
+      child: CatacroketApp(),
+    ),
+  );
 }
 
 class CatacroketApp extends StatelessWidget {
