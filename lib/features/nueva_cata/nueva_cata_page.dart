@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
 
-import '../../core/data/datos_demo.dart';
+import 'cata_desde_borrador.dart';
 import '../../core/models/cata.dart';
-import '../../core/models/sabor.dart';
 import '../../core/providers/borrador_provider.dart';
 import '../../core/providers/catas_provider.dart';
 import '../../core/theme/components/boton.dart';
@@ -130,12 +128,6 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
 
   Future<void> _guardar() async {
     final Borrador b = ref.read(borradorProvider);
-    final String sitio = b.sitio.trim().isEmpty ? 'Sitio sin nombre' : b.sitio.trim();
-    final String ciudad = b.ciudad.trim().isEmpty ? 'Sin ciudad' : b.ciudad.trim();
-    final List<Sabor> sabores =
-        b.sabores.isEmpty ? const <Sabor>[Sabor(rellenoId: 'otro')] : b.sabores;
-    final double? precio = double.tryParse(b.precio.replaceAll(',', '.'));
-
     final Cata? original = b.editando == null
         ? null
         : ref.read(cataProvider(b.editando!));
@@ -155,35 +147,9 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
       return;
     }
 
-    // Al corregir se conserva lo que no se pregunta en el formulario: quién
-    // la cató, cuándo, los mordiscos que le dieron y dónde cae en el mapa.
-    final Cata cata = Cata(
-      id: original?.id ?? const Uuid().v4(),
-      sitio: sitio,
-      ciudad: ciudad,
-      pais: b.pais,
-      sabores: sabores,
-      corte: b.corteFinal,
-      autorId: original?.autorId ?? DatosDemo.yo,
-      mesaId: b.mesaId,
-      fecha: original?.fecha ?? DateTime.now(),
-      precio: precio,
-      nota: b.nota.trim(),
-      mordiscos: original?.mordiscos ?? 0,
-      acompanantes: b.acompanantes,
-      // El punto del formulario manda. Si no se ha tocado al corregir, el
-      // borrador ya trae el que tenía la cata.
-      lat: b.lat ?? original?.lat,
-      lon: b.lon ?? original?.lon,
-      medios: b.medios,
-      aptas: b.aptas,
-      // Sin contestar nada no se guarda receta: una receta vacía diría
-      // "bechamel desconocida, rebozado con gluten" como si fuera un dato, y
-      // no lo es.
-      receta: b.receta.sinRellenar ? null : b.receta,
-      formato: b.formato,
-      unidades: b.unidades,
-    );
+    // Las reglas de cómo se convierte un borrador en cata viven en
+    // cata_desde_borrador.dart, donde se pueden probar.
+    final Cata cata = cataDesdeBorrador(b, original: original);
 
     final CatasNotifier catas = ref.read(catasProvider.notifier);
     if (original == null) {
