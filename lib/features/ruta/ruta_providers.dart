@@ -54,6 +54,49 @@ final catasRutaOrdenadasProvider = Provider<List<Cata>>((ref) {
   return catas;
 });
 
+/// Las catas del sitio donde más has catado.
+///
+/// Encuadrar *todas* las catas es mala idea en cuanto una está lejos: con
+/// diecisiete en Sevilla y una en Buenos Aires, el mapa tiene que abarcar el
+/// Atlántico y lo que se ve al abrir es océano. Quien entra aquí quiere ver
+/// sus bares, no un planisferio; la cata de Buenos Aires sigue estando, y se
+/// llega a ella alejándose.
+///
+/// Se agrupa por ciudad porque es el dato que ya tiene la cata y es el que
+/// usa el usuario para pensar dónde cata.
+List<Cata> grupoMayoritario(List<Cata> conSitio) {
+  if (conSitio.length < 2) return conSitio;
+
+  final Map<String, List<Cata>> porCiudad = <String, List<Cata>>{};
+  for (final Cata c in conSitio) {
+    porCiudad.putIfAbsent(c.ciudad, () => <Cata>[]).add(c);
+  }
+
+  List<Cata>? mejor;
+  for (final List<Cata> grupo in porCiudad.values) {
+    if (mejor == null || grupo.length > mejor.length) {
+      mejor = grupo;
+      continue;
+    }
+    // Empate: manda donde hayas catado más recientemente. Si tienes tres en
+    // Sevilla y tres en Lisboa, abrir donde estuviste ayer acierta más.
+    if (grupo.length == mejor.length &&
+        _masReciente(grupo).isAfter(_masReciente(mejor))) {
+      mejor = grupo;
+    }
+  }
+  return mejor ?? conSitio;
+}
+
+DateTime _masReciente(List<Cata> catas) => catas
+    .map((Cata c) => c.fecha)
+    .reduce((DateTime a, DateTime b) => a.isAfter(b) ? a : b);
+
+/// El grupo con el que abre el mapa, ya filtrado.
+final grupoInicialRutaProvider = Provider<List<Cata>>((ref) {
+  return grupoMayoritario(ref.watch(catasVisiblesProvider));
+});
+
 /// Cuántas ciudades y cuántos países llevas. Va en el subtítulo.
 typedef ResumenRuta = ({int ciudades, int paises});
 

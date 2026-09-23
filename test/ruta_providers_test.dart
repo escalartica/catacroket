@@ -63,6 +63,80 @@ void main() {
     });
   });
 
+  group('grupoMayoritario', () {
+    Cata en(String ciudad, {String id = 'x', DateTime? fecha}) => Cata(
+          id: id,
+          sitio: 'Bar $id',
+          ciudad: ciudad,
+          corte: const Corte(crujiente: 7, cremosidad: 7, sabor: 7, relleno: 7),
+          sabores: const <Sabor>[Sabor(rellenoId: 'jamon')],
+          autorId: DatosDemo.yo,
+          mesaId: 'libreta',
+          fecha: fecha ?? DateTime(2026),
+          lat: 37.0,
+          lon: -5.0,
+        );
+
+    test('devuelve el grupo de la ciudad con más catas', () {
+      final List<Cata> todas = <Cata>[
+        en('Sevilla', id: 's1'),
+        en('Sevilla', id: 's2'),
+        en('Sevilla', id: 's3'),
+        en('Buenos Aires', id: 'ba'),
+      ];
+
+      final List<Cata> grupo = grupoMayoritario(todas);
+
+      expect(grupo, hasLength(3));
+      expect(grupo.every((Cata c) => c.ciudad == 'Sevilla'), isTrue);
+    });
+
+    test('la cata lejana no arrastra el encuadre', () {
+      // El caso que motivó todo esto: una sola cata en otro continente hacía
+      // que el mapa abriera enseñando el Atlántico.
+      final List<Cata> todas = <Cata>[
+        en('Sevilla', id: 's1'),
+        en('Sevilla', id: 's2'),
+        en('Buenos Aires', id: 'ba'),
+      ];
+
+      expect(
+        grupoMayoritario(todas).map((Cata c) => c.id),
+        isNot(contains('ba')),
+      );
+    });
+
+    test('en empate manda donde has catado más recientemente', () {
+      final List<Cata> todas = <Cata>[
+        en('Sevilla', id: 's1', fecha: DateTime(2024)),
+        en('Sevilla', id: 's2', fecha: DateTime(2024, 2)),
+        en('Lisboa', id: 'l1', fecha: DateTime(2026)),
+        en('Lisboa', id: 'l2', fecha: DateTime(2026, 2)),
+      ];
+
+      final List<Cata> grupo = grupoMayoritario(todas);
+
+      expect(grupo.every((Cata c) => c.ciudad == 'Lisboa'), isTrue);
+    });
+
+    test('con una sola cata la devuelve tal cual', () {
+      final List<Cata> una = <Cata>[en('Sevilla')];
+      expect(grupoMayoritario(una), una);
+    });
+
+    test('con la lista vacía no revienta', () {
+      expect(grupoMayoritario(<Cata>[]), isEmpty);
+    });
+
+    test('si todas son de la misma ciudad no quita ninguna', () {
+      final List<Cata> todas = <Cata>[
+        en('Sevilla', id: 'a'),
+        en('Sevilla', id: 'b'),
+      ];
+      expect(grupoMayoritario(todas), hasLength(2));
+    });
+  });
+
   group('Providers derivados de la ruta', () {
     late ProviderContainer contenedor;
 

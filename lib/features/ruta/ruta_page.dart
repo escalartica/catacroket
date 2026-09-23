@@ -141,6 +141,15 @@ class _RutaPageState extends ConsumerState<RutaPage> {
 
   double get _alturaHoja => MediaQuery.sizeOf(context).height * 0.42;
 
+  /// Hueco que se le deja al encuadre para que ningún globo caiga debajo de
+  /// la interfaz.
+  ///
+  /// Arriba hace falta bastante más que a los lados: ahí flotan las pastillas
+  /// de filtro (8 de margen + 44 de alto) y un globo mide 62. Abajo, la hoja
+  /// de resultados entera.
+  EdgeInsets get _margenEncuadre =>
+      EdgeInsets.fromLTRB(56, 114, 56, _alturaHoja + 32);
+
   /// El encuadre inicial, para que lo aplique flutter_map cuando toca.
   ///
   /// Esto no se hace desde `onMapReady`. Parece el sitio natural y no lo es:
@@ -161,7 +170,7 @@ class _RutaPageState extends ConsumerState<RutaPage> {
       bounds: LatLngBounds.fromPoints(
         catas.map((Cata c) => LatLng(c.lat!, c.lon!)).toList(),
       ),
-      padding: EdgeInsets.fromLTRB(56, 76, 56, _alturaHoja + 32),
+      padding: _margenEncuadre,
     );
   }
 
@@ -180,7 +189,7 @@ class _RutaPageState extends ConsumerState<RutaPage> {
         bounds: LatLngBounds.fromPoints(
           catas.map((Cata c) => LatLng(c.lat!, c.lon!)).toList(),
         ),
-        padding: EdgeInsets.fromLTRB(56, 76, 56, _alturaHoja + 32),
+        padding: _margenEncuadre,
       ),
     );
   }
@@ -235,7 +244,7 @@ class _RutaPageState extends ConsumerState<RutaPage> {
     setState(() => _seleccionada = null);
     // Un frame de margen para que la lista ya filtrada esté construida.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _encuadrar(filtrarRuta(conSitio, filtro));
+      _encuadrar(grupoMayoritario(filtrarRuta(conSitio, filtro)));
     });
   }
 
@@ -283,6 +292,10 @@ class _RutaPageState extends ConsumerState<RutaPage> {
     final Map<String, Persona> personas = ref.watch(personasProvider);
     final Cata? inicial = _inicial(visibles);
 
+    // Con qué abre el mapa si no se llega desde una ficha: el sitio donde más
+    // has catado, no todas las catas del mundo.
+    final List<Cata> grupo = ref.watch(grupoInicialRutaProvider);
+
     return Column(
       children: <Widget>[
         Cabecera(
@@ -329,7 +342,10 @@ class _RutaPageState extends ConsumerState<RutaPage> {
                   visibles: visibles,
                   yo: _yo,
                   seleccionada: _seleccionada,
-                  encuadreInicial: _encuadreInicial(visibles),
+                  encuadreInicial: _encuadreInicial(grupo),
+                  centroDelGrupo: grupo.length == 1
+                      ? LatLng(grupo.first.lat!, grupo.first.lon!)
+                      : null,
                   onListo: () => _alAbrir(porNota),
                   onGlobo: (Cata c) => _seleccionar(c, porNota),
                   onTeselaPedida: _teselaPedida,
@@ -374,6 +390,7 @@ class _CapaMapa extends StatelessWidget {
     required this.yo,
     required this.seleccionada,
     required this.encuadreInicial,
+    required this.centroDelGrupo,
     required this.onListo,
     required this.onGlobo,
     required this.onTeselaPedida,
@@ -389,6 +406,11 @@ class _CapaMapa extends StatelessWidget {
   final LatLng? yo;
   final String? seleccionada;
   final CameraFit? encuadreInicial;
+
+  /// Dónde centrar cuando el grupo de apertura es una sola cata y por tanto
+  /// no hay nada que encuadrar. Nulo si son varias.
+  final LatLng? centroDelGrupo;
+
   final VoidCallback onListo;
   final ValueChanged<Cata> onGlobo;
   final VoidCallback onTeselaPedida;
@@ -399,12 +421,12 @@ class _CapaMapa extends StatelessWidget {
     return FlutterMap(
       mapController: controlador,
       options: MapOptions(
-        // Si se llega desde una ficha, el mapa abre en ese bar;
-        // si no, encuadra todas.
-        initialCenter: inicial == null
-            ? _sevilla
-            : LatLng(inicial!.lat!, inicial!.lon!),
-        initialZoom: inicial == null ? 13 : 15,
+        // Si se llega desde una ficha, el mapa abre en ese bar. Si no, en
+        // el sitio donde más has catado. Sevilla sólo cuando no hay nada.
+        initialCenter: inicial != null
+            ? LatLng(inicial!.lat!, inicial!.lon!)
+            : (centroDelGrupo ?? _sevilla),
+        initialZoom: inicial != null || centroDelGrupo != null ? 15 : 13,
         initialCameraFit: inicial == null ? encuadreInicial : null,
         minZoom: 2,
         maxZoom: 18,

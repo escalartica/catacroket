@@ -22,6 +22,7 @@ import '../../core/theme/tokens/app_spacing.dart';
 import '../../core/theme/tokens/app_typography.dart';
 import '../../core/services/compartir_service.dart';
 import '../../core/utils/formato.dart';
+import 'mesas_providers.dart';
 import 'widgets/hoja_mesa.dart';
 import '../vitrina/widgets/tarjeta_cata.dart';
 
@@ -65,21 +66,9 @@ class MesaDetallePage extends ConsumerWidget {
     final List<Recuerdo> recuerdos = ref.watch(recuerdosProvider(mesaId));
     final double? media = mediaDe(catas);
 
-    // Ranking: primero quien más cata, y a igualdad, quien mejor puntúa.
-    final List<_Puesto> ranking = mesa.miembros.map((String id) {
-      final List<Cata> suyas =
-          catas.where((Cata c) => c.autorId == id).toList();
-      return _Puesto(
-        persona: personas[id] ?? Persona.desconocida,
-        catas: suyas.length,
-        media: mediaDe(suyas),
-      );
-    }).toList()
-      ..sort((_Puesto a, _Puesto b) {
-        final int porCatas = b.catas.compareTo(a.catas);
-        if (porCatas != 0) return porCatas;
-        return (b.media ?? 0).compareTo(a.media ?? 0);
-      });
+    // El ranking se monta en mesas_providers.dart: es trabajo de verdad y
+    // aquí se recalculaba entero en cada pasada.
+    final List<Puesto> ranking = ref.watch(rankingMesaProvider(mesaId));
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -415,19 +404,11 @@ class MesaDetallePage extends ConsumerWidget {
   }
 }
 
-class _Puesto {
-  const _Puesto({required this.persona, required this.catas, required this.media});
-
-  final Persona persona;
-  final int catas;
-  final double? media;
-}
-
 class _FilaRanking extends StatelessWidget {
   const _FilaRanking({required this.puesto, required this.datos});
 
   final int puesto;
-  final _Puesto datos;
+  final Puesto datos;
 
   @override
   Widget build(BuildContext context) {
