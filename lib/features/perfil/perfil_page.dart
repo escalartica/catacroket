@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../arte/croqui.dart';
 import '../../core/data/rangos.dart';
 import '../../core/models/persona.dart';
+import '../../core/bitacora.dart';
 import '../../core/providers/catas_provider.dart';
 import '../../core/models/dieta.dart';
 import '../../core/providers/mesas_provider.dart';
@@ -267,18 +269,52 @@ class PerfilPage extends ConsumerWidget {
     }
   }
 
+  /// Manda los fallos apuntados por donde el usuario quiera.
+  ///
+  /// Por la hoja del sistema y no a un correo fijo: así elige él —correo,
+  /// WhatsApp, lo que use— y de paso ve exactamente qué está mandando antes
+  /// de mandarlo, que en un informe de fallos no es poca cosa.
+  Future<void> _contarFallo(BuildContext context, List<Fallo> fallos) async {
+    final RenderBox? origen = context.findRenderObject() as RenderBox?;
+    await SharePlus.instance.share(
+      ShareParams(
+        text: informeDe(fallos, version: 'Catacroket'),
+        subject: 'Un fallo en Catacroket',
+        sharePositionOrigin: origen == null
+            ? null
+            : origen.localToGlobal(Offset.zero) & origen.size,
+      ),
+    );
+  }
+
   void _ajustes(BuildContext context, WidgetRef ref) {
+    // Sólo se ofrece contar un fallo si hay alguno apuntado. Un botón de
+    // "algo ha ido mal" siempre visible en una app que funciona sólo siembra
+    // la duda de si va mal.
+    final List<Fallo> fallos = ref.read(bitacoraProvider);
+
     showDialog<void>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
         title: const Text('Ajustes'),
-        content: const Text(
+        content: Text(
           'Todavía no hay cuenta ni nube: las catas viven en este móvil.\n\n'
           '«Ver las explicaciones» vuelve a enseñar los carteles de cada '
           'apartado. «Restablecer» borra tus catas y deja los datos de '
-          'ejemplo.',
+          'ejemplo.'
+          '${fallos.isEmpty ? '' : '\n\nLa app ha tenido '
+              '${fallos.length} ${fallos.length == 1 ? 'fallo' : 'fallos'}. '
+              'Si quieres, mándalos y se arreglan.'}',
         ),
         actions: <Widget>[
+          if (fallos.isNotEmpty)
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _contarFallo(context, fallos);
+              },
+              child: const Text('Contar un fallo'),
+            ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Cancelar'),

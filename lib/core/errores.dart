@@ -6,12 +6,30 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Recogida de errores de toda la app en un único sitio.
 ///
-/// La app no manda nada a ningún servidor: aquí sólo se registran. Lo que
-/// importa es que exista **un** embudo por el que pase todo, para que el día
-/// que se quiera enchufar un Sentry o un Crashlytics se toque una función y
-/// no cuarenta ficheros.
+/// La app no manda nada a ningún servidor: eso es una decisión, no un
+/// descuido. Lo que sí hace es no perderlos —van a la bitácora, que vive en
+/// el móvil— para que el usuario pueda contarte algo concreto en vez de "no
+/// me funciona".
+///
+/// El día que se quiera enchufar un Sentry o un Crashlytics, el único sitio
+/// que hay que tocar es [registrar]. Ni cuarenta ficheros ni buscar dónde
+/// estaban los try/catch.
 class Errores {
   const Errores._();
+
+  /// Dónde se apuntan los fallos. Se enchufa en el arranque.
+  ///
+  /// Es un hueco y no una dependencia directa para que este fichero pueda
+  /// usarse antes de que exista el ProviderScope: los primeros errores de
+  /// arranque son justo los que más importan.
+  static void Function(Object error, StackTrace? pila, String origen)?
+      _bitacora;
+
+  /// Le dice al embudo dónde apuntar. Lo llama el arranque de la app.
+  static void apuntarEn(
+    void Function(Object error, StackTrace? pila, String origen) donde,
+  ) =>
+      _bitacora = donde;
 
   /// Embudo único. Todo error de la app termina aquí.
   ///
@@ -29,6 +47,13 @@ class Errores {
       stackTrace: pila,
       level: 1000, // SEVERE
     );
+
+    // Apuntarlo no puede provocar otro error: si la bitácora falla —el disco
+    // lleno, un estado ya destruido— y dejáramos que lanzara, el fallo
+    // volvería a este mismo embudo y se llamaría a sí mismo sin parar.
+    try {
+      _bitacora?.call(error, pila, origen);
+    } catch (_) {}
   }
 
   /// Engancha los dos canales por los que Flutter escupe errores no capturados.

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/router.dart';
+import 'core/bitacora.dart';
 import 'core/errores.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/tokens/app_colors.dart';
@@ -35,10 +36,22 @@ Future<void> _arrancar() async {
     ),
   );
 
+  // El contenedor se crea a mano para poder enchufarle el embudo de errores
+  // antes de que exista una sola pantalla: los fallos de arranque son justo
+  // los que más importa no perder.
+  final ProviderContainer contenedor = ProviderContainer(
+    observers: <ProviderObserver>[const ObservadorErrores()],
+  );
+  Errores.apuntarEn(
+    (Object error, StackTrace? pila, String origen) => contenedor
+        .read(bitacoraProvider.notifier)
+        .apuntar(error, pila, origen),
+  );
+
   runApp(
-    const ProviderScope(
-      observers: <ProviderObserver>[ObservadorErrores()],
-      child: CatacroketApp(),
+    UncontrolledProviderScope(
+      container: contenedor,
+      child: const CatacroketApp(),
     ),
   );
 }
