@@ -74,7 +74,7 @@ class PasoCorte extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Text('CataScore', style: AppTypography.tituloS.copyWith(fontSize: 16)),
+                Text('La nota', style: AppTypography.tituloS.copyWith(fontSize: 16)),
                 Text(_frase(nota), style: AppTypography.cuerpoS.copyWith(fontSize: 13)),
               ],
             ),

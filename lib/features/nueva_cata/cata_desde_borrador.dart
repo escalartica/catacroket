@@ -21,12 +21,21 @@ Cata cataDesdeBorrador(
   String Function()? nuevoId,
   DateTime Function()? ahora,
 }) {
-  // Un formulario a medias no puede dejar una cata sin nombre ni sitio: la
-  // lista la enseñaría en blanco y no habría manera de reconocerla.
+  // Un formulario a medias no puede dejar una cata sin nombre: la lista la
+  // enseñaría en blanco y no habría manera de reconocerla.
   final String sitio =
       b.sitio.trim().isEmpty ? 'Sitio sin nombre' : b.sitio.trim();
-  final String ciudad =
-      b.ciudad.trim().isEmpty ? 'Sin ciudad' : b.ciudad.trim();
+
+  // La ciudad, en cambio, se queda vacía si no se dice. Antes se rellenaba
+  // con el literal 'Sin ciudad' y eso hacía tres destrozos a la vez:
+  //
+  // - `Cata.lugar` ya sabe qué hacer con una ciudad vacía —enseña el país—,
+  //   pero esa rama no se ejecutaba nunca, así que la ficha decía
+  //   "SIN CIUDAD 🇪🇸 · Bar Manoli", como si hubiera un pueblo llamado así.
+  // - 'Sin ciudad' no está vacío, así que contaba como ciudad: con tres
+  //   catas sin rellenar, el Croquetómetro decía "1 ciudad".
+  // - Y por lo mismo, acercaba la medalla de las diez ciudades.
+  final String ciudad = b.ciudad.trim();
   final List<Sabor> sabores =
       b.sabores.isEmpty ? const <Sabor>[Sabor(rellenoId: 'otro')] : b.sabores;
 

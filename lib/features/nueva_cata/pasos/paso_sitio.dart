@@ -21,11 +21,14 @@ class PasoSitio extends ConsumerWidget {
     final Borrador borrador = ref.watch(borradorProvider);
     final BorradorNotifier notifier = ref.read(borradorProvider.notifier);
 
+    // El orden importa. La foto iba primero, y era lo único opcional de un
+    // paso que se llama "¿Dónde estás?": lo primero que veías no era dónde
+    // estabas, y lo único que el botón de abajo te exige —el nombre del
+    // sitio— quedaba por debajo. Ahora se pregunta lo que da título al paso,
+    // y la foto va al final, que es donde va lo que puedes saltarte.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const SelectorMedios(),
-        const SizedBox(height: AppSpacing.xl),
         Campo(
           etiqueta: 'Sitio',
           valor: borrador.sitio,
@@ -43,6 +46,8 @@ class PasoSitio extends ConsumerWidget {
         BotonPais(codigo: borrador.pais, onCambio: notifier.pais),
         const SizedBox(height: AppSpacing.xl),
         const SelectorUbicacion(),
+        const SizedBox(height: AppSpacing.xl),
+        const SelectorMedios(),
       ],
     );
   }

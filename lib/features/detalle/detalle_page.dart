@@ -158,7 +158,7 @@ class DetallePage extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      Text('CataScore', style: AppTypography.tituloS.copyWith(fontSize: 16)),
+                      Text('La nota', style: AppTypography.tituloS.copyWith(fontSize: 16)),
                       Text(
                         'Gana por ${cata.corte.ejeFuerte}',
                         style: AppTypography.cuerpoS.copyWith(fontSize: 13),

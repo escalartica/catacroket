@@ -120,11 +120,18 @@ class _PublicadaPageState extends ConsumerState<PublicadaPage>
               ),
               const SizedBox(height: AppSpacing.m),
               Text(
-                nota >= 8.5
-                    ? 'Menuda joya. Ya está en lo más alto de tu libreta.'
-                    : nota >= 7
-                        ? 'Buena cata. Tu media sube un poquito.'
-                        : 'Anotada. No todas pueden ser leyenda.',
+                // La primera cata no se juzga por la nota. Es el momento en
+                // que alguien empieza a usar la app, y contestarle "no todas
+                // pueden ser leyenda" porque le salió un 6 es recibirle con
+                // una palmadita en la espalda. A partir de la segunda, el
+                // chiste ya tiene gracia.
+                numero == 1
+                    ? 'Tu primera cata. Ya tienes libreta.'
+                    : nota >= 8.5
+                        ? 'Menuda joya. Ya está en lo más alto de tu libreta.'
+                        : nota >= 7
+                            ? 'Buena cata. Tu media sube un poquito.'
+                            : 'Anotada. No todas pueden ser leyenda.',
                 textAlign: TextAlign.center,
                 style: AppTypography.cuerpo,
               ),

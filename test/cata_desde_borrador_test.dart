@@ -52,14 +52,11 @@ void main() {
       expect(cata.sitio, 'Sitio sin nombre');
     });
 
-    test('sin ciudad tampoco', () {
-      expect(desde(const Borrador()).ciudad, 'Sin ciudad');
-    });
-
     test('los espacios no cuentan como nombre', () {
       final Cata cata = desde(const Borrador(sitio: '   ', ciudad: '  '));
       expect(cata.sitio, 'Sitio sin nombre');
-      expect(cata.ciudad, 'Sin ciudad');
+      // La ciudad sí puede quedarse vacía: ver el grupo de abajo.
+      expect(cata.ciudad, isEmpty);
     });
 
     test('al sitio y la ciudad se les quitan los espacios de los lados', () {
@@ -74,6 +71,49 @@ void main() {
       final Cata cata = desde(const Borrador());
       expect(cata.sabores, hasLength(1));
       expect(cata.sabores.first.rellenoId, 'otro');
+    });
+  });
+
+  group('Sin ciudad no se inventa una ciudad', () {
+    test('la ciudad se queda vacía, no con un texto de relleno', () {
+      // Se rellenaba con el literal 'Sin ciudad' y salía en la ficha como
+      // "SIN CIUDAD 🇪🇸 · Bar Manoli", igual que si hubiera un pueblo así.
+      expect(desde(const Borrador(sitio: 'Bar')).ciudad, isEmpty);
+    });
+
+    test('y entonces el lugar enseña el país, que es lo que se sabe', () {
+      // `Cata.lugar` ya tenía esta rama escrita; lo que pasaba es que no se
+      // ejecutaba nunca porque la ciudad nunca llegaba vacía.
+      final Cata cata = desde(const Borrador(sitio: 'Bar'));
+
+      expect(cata.lugar, isNot(contains('Sin ciudad')));
+      expect(cata.lugar, 'España');
+    });
+
+    test('una ciudad de relleno NO puede contar como ciudad visitada', () {
+      // El daño de verdad: 'Sin ciudad' no está vacío, así que entraba en la
+      // cuenta. Con tres catas sin rellenar, el Croquetómetro decía
+      // "1 ciudad" y la medalla de las diez se acercaba sola.
+      final List<Cata> tres = <Cata>[
+        desde(const Borrador(sitio: 'A')),
+        desde(const Borrador(sitio: 'B')),
+        desde(const Borrador(sitio: 'C')),
+      ];
+
+      final int ciudades = tres
+          .map((Cata c) => c.ciudad)
+          .where((String c) => c.isNotEmpty)
+          .toSet()
+          .length;
+
+      expect(ciudades, 0);
+    });
+
+    test('si la dices, se guarda', () {
+      expect(
+        desde(const Borrador(sitio: 'Bar', ciudad: 'Cádiz')).ciudad,
+        'Cádiz',
+      );
     });
   });
 
