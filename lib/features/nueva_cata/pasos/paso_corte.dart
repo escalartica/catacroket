@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../arte/corte_painter.dart';
 import '../../../core/data/rellenos.dart';
 import '../../../core/models/corte.dart';
+import '../../../core/models/tiro_al_plato.dart';
 import '../../../core/providers/borrador_provider.dart';
 import '../../../core/theme/components/barra_eje.dart';
+import '../../../core/theme/components/campo.dart';
 import '../../../core/theme/components/nota.dart';
 import '../../../core/theme/components/pegatina.dart';
 import '../../../core/theme/components/slider_corte.dart';
@@ -88,6 +90,11 @@ class PasoCorte extends ConsumerWidget {
           color: BarraEje.colores['crujiente']!,
           onCambio: (int v) => notifier.eje('crujiente', v),
         ),
+        const SizedBox(height: AppSpacing.m),
+        _TiroAlPlato(
+          elegido: borrador.tiro,
+          onElegir: notifier.tiro,
+        ),
         const SizedBox(height: AppSpacing.l),
         SliderCorte(
           nombre: 'Cremosidad',
@@ -148,6 +155,74 @@ class PasoCorte extends ConsumerWidget {
             fontSize: 12.5,
             color: AppColors.tintaSuave,
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// La prueba del tiro al plato.
+///
+/// Va justo debajo del deslizador de crujiente porque habla de lo mismo: el
+/// rebozado. Pero no lo repite. El deslizador dice cuánto crujía y esto dice
+/// cómo sonaba, y a veces no coinciden, que es lo que tiene gracia.
+///
+/// Es opcional del todo: no bloquea el paso, no entra en la nota y no cambia
+/// el dibujo. Quien no quiera jugar, pasa de largo y no se entera.
+class _TiroAlPlato extends StatelessWidget {
+  const _TiroAlPlato({required this.elegido, required this.onElegir});
+
+  final TiroAlPlato? elegido;
+  final ValueChanged<TiroAlPlato> onElegir;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Text(
+              'La prueba del tiro al plato',
+              style: AppTypography.tituloS.copyWith(fontSize: 15),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'opcional',
+              style: AppTypography.etiqueta.copyWith(
+                fontSize: 10.5,
+                color: AppColors.tintaSuave,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          elegido?.queSignifica ?? 'Déjala caer en el plato. ¿Qué se oyó?',
+          style: AppTypography.cuerpoS.copyWith(
+            fontSize: 12.5,
+            height: 1.3,
+            color: AppColors.tintaSuave,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.s),
+        Wrap(
+          spacing: AppSpacing.s,
+          runSpacing: AppSpacing.s,
+          children: <Widget>[
+            for (final TiroAlPlato t in TiroAlPlato.values)
+              OpcionPildora(
+                texto: t.nombre,
+                emoji: t.emoji,
+                activa: elegido == t,
+                colorActiva: t.color,
+                // De marcar varias no: sólo suena de una manera. Pero se
+                // puede desmarcar tocando la que ya está, y por eso no se
+                // anuncia como grupo de una sola.
+                enGrupoUnico: false,
+                onTap: () => onElegir(t),
+              ),
+          ],
         ),
       ],
     );

@@ -186,6 +186,36 @@ class DetallePage extends ConsumerWidget {
                     const EtiquetaPanel(texto: 'El corte'),
                     const SizedBox(height: AppSpacing.m),
                     ...BarraEje.deCorte(cata.corte),
+                    // La prueba del tiro va aquí y no en su propio panel: es
+                    // un apunte sobre el rebozado, no un dato aparte.
+                    if (cata.tiro != null) ...<Widget>[
+                      const SizedBox(height: AppSpacing.m),
+                      Semantics(
+                        label: 'Al tirarla al plato: ${cata.tiro!.nombre}. '
+                            '${cata.tiro!.queSignifica}',
+                        excludeSemantics: true,
+                        child: Row(
+                          children: <Widget>[
+                            ChipCata(
+                              texto: cata.tiro!.nombre,
+                              emoji: cata.tiro!.emoji,
+                              color: cata.tiro!.color,
+                              compacto: true,
+                            ),
+                            const SizedBox(width: AppSpacing.s),
+                            Expanded(
+                              child: Text(
+                                'al tirarla al plato',
+                                style: AppTypography.etiqueta.copyWith(
+                                  fontSize: 11,
+                                  color: AppColors.tintaSuave,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

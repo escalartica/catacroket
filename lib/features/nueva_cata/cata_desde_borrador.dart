@@ -70,5 +70,6 @@ Cata cataDesdeBorrador(
     receta: b.receta.sinRellenar ? null : b.receta,
     formato: b.formato,
     unidades: b.unidades,
+    tiro: b.tiro,
   );
 }

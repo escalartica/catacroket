@@ -7,6 +7,7 @@ import 'medio.dart';
 import 'persona.dart';
 import 'racion.dart';
 import 'receta.dart';
+import 'tiro_al_plato.dart';
 import 'sabor.dart';
 
 /// Una croqueta catada, en cualquier parte del mundo.
@@ -41,6 +42,7 @@ class Cata {
     this.medios = const <Medio>[],
     this.aptas = const <Dieta>{},
     this.receta,
+    this.tiro,
     this.formato = Formato.sinDecir,
     this.unidades = 0,
   });
@@ -110,6 +112,10 @@ class Cata {
   /// De aquí salen las dietas y los alérgenos. Es la diferencia entre que la
   /// app sepa algo y que repita una etiqueta que alguien marcó a ojo.
   final Receta? receta;
+
+  /// La prueba del tiro al plato, si se hizo. Es un apunte, no una nota: no
+  /// entra en el CataScore ni cambia el dibujo.
+  final TiroAlPlato? tiro;
 
   /// Las dietas marcadas a mano en las catas anteriores a la receta.
   ///
@@ -268,6 +274,7 @@ class Cata {
     List<Medio>? medios,
     Set<Dieta>? aptas,
     Receta? receta,
+    TiroAlPlato? tiro,
     Formato? formato,
     int? unidades,
   }) {
@@ -290,6 +297,7 @@ class Cata {
       medios: medios ?? this.medios,
       aptas: aptas ?? this.aptas,
       receta: receta ?? this.receta,
+      tiro: tiro ?? this.tiro,
       formato: formato ?? this.formato,
       unidades: unidades ?? this.unidades,
     );
@@ -314,6 +322,7 @@ class Cata {
         'medios': medios.map((Medio m) => m.toJson()).toList(),
         'aptas': aptas.map((Dieta d) => d.id).toList(),
         'receta': receta?.toJson(),
+        'tiro': tiro?.id,
         'formato': formato.name,
         'unidades': unidades,
       };
@@ -366,6 +375,10 @@ class Cata {
               ),
         formato: Formato.deNombre(json['formato'] as String? ?? ''),
         unidades: (json['unidades'] as num?)?.toInt() ?? 0,
+        // Las catas de antes de la prueba del tiro no la llevan, y las de
+        // una versión más nueva podrían traer un valor que aquí no existe.
+        // En los dos casos se queda sin apunte, que es la verdad.
+        tiro: TiroAlPlato.desdeId(json['tiro']),
       );
 
   static List<Sabor> _saboresDesdeJson(Map<String, dynamic> json) {

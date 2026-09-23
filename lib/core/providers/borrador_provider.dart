@@ -12,6 +12,7 @@ import '../models/receta.dart';
 import '../data/rellenos.dart';
 import '../models/alergeno.dart';
 import '../models/medio.dart';
+import '../models/tiro_al_plato.dart';
 import '../models/sabor.dart';
 import '../services/medios_service.dart';
 import '../models/mesa.dart';
@@ -39,6 +40,7 @@ class Borrador {
     this.mediosOriginales = const <String>{},
     this.lugar,
     this.receta = const Receta(),
+    this.tiro,
     this.formato = Formato.sinDecir,
     this.unidades = 0,
     this.unidadesTocadas = false,
@@ -89,6 +91,9 @@ class Borrador {
 
   /// Cómo está hecha: bechamel, rebozado y freidora.
   final Receta receta;
+
+  /// La prueba del tiro al plato. Opcional del todo.
+  final TiroAlPlato? tiro;
 
   /// Tapa, media ración o ración, y cuántas croquetas traía.
   final Formato formato;
@@ -179,6 +184,8 @@ class Borrador {
     Lugar? lugar,
     bool quitarLugar = false,
     Receta? receta,
+    TiroAlPlato? tiro,
+    bool quitarTiro = false,
     Formato? formato,
     int? unidades,
     bool? unidadesTocadas,
@@ -202,6 +209,9 @@ class Borrador {
       // falta poder borrarlo.
       lugar: quitarLugar ? null : (lugar ?? this.lugar),
       receta: receta ?? this.receta,
+      // Como el lugar: hay que poder quitarlo, y un `??` no distingue
+      // "no lo toques" de "bórralo". Volver a tocar el chip elegido lo quita.
+      tiro: quitarTiro ? null : (tiro ?? this.tiro),
       formato: formato ?? this.formato,
       unidades: unidades ?? this.unidades,
       unidadesTocadas: unidadesTocadas ?? this.unidadesTocadas,
@@ -239,6 +249,7 @@ class BorradorNotifier extends StateNotifier<Borrador> {
       editando: cata.id,
       mediosOriginales: cata.medios.map((Medio m) => m.ruta).toSet(),
       receta: cata.receta ?? const Receta(),
+      tiro: cata.tiro,
       formato: cata.formato,
       unidades: cata.unidades,
       // Al corregir, el número que hay es el que puso alguien: no se toca.
@@ -389,6 +400,14 @@ class BorradorNotifier extends StateNotifier<Borrador> {
       },
     );
   }
+
+  /// Marca o desmarca la prueba del tiro al plato.
+  ///
+  /// Volver a tocar el que ya está elegido lo quita: es un apunte opcional y
+  /// tiene que poder deshacerse sin salir del paso.
+  void tiro(TiroAlPlato cual) => state = state.tiro == cual
+      ? state.copyWith(quitarTiro: true)
+      : state.copyWith(tiro: cual);
 
   void anadirMedio(Medio medio) =>
       state = state.copyWith(medios: <Medio>[...state.medios, medio]);
