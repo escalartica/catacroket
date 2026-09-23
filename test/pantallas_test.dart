@@ -126,6 +126,48 @@ void main() {
       expect(find.text(alguna.sitio), findsWidgets);
     });
 
+    testWidgets('en la tuya puedes corregir y borrar', (
+      WidgetTester tester,
+    ) async {
+      final Cata mia =
+          Siembra.catas().firstWhere((Cata c) => c.autorId == 'tu');
+
+      await montar(tester, DetallePage(cataId: mia.id));
+
+      expect(find.text('Corregir esta cata'), findsOneWidget);
+      expect(find.bySemanticsLabel('Borrar la cata'), findsOneWidget);
+    });
+
+    testWidgets('la cata de otro se lee, no se toca', (
+      WidgetTester tester,
+    ) async {
+      // La regla está escrita en un comentario de detalle_page: "corregir y
+      // borrar sólo en las tuyas; la de otro se lee, se comparte y se le da
+      // un mordisco". Si `esMia` se rompe, cualquiera podría borrar la cata
+      // de cualquiera y nada lo detectaría.
+      final Cata ajena =
+          Siembra.catas().firstWhere((Cata c) => c.autorId != 'tu');
+
+      await montar(tester, DetallePage(cataId: ajena.id));
+
+      expect(find.text('Corregir esta cata'), findsNothing);
+      expect(find.bySemanticsLabel('Borrar la cata'), findsNothing);
+    });
+
+    testWidgets('un mordisco sí se le puede dar a la de cualquiera', (
+      WidgetTester tester,
+    ) async {
+      final Cata ajena =
+          Siembra.catas().firstWhere((Cata c) => c.autorId != 'tu');
+
+      await montar(tester, DetallePage(cataId: ajena.id));
+
+      expect(
+        find.bySemanticsLabel(RegExp('Dar un mordisco')),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('una cata que ya no existe no revienta la pantalla', (
       WidgetTester tester,
     ) async {
