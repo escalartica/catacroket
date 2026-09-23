@@ -131,8 +131,11 @@ class Racha extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Blanca y no lima a plena saturación: las siete barras de abajo ya
+    // llevan el color, y con el bloque entero verde la racha pesaba tanto
+    // como la croqueta del día, que es la heroína de esta pantalla.
     return Pegatina(
-      color: AppColors.lima,
+      color: AppColors.superficie,
       sombra: AppShape.sombraChica,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Semantics(

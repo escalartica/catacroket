@@ -17,13 +17,19 @@ import '../tokens/app_typography.dart';
 /// disculpa por una pantalla que no se explica sola, y al décimo día es
 /// estorbo. Se lee, se cierra y no vuelve. Se pueden recuperar todas desde
 /// Perfil.
+///
+/// Tampoco grita. Iba en azul a plena saturación, igual de fuerte que el
+/// contenido al que acompañaba, así que en La Vitrina competía con la
+/// croqueta del día. Una explicación de paso no puede pesar lo mismo que
+/// aquello que explica: va en superficie cálida y el color se lo queda el
+/// emoji.
 class Pista extends ConsumerStatefulWidget {
   const Pista({
     super.key,
     required this.que,
     required this.emoji,
     required this.texto,
-    this.color = AppColors.agua,
+    this.color = AppColors.superficieCalida,
   });
 
   /// Cuál es, para acordarse de que ya se cerró.

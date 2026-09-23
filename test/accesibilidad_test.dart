@@ -1,7 +1,6 @@
 import 'package:catacroket/app/concha.dart';
 import 'package:catacroket/core/theme/components/campo.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,9 +28,19 @@ void main() {
     await tester.pump();
   }
 
-  bool seleccionada(WidgetTester tester, String etiqueta) => tester
-      .getSemantics(find.bySemanticsLabel(etiqueta))
-      .hasFlag(SemanticsFlag.isSelected);
+  /// Comprueba si una pestaña se anuncia (o no) como la activa.
+  void anunciaActiva(
+    WidgetTester tester,
+    String etiqueta, {
+    required bool activa,
+    String? porque,
+  }) {
+    expect(
+      tester.getSemantics(find.bySemanticsLabel(etiqueta)),
+      isSemantics(isSelected: activa),
+      reason: porque,
+    );
+  }
 
   group('Barra de pestañas', () {
     testWidgets('las cuatro se anuncian por su nombre', (
@@ -60,10 +69,11 @@ void main() {
       final SemanticsHandle handle = tester.ensureSemantics();
       await montarConcha(tester, '/ruta');
 
-      expect(
-        seleccionada(tester, 'Ruta'),
-        isTrue,
-        reason: 'estando en /ruta, la pestaña Ruta debe anunciarse activa',
+      anunciaActiva(
+        tester,
+        'Ruta',
+        activa: true,
+        porque: 'estando en /ruta, la pestaña Ruta debe anunciarse activa',
       );
 
       handle.dispose();
@@ -74,10 +84,11 @@ void main() {
       await montarConcha(tester, '/ruta');
 
       for (final String otra in <String>['La Vitrina', 'Mesas', 'Perfil']) {
-        expect(
-          seleccionada(tester, otra),
-          isFalse,
-          reason: '"$otra" no está activa y no debe decir que sí',
+        anunciaActiva(
+          tester,
+          otra,
+          activa: false,
+          porque: '"$otra" no está activa y no debe decir que sí',
         );
       }
 
@@ -91,7 +102,7 @@ void main() {
       // Dentro de la ficha de una cata se sigue estando "en la Vitrina".
       await montarConcha(tester, '/cata/abc');
 
-      expect(seleccionada(tester, 'La Vitrina'), isTrue);
+      anunciaActiva(tester, 'La Vitrina', activa: true);
 
       handle.dispose();
     });
@@ -102,12 +113,12 @@ void main() {
       final SemanticsHandle handle = tester.ensureSemantics();
 
       await montarConcha(tester, '/mesas');
-      expect(seleccionada(tester, 'Mesas'), isTrue);
-      expect(seleccionada(tester, 'Perfil'), isFalse);
+      anunciaActiva(tester, 'Mesas', activa: true);
+      anunciaActiva(tester, 'Perfil', activa: false);
 
       await montarConcha(tester, '/perfil');
-      expect(seleccionada(tester, 'Perfil'), isTrue);
-      expect(seleccionada(tester, 'Mesas'), isFalse);
+      anunciaActiva(tester, 'Perfil', activa: true);
+      anunciaActiva(tester, 'Mesas', activa: false);
 
       handle.dispose();
     });

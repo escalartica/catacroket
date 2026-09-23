@@ -223,8 +223,11 @@ class EntradaBarraLibre extends ConsumerWidget {
       pie = '$paraMi te valen de $total apuntadas';
     }
 
+    // El menta pasa del bloque entero a la pastilla del icono: como
+    // rectángulo verde a ancho completo era el cuarto de la misma pantalla y
+    // le quitaba protagonismo a la croqueta del día.
     return Pegatina(
-      color: AppColors.menta,
+      color: AppColors.superficie,
       lunares: true,
       padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
       onTap: () => context.push('/libre'),
@@ -235,7 +238,10 @@ class EntradaBarraLibre extends ConsumerWidget {
             height: 46,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.crema,
+              // Antes era crema sobre el menta del bloque. Ahora que el
+              // bloque es blanco, la crema desaparecería: el verde se muda
+              // aquí, que es donde queda como acento y no como grito.
+              color: AppColors.menta,
               borderRadius: BorderRadius.circular(AppShape.radioM),
               border: Border.all(
                 color: AppColors.tinta,

@@ -28,6 +28,7 @@ import '../../core/utils/formato.dart';
 import '../vitrina/widgets/tarjeta_cata.dart';
 import '../../core/providers/visto_provider.dart';
 import '../../core/theme/components/pista.dart';
+import 'agrupacion.dart';
 import 'ruta_providers.dart';
 
 /// RUTA CROQUETERA — el mapa.
@@ -54,6 +55,13 @@ class _RutaPageState extends ConsumerState<RutaPage> {
   final ScrollController _lista = ScrollController();
   String? _seleccionada;
   bool _plegada = false;
+
+  /// El zoom al que está el mapa ahora mismo.
+  ///
+  /// Hace falta para agrupar: dos bares de la misma calle se pisan vistos
+  /// desde la ciudad y se separan al acercarse, así que la agrupación tiene
+  /// que rehacerse cada vez que el mapa se mueve.
+  double _zoom = 13;
   bool _buscandoGps = false;
   LatLng? _yo;
 
@@ -238,6 +246,16 @@ class _RutaPageState extends ConsumerState<RutaPage> {
     }
   }
 
+  /// Acerca el mapa hasta que las catas de un grupo dejen de pisarse.
+  ///
+  /// No abre una lista ni una hoja: acercarse es lo que el usuario ya iba a
+  /// hacer, y así el mapa sigue siendo el mapa.
+  void _abrirGrupo(Grupo grupo) {
+    HapticFeedback.selectionClick();
+    setState(() => _seleccionada = null);
+    _mapa.move(LatLng(grupo.lat, grupo.lon), (_zoom + 2.5).clamp(2, 18));
+  }
+
   void _cambiarFiltro(FiltroRuta filtro, List<Cata> conSitio) {
     HapticFeedback.selectionClick();
     ref.read(filtroRutaProvider.notifier).state = filtro;
@@ -346,8 +364,13 @@ class _RutaPageState extends ConsumerState<RutaPage> {
                   centroDelGrupo: grupo.length == 1
                       ? LatLng(grupo.first.lat!, grupo.first.lon!)
                       : null,
+                  zoom: _zoom,
                   onListo: () => _alAbrir(porNota),
+                  onZoom: (double z) {
+                    if ((z - _zoom).abs() > 0.05) setState(() => _zoom = z);
+                  },
                   onGlobo: (Cata c) => _seleccionar(c, porNota),
+                  onGrupo: _abrirGrupo,
                   onTeselaPedida: _teselaPedida,
                   onTeselaFallida: _teselaFallida,
                 ),
@@ -391,8 +414,11 @@ class _CapaMapa extends StatelessWidget {
     required this.seleccionada,
     required this.encuadreInicial,
     required this.centroDelGrupo,
+    required this.zoom,
     required this.onListo,
+    required this.onZoom,
     required this.onGlobo,
+    required this.onGrupo,
     required this.onTeselaPedida,
     required this.onTeselaFallida,
   });
@@ -411,8 +437,13 @@ class _CapaMapa extends StatelessWidget {
   /// no hay nada que encuadrar. Nulo si son varias.
   final LatLng? centroDelGrupo;
 
+  /// El zoom actual. Decide qué catas se pisan y por tanto se agrupan.
+  final double zoom;
+
   final VoidCallback onListo;
+  final ValueChanged<double> onZoom;
   final ValueChanged<Cata> onGlobo;
+  final ValueChanged<Grupo> onGrupo;
   final VoidCallback onTeselaPedida;
   final ValueChanged<Object> onTeselaFallida;
 
@@ -434,6 +465,7 @@ class _CapaMapa extends StatelessWidget {
         // crema de la app, un mapa que tarda se ve como un mapa que tarda.
         backgroundColor: AppColors.fondo,
         onMapReady: onListo,
+        onPositionChanged: (MapCamera camara, bool _) => onZoom(camara.zoom),
       ),
       children: <Widget>[
         teselasOsm(onFallo: onTeselaFallida, onPedida: onTeselaPedida),
@@ -450,18 +482,30 @@ class _CapaMapa extends StatelessWidget {
           ),
         MarkerLayer(
           markers: <Marker>[
-            for (final Cata c in visibles)
+            // Un marcador por grupo y no por cata: diez bares del mismo
+            // barrio dejaban los números en muñones ("8,", "9,", "0") justo
+            // debajo del cartel que promete "el número es la nota".
+            for (final Grupo g in agruparCatas(visibles, zoom))
               Marker(
-                point: LatLng(c.lat!, c.lon!),
-                width: 78,
+                point: LatLng(g.lat, g.lon),
+                // El racimo lleva dos cifras y un separador: con los 78 de un
+                // globo suelto se salía por la derecha.
+                width: g.esUna ? 78 : 104,
                 height: 62,
                 alignment: Alignment.topCenter,
-                child: _Globo(
-                  cata: c,
-                  activo: seleccionada == c.id,
-                  apagado: seleccionada != null && seleccionada != c.id,
-                  onTap: () => onGlobo(c),
-                ),
+                child: g.esUna
+                    ? _Globo(
+                        cata: g.unica,
+                        activo: seleccionada == g.unica.id,
+                        apagado: seleccionada != null &&
+                            seleccionada != g.unica.id,
+                        onTap: () => onGlobo(g.unica),
+                      )
+                    : _Racimo(
+                        grupo: g,
+                        apagado: seleccionada != null,
+                        onTap: () => onGrupo(g),
+                      ),
               ),
           ],
         ),
@@ -801,6 +845,80 @@ class _PuntoYo extends StatelessWidget {
 
 /// El globo de nota sobre el mapa. La nota se lee sin abrir nada: es lo único
 /// que hace falta para decidir a qué bar ir.
+/// Varias catas que a este zoom caen en el mismo sitio.
+///
+/// Enseña cuántas son y la mejor nota de las suyas, que es lo que quieres
+/// saber de un vistazo de una calle donde has catado cinco veces. Al tocarlo
+/// el mapa se acerca hasta que se separan: acercarse es lo que ibas a hacer
+/// de todos modos, y así el mapa sigue siendo un mapa y no una lista.
+class _Racimo extends StatelessWidget {
+  const _Racimo({
+    required this.grupo,
+    required this.apagado,
+    required this.onTap,
+  });
+
+  final Grupo grupo;
+  final bool apagado;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final int cuantas = grupo.catas.length;
+
+    return Semantics(
+      button: true,
+      label: '$cuantas catas juntas, la mejor '
+          '${Formato.nota(grupo.mejorNota)} de 10. Toca para acercarte',
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          onTap: onTap,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                decoration: BoxDecoration(
+                  // Mango y no sol: un racimo no es una cata, y el color es
+                  // lo primero que lo dice sin tener que leer nada.
+                  color: apagado ? AppColors.superficie : AppColors.mango,
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(
+                    color: AppColors.tinta,
+                    width: AppShape.borde,
+                  ),
+                  boxShadow: AppShape.sombra(const Offset(2, 2)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(
+                      '$cuantas',
+                      style: AppTypography.cifraS.copyWith(fontSize: 15),
+                    ),
+                    const SizedBox(width: 4),
+                    Container(
+                      width: 1.5,
+                      height: 13,
+                      color: AppColors.tinta.withValues(alpha: 0.35),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      Formato.nota(grupo.mejorNota),
+                      style: AppTypography.cifraS.copyWith(fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              CustomPaint(size: const Size(14, 9), painter: const _Pico()),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Globo extends StatelessWidget {
   const _Globo({
     required this.cata,
