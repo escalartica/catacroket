@@ -28,6 +28,16 @@ class VitrinaPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final List<Cata> feed = ref.watch(feedProvider);
+
+    // Dos vacíos que no son el mismo:
+    //
+    // - Sin una sola cata: es el primer día. Sobra todo lo que sirve para
+    //   manejar una lista —el filtro de tres opciones, el título de sección,
+    //   la cuenta— porque no hay lista. Y sobre todo: con todo eso puesto, la
+    //   única frase que dice qué hacer se iba por debajo del pliegue.
+    // - Con catas pero ninguna en este filtro: ahí el filtro es justo lo que
+    //   hay que dejar a mano, porque cambiarlo es la salida.
+    final bool primerDia = ref.watch(catasProvider).isEmpty;
     final Cata? mejor = ref.watch(croquetaDelDiaProvider);
     final Map<String, Persona> personas = ref.watch(personasProvider);
     final FiltroVitrina filtro = ref.watch(filtroVitrinaProvider);
@@ -74,29 +84,31 @@ class VitrinaPage extends ConsumerWidget {
                 ),
               const SizedBox(height: AppSpacing.l),
               const EntradaBarraLibre(),
-              const SizedBox(height: AppSpacing.l),
-              Segmentado<FiltroVitrina>(
-                seleccion: filtro,
-                onCambio: (FiltroVitrina f) =>
-                    ref.read(filtroVitrinaProvider.notifier).state = f,
-                opciones: const <FiltroVitrina, String>{
-                  FiltroVitrina.todo: 'Todo',
-                  FiltroVitrina.misMesas: 'Mis mesas',
-                  FiltroVitrina.mias: 'Mías',
-                },
-              ),
-              TituloSeccion(
-                texto: 'Últimas catas',
-                pastilla: ChipCata(
-                  texto: '${feed.length} catas',
-                  color: AppColors.menta,
+              if (!primerDia) ...<Widget>[
+                const SizedBox(height: AppSpacing.l),
+                Segmentado<FiltroVitrina>(
+                  seleccion: filtro,
+                  onCambio: (FiltroVitrina f) =>
+                      ref.read(filtroVitrinaProvider.notifier).state = f,
+                  opciones: const <FiltroVitrina, String>{
+                    FiltroVitrina.todo: 'Todo',
+                    FiltroVitrina.misMesas: 'Mis mesas',
+                    FiltroVitrina.mias: 'Mías',
+                  },
                 ),
-              ),
+                TituloSeccion(
+                  texto: 'Últimas catas',
+                  pastilla: ChipCata(
+                    texto: '${feed.length} catas',
+                    color: AppColors.menta,
+                  ),
+                ),
+              ],
             ]),
           ),
         ),
         if (feed.isEmpty)
-          const SliverToBoxAdapter(child: _VitrinaVacia())
+          SliverToBoxAdapter(child: _VitrinaVacia(primerDia: primerDia))
         else
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pantalla),
@@ -126,7 +138,10 @@ class VitrinaPage extends ConsumerWidget {
 }
 
 class _VitrinaVacia extends StatelessWidget {
-  const _VitrinaVacia();
+  const _VitrinaVacia({required this.primerDia});
+
+  /// Si no hay ni una cata en toda la app, o sólo ninguna en este filtro.
+  final bool primerDia;
 
   @override
   Widget build(BuildContext context) {
@@ -137,10 +152,16 @@ class _VitrinaVacia extends StatelessWidget {
       ),
       child: Column(
         children: <Widget>[
-          const Croqui(ancho: 150),
+          // El primer día el dibujo va más pequeño: con 150 empujaba la única
+          // frase que dice qué hacer por debajo del pliegue, y había que
+          // hacer scroll para enterarse de cómo se empieza.
+          Croqui(ancho: primerDia ? 110 : 150),
           const SizedBox(height: AppSpacing.l),
           Text(
-            'La vitrina está vacía.\nDale al botón rojo y coloca la primera.',
+            primerDia
+                ? 'Aquí irán tus croquetas.\nDale al botón rojo y apunta la '
+                    'primera.'
+                : 'Ninguna cata con este filtro.\nPrueba con «Todo».',
             textAlign: TextAlign.center,
             style: AppTypography.cuerpo,
           ),

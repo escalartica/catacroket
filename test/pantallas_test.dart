@@ -1,5 +1,6 @@
 import 'package:catacroket/core/data/siembra.dart';
 import 'package:catacroket/core/models/cata.dart';
+import 'package:catacroket/core/providers/catas_provider.dart';
 import 'package:catacroket/features/detalle/detalle_page.dart';
 import 'package:catacroket/features/libre/barra_libre_page.dart';
 import 'package:catacroket/features/mesas/mesas_page.dart';
@@ -66,6 +67,61 @@ void main() {
       expect(find.text('Todo'), findsOneWidget);
       expect(find.text('Mis mesas'), findsOneWidget);
       expect(find.text('Mías'), findsOneWidget);
+    });
+  });
+
+  group('El primer día, sin una sola cata', () {
+    /// Monta la Vitrina como la ve alguien que acaba de instalar la app.
+    Future<void> montarVacia(WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: <Override>[
+            catasProvider.overrideWith((Ref ref) => _CatasVacias()),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: VitrinaPage()),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+    }
+
+    testWidgets('dice qué hacer, y lo dice sin hacer scroll', (
+      WidgetTester tester,
+    ) async {
+      await montarVacia(tester);
+
+      final Finder invitacion = find.textContaining('Dale al botón rojo');
+      expect(invitacion, findsOneWidget);
+
+      // Lo que de verdad importa: que se vea. Estaba escrito, pero por debajo
+      // del pliegue, así que había que hacer scroll para saber cómo empezar.
+      final double abajo = tester.getBottomLeft(invitacion).dy;
+      final double alto = tester.view.physicalSize.height /
+          tester.view.devicePixelRatio;
+      expect(
+        abajo,
+        lessThan(alto),
+        reason: 'la instrucción de cómo empezar queda fuera de pantalla',
+      );
+    });
+
+    testWidgets('no enseña un filtro que no filtra nada', (
+      WidgetTester tester,
+    ) async {
+      await montarVacia(tester);
+
+      expect(find.text('Mis mesas'), findsNothing);
+      expect(find.text('Últimas catas'), findsNothing);
+    });
+
+    testWidgets('la racha invita en vez de decir cero', (
+      WidgetTester tester,
+    ) async {
+      await montarVacia(tester);
+
+      expect(find.textContaining('Sin racha'), findsOneWidget);
     });
   });
 
@@ -178,4 +234,11 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   });
+}
+
+/// Una app recién instalada: ni una cata.
+class _CatasVacias extends CatasNotifier {
+  _CatasVacias() {
+    state = const <Cata>[];
+  }
 }
