@@ -397,10 +397,13 @@ class _RutaPageState extends ConsumerState<RutaPage> {
                   onTeselaFallida: _teselaFallida,
                 ),
               ),
-              _Filtros(
-                activo: filtro,
-                onElegir: (FiltroRuta f) => _cambiarFiltro(f, conSitio),
-              ),
+              // Sin una sola cata con sitio, ningún filtro va a enseñar
+              // nada nunca: son tres pastillas para filtrar el vacío.
+              if (conSitio.isNotEmpty)
+                _Filtros(
+                  activo: filtro,
+                  onElegir: (FiltroRuta f) => _cambiarFiltro(f, conSitio),
+                ),
               if (_falloTeselas != null)
                 _AvisoMapaCaido(motivo: _falloTeselas!, pedidas: _pedidas),
               _BotonCentrarme(
@@ -409,6 +412,7 @@ class _RutaPageState extends ConsumerState<RutaPage> {
                 onTap: _centrarEnMi,
               ),
               _HojaResultados(
+                sinNingunSitio: conSitio.isEmpty,
                 plegada: _plegada,
                 altura: _alturaHoja,
                 catas: porNota,
@@ -678,6 +682,7 @@ class _BotonCentrarme extends StatelessWidget {
 /// La hoja de abajo: las catas visibles ordenadas por nota.
 class _HojaResultados extends StatelessWidget {
   const _HojaResultados({
+    required this.sinNingunSitio,
     required this.plegada,
     required this.altura,
     required this.catas,
@@ -687,6 +692,9 @@ class _HojaResultados extends StatelessWidget {
     required this.controlador,
     required this.onTirador,
   });
+
+  /// Si no hay ni una cata con punto en el mapa. Es el primer día.
+  final bool sinNingunSitio;
 
   final bool plegada;
   final double altura;
@@ -721,32 +729,35 @@ class _HojaResultados extends StatelessWidget {
         child: Column(
           children: <Widget>[
             _Tirador(plegada: plegada, onTap: onTirador),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.pantalla,
-              ),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      'ORDENADAS POR NOTA',
-                      style: AppTypography.antetitulo.copyWith(
-                        color: AppColors.tintaSuave,
+            // "Ordenadas por nota" encima de nada no ordena nada.
+            if (!sinNingunSitio) ...<Widget>[
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.pantalla,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        'ORDENADAS POR NOTA',
+                        style: AppTypography.antetitulo.copyWith(
+                          color: AppColors.tintaSuave,
+                        ),
                       ),
                     ),
-                  ),
-                  if (sinSitio > 0)
-                    Text(
-                      '$sinSitio sin sitio',
-                      style: AppTypography.etiqueta.copyWith(
-                        fontSize: 11,
-                        color: AppColors.tintaSuave,
+                    if (sinSitio > 0)
+                      Text(
+                        '$sinSitio sin sitio',
+                        style: AppTypography.etiqueta.copyWith(
+                          fontSize: 11,
+                          color: AppColors.tintaSuave,
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.m),
+              const SizedBox(height: AppSpacing.m),
+            ],
             Expanded(
               child: catas.isEmpty
                   ? _Vacio(filtro: filtro, sinSitio: sinSitio)

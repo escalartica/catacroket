@@ -1,3 +1,5 @@
+import 'package:catacroket/core/models/cata.dart';
+import 'package:catacroket/core/providers/catas_provider.dart';
 import 'package:catacroket/features/ruta/ruta_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,6 +38,50 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Ruta croquetera'), findsOneWidget);
+  });
+
+  group('El primer día, sin una cata con sitio', () {
+    Future<void> montarVacia(WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: <Override>[
+            catasProvider.overrideWith((Ref ref) => _CatasVacias()),
+          ],
+          child: const ProviderScope(
+            child: MaterialApp(home: Scaffold(body: RutaPage())),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+    }
+
+    testWidgets('no enseña filtros que no filtran nada', (
+      WidgetTester tester,
+    ) async {
+      await montarVacia(tester);
+
+      // Tres pastillas para filtrar el vacío: ninguna va a enseñar nada
+      // nunca, porque no hay ni una cata con punto en el mapa.
+      expect(find.text('Mías'), findsNothing);
+      expect(find.text('Barra Libre'), findsNothing);
+    });
+
+    testWidgets('no dice "ordenadas por nota" encima de nada', (
+      WidgetTester tester,
+    ) async {
+      await montarVacia(tester);
+
+      expect(find.text('ORDENADAS POR NOTA'), findsNothing);
+    });
+
+    testWidgets('sí dice qué hacer para que salga algo', (
+      WidgetTester tester,
+    ) async {
+      await montarVacia(tester);
+
+      expect(find.textContaining('Aún no hay catas'), findsOneWidget);
+    });
   });
 
   testWidgets('las tres pastillas de filtro están puestas', (
@@ -94,4 +140,11 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.bySemanticsLabel('Abrir la lista de catas'), findsOneWidget);
   });
+}
+
+/// Una app recién instalada: ni una cata, y por tanto ningún punto.
+class _CatasVacias extends CatasNotifier {
+  _CatasVacias() {
+    state = const <Cata>[];
+  }
 }
