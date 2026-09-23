@@ -188,7 +188,26 @@ class _HojaCompartirState extends State<_HojaCompartir> {
                 fit: BoxFit.contain,
                 child: RepaintBoundary(
                   key: _lienzo,
-                  child: _Estampa(cata: widget.cata, autor: widget.autor),
+                  // El tamaño de letra del sistema NO entra aquí. La estampa
+                  // es un PNG fijo de 360x450 que se le manda a otra gente:
+                  // con la letra al 1,3 el nombre de un bar largo se recorta
+                  // en la imagen que llega al grupo, y quien la envía lo ve
+                  // bien en su previsualización. La imagen tiene que salir
+                  // igual sea cual sea el ajuste de quien la comparte.
+                  child: MediaQuery.withNoTextScaling(
+                    // Y se anuncia como lo que es: una imagen, entera, no
+                    // los veinte trozos de texto que la componen.
+                    child: Semantics(
+                      label: 'Estampa de la cata de ${widget.cata.sitio}, '
+                          'nota ${Formato.nota(widget.cata.puntuacion)} de 10',
+                      image: true,
+                      excludeSemantics: true,
+                      child: _Estampa(
+                        cata: widget.cata,
+                        autor: widget.autor,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

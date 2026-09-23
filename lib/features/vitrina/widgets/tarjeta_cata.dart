@@ -46,7 +46,29 @@ class TarjetaCata extends ConsumerWidget {
       cata.loQueLleva,
     );
 
-    return Pegatina(
+    // Cómo se oye la tarjeta entera.
+    //
+    // Sin esto se anunciaban sus textos sueltos en el orden en que cayeran:
+    // el dibujo, la nota, el autor, las pastillas. Aquí manda el mismo orden
+    // que manda en la pantalla, y lo primero es lo que no quieres que te
+    // pongan: si lleva marisco, lo demás ya no importa.
+    final String enVoz = <String>[
+      if (lleva.isNotEmpty) 'Ojo, lleva ${lleva.join(', ')}',
+      cata.esSurtido
+          ? 'Surtido de ${cata.sabores.length} sabores'
+          : cata.saborPrincipal.nombre,
+      cata.sitioYLugar,
+      'nota ${Formato.nota(cata.puntuacion)} de 10',
+      'de ${autor.nombre}',
+      Formato.relativo(cata.fecha),
+      if (encaje != Encaje.sinSaber) encaje.nombre,
+    ].join('. ');
+
+    return Semantics(
+      button: onTap != null,
+      label: enVoz,
+      excludeSemantics: true,
+      child: Pegatina(
       onTap: onTap,
       padding: const EdgeInsets.all(10),
       child: Row(
@@ -148,6 +170,7 @@ class TarjetaCata extends ConsumerWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

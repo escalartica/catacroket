@@ -1,5 +1,9 @@
 import 'package:catacroket/app/concha.dart';
+import 'package:catacroket/core/models/cata.dart';
+import 'package:catacroket/core/models/corte.dart';
 import 'package:catacroket/core/models/persona.dart';
+import 'package:catacroket/core/models/sabor.dart';
+import 'package:catacroket/features/vitrina/widgets/tarjeta_cata.dart';
 import 'package:catacroket/core/theme/components/avatar.dart';
 import 'package:catacroket/core/theme/components/campo.dart';
 import 'package:flutter/material.dart';
@@ -177,6 +181,71 @@ void main() {
 
     test('sin nadie no se queda en blanco', () {
       expect(PilaAvatares.enVoz(<Persona>[], 0), 'Nadie');
+    });
+  });
+
+  group('Tarjeta de una cata', () {
+    Cata conRelleno(String rellenoId) => Cata(
+          id: 'x',
+          sitio: 'Bar Manoli',
+          ciudad: 'Sevilla',
+          corte: const Corte(
+            crujiente: 8,
+            cremosidad: 8,
+            sabor: 8,
+            relleno: 8,
+          ),
+          sabores: <Sabor>[Sabor(rellenoId: rellenoId)],
+          autorId: 'tu',
+          mesaId: 'libreta',
+          fecha: DateTime(2026),
+        );
+
+    Future<void> montarTarjeta(WidgetTester tester, Cata cata) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: TarjetaCata(
+                cata: cata,
+                autor: const Persona(
+                  id: 'tu',
+                  nombre: 'Marta',
+                  color: Color(0xFFFFC93C),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+    }
+
+    testWidgets('se anuncia como una sola cosa, no a trozos', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
+      await montarTarjeta(tester, conRelleno('jamon'));
+
+      // Un único nodo con todo dentro, en vez de nota, autor y pastillas
+      // sueltas en el orden en que caigan.
+      final Finder tarjeta = find.bySemanticsLabel(RegExp('Bar Manoli'));
+      expect(tarjeta, findsOneWidget);
+
+      handle.dispose();
+    });
+
+    testWidgets('el sitio y la nota van dentro del anuncio', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
+      await montarTarjeta(tester, conRelleno('jamon'));
+
+      expect(find.bySemanticsLabel(RegExp('nota 8,0 de 10')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('de Marta')), findsOneWidget);
+
+      handle.dispose();
     });
   });
 
