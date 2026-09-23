@@ -23,6 +23,7 @@ import '../../core/theme/tokens/app_colors.dart';
 import '../../core/theme/tokens/app_shape.dart';
 import '../../core/theme/tokens/app_spacing.dart';
 import '../../core/theme/tokens/app_typography.dart';
+import '../../core/data/enlaces.dart';
 import '../../core/utils/formato.dart';
 
 /// Medidas de la estampa. 4:5 es el formato que ni Instagram ni WhatsApp
@@ -138,9 +139,23 @@ class _HojaCompartirState extends State<_HojaCompartir> {
     Navigator.of(context).pop();
   }
 
-  static String _pie(Cata cata) =>
-      '${Formato.nota(cata.puntuacion)} en ${cata.sitio} (${cata.lugar}). '
-      'Catado con Catacroket.';
+  /// El texto que acompaña a la imagen.
+  ///
+  /// Lleva el enlace de la tienda en cuanto exista. Esto es lo que más se
+  /// comparte de toda la app, así que era el único sitio donde de verdad
+  /// importaba: quien recibe la estampa en el grupo ve una croqueta con
+  /// buena pinta y, si no hay enlace, no tiene dónde ir.
+  ///
+  /// La imagen ya lleva el nombre dentro, así que aunque alguien la reenvíe
+  /// suelta se sabe de dónde salió. El enlace es para quien recibe el
+  /// mensaje entero.
+  static String _pie(Cata cata) {
+    final String loQueFue =
+        '${Formato.nota(cata.puntuacion)} en ${cata.sitio} (${cata.lugar}). '
+        'Catado con Catacroket.';
+
+    return Enlaces.hayTienda ? '$loQueFue\n${Enlaces.tienda}' : loQueFue;
+  }
 
   @override
   Widget build(BuildContext context) {
