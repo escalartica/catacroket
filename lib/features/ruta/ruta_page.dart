@@ -152,24 +152,31 @@ class _RutaPageState extends ConsumerState<RutaPage> {
   /// Hueco que se le deja al encuadre para que ningún globo caiga debajo de
   /// la interfaz.
   ///
-  /// Arriba hace falta bastante más que a los lados: ahí flotan las pastillas
-  /// de filtro (8 de margen + 44 de alto) y un globo mide 62. Abajo, la hoja
-  /// de resultados entera.
+  /// Arriba, las pastillas de filtro. Abajo, la hoja de resultados entera:
+  /// sin ese hueco el mapa centraría los globos justo donde la hoja los tapa.
+  ///
+  /// NO SUBIR ESTOS VALORES. Se intentó dos veces y las dos salió peor:
+  ///
+  /// - Arriba a 114, para despegar los globos de las pastillas.
+  /// - Abajo +62, para que el marcador más al sur no lo cortara la hoja.
+  ///
+  /// Las dos veces pasó lo mismo. Este mapa tiene un viewport diminuto —la
+  /// hoja se come el 42 % y la cabecera otro tanto—, así que cada píxel de
+  /// margen sale caro en zoom, y al alejarse los doce bares del centro caen
+  /// dentro de un solo marcador y el mapa se queda en un punto naranja.
+  ///
+  /// Lo que separa los globos es agruparlos (agrupacion.dart), no alejarse.
+  /// Un marcador rozando el borde de la hoja cuesta mucho menos que perder
+  /// el mapa entero.
   EdgeInsets get _margenEncuadre =>
-      EdgeInsets.fromLTRB(56, 114, 56, _alturaHoja + 32);
+      EdgeInsets.fromLTRB(56, 76, 56, _alturaHoja + 32);
 
   /// El encuadre inicial, para que lo aplique flutter_map cuando toca.
   ///
   /// Esto no se hace desde `onMapReady`. Parece el sitio natural y no lo es:
   /// `onMapReady` salta en un post-frame de `initState`, antes de que el mapa
   /// se haya medido, y encuadrar contra un tamaño cero deja una cámara
-  /// degenerada. Los globos salían bien porque se recolocan en cada frame,
-  /// pero la capa de teselas sólo recalcula cuando la cámara cambia, así que
-  /// se quedaba en blanco hasta que el usuario hacía zoom a mano. De ahí el
-  /// mapa gris.
-  ///
-  /// `initialCameraFit` existe justo para esto: flutter_map lo aplica cuando
-  /// ya tiene un tamaño de verdad.
+  /// degenerada. `initialCameraFit` existe justo para esto.
   CameraFit? _encuadreInicial(List<Cata> catas) {
     // Con menos de dos puntos no hay nada que encuadrar, y un `bounds` de un
     // solo punto pide un zoom infinito.
@@ -246,14 +253,31 @@ class _RutaPageState extends ConsumerState<RutaPage> {
     }
   }
 
+  /// El centro de un grupo de catas. Nulo si el grupo está vacío.
+  LatLng? _centroDe(List<Cata> grupo) {
+    if (grupo.isEmpty) return null;
+    final double lat =
+        grupo.map((Cata c) => c.lat!).reduce((double a, double b) => a + b) /
+            grupo.length;
+    final double lon =
+        grupo.map((Cata c) => c.lon!).reduce((double a, double b) => a + b) /
+            grupo.length;
+    return LatLng(lat, lon);
+  }
+
   /// Acerca el mapa hasta que las catas de un grupo dejen de pisarse.
   ///
   /// No abre una lista ni una hoja: acercarse es lo que el usuario ya iba a
   /// hacer, y así el mapa sigue siendo el mapa.
+  ///
+  /// Encuadra en vez de mover la cámara a pelo: un `move` centra en el
+  /// viewport entero, y el centro del viewport está medio tapado por las
+  /// pastillas de filtro y por la hoja de resultados, así que los globos
+  /// aterrizaban debajo. `_encuadrar` ya sabe descontar ese hueco.
   void _abrirGrupo(Grupo grupo) {
     HapticFeedback.selectionClick();
     setState(() => _seleccionada = null);
-    _mapa.move(LatLng(grupo.lat, grupo.lon), (_zoom + 2.5).clamp(2, 18));
+    _encuadrar(grupo.catas);
   }
 
   void _cambiarFiltro(FiltroRuta filtro, List<Cata> conSitio) {
@@ -361,9 +385,7 @@ class _RutaPageState extends ConsumerState<RutaPage> {
                   yo: _yo,
                   seleccionada: _seleccionada,
                   encuadreInicial: _encuadreInicial(grupo),
-                  centroDelGrupo: grupo.length == 1
-                      ? LatLng(grupo.first.lat!, grupo.first.lon!)
-                      : null,
+                  centroDelGrupo: _centroDe(grupo),
                   zoom: _zoom,
                   onListo: () => _alAbrir(porNota),
                   onZoom: (double z) {
@@ -431,10 +453,10 @@ class _CapaMapa extends StatelessWidget {
   final List<Cata> visibles;
   final LatLng? yo;
   final String? seleccionada;
+  /// Encuadre del grupo de apertura. Nulo cuando es una sola cata.
   final CameraFit? encuadreInicial;
 
-  /// Dónde centrar cuando el grupo de apertura es una sola cata y por tanto
-  /// no hay nada que encuadrar. Nulo si son varias.
+  /// El centro del sitio donde más has catado. Nulo si no hay ninguna.
   final LatLng? centroDelGrupo;
 
   /// El zoom actual. Decide qué catas se pisan y por tanto se agrupan.
@@ -452,12 +474,16 @@ class _CapaMapa extends StatelessWidget {
     return FlutterMap(
       mapController: controlador,
       options: MapOptions(
-        // Si se llega desde una ficha, el mapa abre en ese bar. Si no, en
-        // el sitio donde más has catado. Sevilla sólo cuando no hay nada.
+        // Si se llega desde una ficha, el mapa abre en ese bar. Si no,
+        // encuadra el sitio donde más has catado. Sevilla cuando no hay nada.
+        //
+        // El encuadre no sobra, aunque lo parezca: el centro del mapa cae
+        // detrás de la hoja de resultados, y su margen inferior es lo único
+        // que sube los globos hasta la franja que se ve.
         initialCenter: inicial != null
             ? LatLng(inicial!.lat!, inicial!.lon!)
             : (centroDelGrupo ?? _sevilla),
-        initialZoom: inicial != null || centroDelGrupo != null ? 15 : 13,
+        initialZoom: inicial != null ? 15 : 13,
         initialCameraFit: inicial == null ? encuadreInicial : null,
         minZoom: 2,
         maxZoom: 18,
@@ -488,9 +514,7 @@ class _CapaMapa extends StatelessWidget {
             for (final Grupo g in agruparCatas(visibles, zoom))
               Marker(
                 point: LatLng(g.lat, g.lon),
-                // El racimo lleva dos cifras y un separador: con los 78 de un
-                // globo suelto se salía por la derecha.
-                width: g.esUna ? 78 : 104,
+                width: 78,
                 height: 62,
                 alignment: Alignment.topCenter,
                 child: g.esUna
@@ -847,10 +871,11 @@ class _PuntoYo extends StatelessWidget {
 /// que hace falta para decidir a qué bar ir.
 /// Varias catas que a este zoom caen en el mismo sitio.
 ///
-/// Enseña cuántas son y la mejor nota de las suyas, que es lo que quieres
-/// saber de un vistazo de una calle donde has catado cinco veces. Al tocarlo
-/// el mapa se acerca hasta que se separan: acercarse es lo que ibas a hacer
-/// de todos modos, y así el mapa sigue siendo un mapa y no una lista.
+/// Sólo la cuenta. Llevaba también la mejor nota y ocupaba 104 de ancho, y
+/// ese ancho es justo lo que decide cuántos racimos caben: con doce bares
+/// repartidos por una ciudad, sólo cabía uno y el mapa se quedaba en un
+/// punto. Redondo y estrecho caben varios, que es lo que hace que un mapa
+/// parezca un mapa. La nota se ve al acercarse, que es a un toque.
 class _Racimo extends StatelessWidget {
   const _Racimo({
     required this.grupo,
@@ -873,45 +898,25 @@ class _Racimo extends StatelessWidget {
       child: ExcludeSemantics(
         child: GestureDetector(
           onTap: onTap,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                decoration: BoxDecoration(
-                  // Mango y no sol: un racimo no es una cata, y el color es
-                  // lo primero que lo dice sin tener que leer nada.
-                  color: apagado ? AppColors.superficie : AppColors.mango,
-                  borderRadius: BorderRadius.circular(13),
-                  border: Border.all(
-                    color: AppColors.tinta,
-                    width: AppShape.borde,
-                  ),
-                  boxShadow: AppShape.sombra(const Offset(2, 2)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Text(
-                      '$cuantas',
-                      style: AppTypography.cifraS.copyWith(fontSize: 15),
-                    ),
-                    const SizedBox(width: 4),
-                    Container(
-                      width: 1.5,
-                      height: 13,
-                      color: AppColors.tinta.withValues(alpha: 0.35),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      Formato.nota(grupo.mejorNota),
-                      style: AppTypography.cifraS.copyWith(fontSize: 13),
-                    ),
-                  ],
-                ),
+          child: Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              // Mango y redondo: un racimo no es una cata, y se distingue
+              // antes por la forma que por el número.
+              color: apagado ? AppColors.superficie : AppColors.mango,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.tinta,
+                width: AppShape.borde,
               ),
-              CustomPaint(size: const Size(14, 9), painter: const _Pico()),
-            ],
+              boxShadow: AppShape.sombra(const Offset(2, 2)),
+            ),
+            child: Text(
+              '$cuantas',
+              style: AppTypography.cifraS.copyWith(fontSize: 16),
+            ),
           ),
         ),
       ),

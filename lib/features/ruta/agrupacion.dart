@@ -47,7 +47,7 @@ class Grupo {
 List<Grupo> agruparCatas(
   List<Cata> catas,
   double zoom, {
-  double radioPx = 104,
+  double radioPx = 78,
 }) {
   final List<Cata> conSitio =
       catas.where((Cata c) => c.tieneUbicacion).toList();
