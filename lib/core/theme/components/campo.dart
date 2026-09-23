@@ -93,27 +93,34 @@ class _CampoState extends State<Campo> {
               _enfocado ? AppShape.sombraNormal : AppShape.sombraChica,
             ),
           ),
-          child: TextField(
-            controller: _control,
-            focusNode: _foco,
-            autofocus: widget.autofoco,
-            maxLines: widget.lineas,
-            minLines: widget.lineas,
-            keyboardType: widget.teclado,
-            textCapitalization: TextCapitalization.sentences,
-            style: AppTypography.cuerpo,
-            cursorColor: AppColors.tinta,
-            onChanged: widget.onCambio,
-            decoration: InputDecoration(
-              hintText: widget.pista,
-              hintStyle: AppTypography.cuerpo.copyWith(
-                color: AppColors.tintaSuave,
-                fontWeight: FontWeight.w600,
-              ),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 14,
+          // La etiqueta de arriba es un Text hermano: se ve, pero no está
+          // asociada al campo. En cuanto escribes, la pista desaparece y el
+          // lector de pantalla lee el valor sin decir de qué campo es.
+          child: Semantics(
+            label: widget.etiqueta,
+            textField: true,
+            child: TextField(
+              controller: _control,
+              focusNode: _foco,
+              autofocus: widget.autofoco,
+              maxLines: widget.lineas,
+              minLines: widget.lineas,
+              keyboardType: widget.teclado,
+              textCapitalization: TextCapitalization.sentences,
+              style: AppTypography.cuerpo,
+              cursorColor: AppColors.tinta,
+              onChanged: widget.onCambio,
+              decoration: InputDecoration(
+                hintText: widget.pista,
+                hintStyle: AppTypography.cuerpo.copyWith(
+                  color: AppColors.tintaSuave,
+                  fontWeight: FontWeight.w600,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 14,
+                ),
               ),
             ),
           ),

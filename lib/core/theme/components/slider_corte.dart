@@ -70,7 +70,12 @@ class SliderCorte extends StatelessWidget {
                 borderRadius: BorderRadius.circular(9),
                 border: Border.all(color: AppColors.tinta, width: 2),
               ),
-              child: Text('$valor', style: AppTypography.cifraS.copyWith(fontSize: 15)),
+              // La caja mide 38 y no crece: con la letra al 1,3 un "10"
+              // se salía. Encoge en vez de recortarse.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('$valor', style: AppTypography.cifraS.copyWith(fontSize: 15)),
+              ),
             ),
           ],
         ),

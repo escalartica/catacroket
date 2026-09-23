@@ -98,34 +98,43 @@ class _Pestana extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          HapticFeedback.selectionClick();
-          context.go(destino.ruta);
-        },
-        child: AnimatedContainer(
-          duration: AppMotion.rapida,
-          margin: const EdgeInsets.symmetric(horizontal: 6),
-          padding: const EdgeInsets.symmetric(vertical: 7),
-          decoration: BoxDecoration(
-            color: activa ? AppColors.sol : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: activa ? AppColors.tinta : Colors.transparent,
-              width: 2,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(destino.icono, size: 23, color: AppColors.tinta),
-              const SizedBox(height: 2),
-              Text(
-                destino.texto,
-                style: AppTypography.etiqueta.copyWith(fontSize: 10.5),
+      // Con lector de pantalla el relleno amarillo de la pestaña activa no
+      // existe: sin `selected` no hay manera de saber en qué apartado estás.
+      child: Semantics(
+        button: true,
+        selected: activa,
+        inMutuallyExclusiveGroup: true,
+        label: destino.texto,
+        excludeSemantics: true,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            HapticFeedback.selectionClick();
+            context.go(destino.ruta);
+          },
+          child: AnimatedContainer(
+            duration: AppMotion.rapida,
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            decoration: BoxDecoration(
+              color: activa ? AppColors.sol : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: activa ? AppColors.tinta : Colors.transparent,
+                width: 2,
               ),
-            ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(destino.icono, size: 23, color: AppColors.tinta),
+                const SizedBox(height: 2),
+                Text(
+                  destino.texto,
+                  style: AppTypography.etiqueta.copyWith(fontSize: 10.5),
+                ),
+              ],
+            ),
           ),
         ),
       ),

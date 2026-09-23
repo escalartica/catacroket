@@ -213,9 +213,14 @@ class _ConPunto extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          GestureDetector(
-            onTap: onAjustar,
-            child: MapaMini(lat: lugar.lat, lon: lugar.lon),
+          Semantics(
+            button: true,
+            label: 'Ajustar el punto en el mapa',
+            excludeSemantics: true,
+            child: GestureDetector(
+              onTap: onAjustar,
+              child: MapaMini(lat: lugar.lat, lon: lugar.lon),
+            ),
           ),
           const SizedBox(height: AppSpacing.s),
           Padding(

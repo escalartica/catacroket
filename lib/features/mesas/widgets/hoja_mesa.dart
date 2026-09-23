@@ -29,15 +29,19 @@ Future<Mesa?> hojaMesa(BuildContext context, {Mesa? mesa}) {
 /// Son los de la app y no un selector libre: el color de la mesa tiñe
 /// tarjetas enteras, y dejar elegir un gris o un amarillo flúor es dejar
 /// elegir una pantalla ilegible.
-const List<Color> _paleta = <Color>[
-  AppColors.sol,
-  AppColors.tomate,
-  AppColors.menta,
-  AppColors.uva,
-  AppColors.cielo,
-  AppColors.chicle,
-  AppColors.lima,
-  AppColors.mango,
+/// Los colores que puede llevar una mesa, con su nombre.
+///
+/// El nombre no es decorativo: sin él el selector es una fila de círculos
+/// mudos para quien no los ve o no los distingue.
+const List<(Color, String)> _paleta = <(Color, String)>[
+  (AppColors.sol, 'Amarillo'),
+  (AppColors.tomate, 'Rojo'),
+  (AppColors.menta, 'Verde menta'),
+  (AppColors.uva, 'Morado'),
+  (AppColors.cielo, 'Azul'),
+  (AppColors.chicle, 'Rosa'),
+  (AppColors.lima, 'Verde lima'),
+  (AppColors.mango, 'Naranja'),
 ];
 
 class _HojaMesa extends ConsumerStatefulWidget {
@@ -128,8 +132,9 @@ class _HojaMesaState extends ConsumerState<_HojaMesa> {
                 spacing: 12,
                 runSpacing: 12,
                 children: <Widget>[
-                  for (final Color c in _paleta)
+                  for (final (Color c, String nombre) in _paleta)
                     _Tinte(
+                      nombre: nombre,
                       color: c,
                       elegido: _color == c.toARGB32(),
                       onTap: () => setState(() => _color = c.toARGB32()),
@@ -163,36 +168,48 @@ class _HojaMesaState extends ConsumerState<_HojaMesa> {
 class _Tinte extends StatelessWidget {
   const _Tinte({
     required this.color,
+    required this.nombre,
     required this.elegido,
     required this.onTap,
   });
 
   final Color color;
+
+  /// Cómo se llama este color en voz alta.
+  final String nombre;
+
   final bool elegido;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        width: 44,
-        height: 44,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: color,
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: AppColors.tinta,
-            width: elegido ? 4 : AppShape.bordeFino,
+    return Semantics(
+      button: true,
+      selected: elegido,
+      inMutuallyExclusiveGroup: true,
+      label: nombre,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.tinta,
+              width: elegido ? 4 : AppShape.bordeFino,
+            ),
+            boxShadow: elegido ? AppShape.sombra(const Offset(2, 2)) : null,
           ),
-          boxShadow: elegido ? AppShape.sombra(const Offset(2, 2)) : null,
+          child: elegido
+              ? const Icon(Icons.check_rounded, size: 20, color: AppColors.tinta)
+              : null,
         ),
-        child: elegido
-            ? const Icon(Icons.check_rounded, size: 20, color: AppColors.tinta)
-            : null,
       ),
     );
   }

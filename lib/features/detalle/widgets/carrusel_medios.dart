@@ -33,22 +33,30 @@ class CarruselMedios extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.m),
         itemBuilder: (BuildContext context, int i) {
           final Medio medio = medios[i];
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(AppShape.radioL),
-            child: Container(
-              width: 200,
-              decoration: BoxDecoration(
-                color: AppColors.superficieCalida,
-                borderRadius: BorderRadius.circular(AppShape.radioL),
-                border: Border.all(color: AppColors.tinta, width: AppShape.borde),
+          // "Foto 1 de 3" en vez de silencio: sin esto el carrusel entero no
+          // existe para quien no ve las imágenes.
+          return Semantics(
+            label: medio.esVideo
+                ? 'Vídeo ${i + 1} de ${medios.length}'
+                : 'Foto ${i + 1} de ${medios.length}',
+            image: !medio.esVideo,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppShape.radioL),
+              child: Container(
+                width: 200,
+                decoration: BoxDecoration(
+                  color: AppColors.superficieCalida,
+                  borderRadius: BorderRadius.circular(AppShape.radioL),
+                  border: Border.all(color: AppColors.tinta, width: AppShape.borde),
+                ),
+                child: medio.esVideo
+                    ? _Video(ruta: medio.ruta)
+                    : Image.file(
+                        File(medio.ruta),
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const _MedioRoto(),
+                      ),
               ),
-              child: medio.esVideo
-                  ? _Video(ruta: medio.ruta)
-                  : Image.file(
-                      File(medio.ruta),
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const _MedioRoto(),
-                    ),
             ),
           );
         },
@@ -137,35 +145,41 @@ class _VideoState extends State<_Video> {
       );
     }
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          control.value.isPlaying ? control.pause() : control.play();
-        });
-      },
-      child: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          FittedBox(
-            fit: BoxFit.cover,
-            child: SizedBox(
-              width: control.value.size.width,
-              height: control.value.size.height,
-              child: VideoPlayer(control),
-            ),
-          ),
-          if (!control.value.isPlaying)
-            Container(
-              color: AppColors.tinta.withValues(alpha: 0.28),
-              child: const Center(
-                child: Icon(
-                  Icons.play_circle_fill_rounded,
-                  size: 54,
-                  color: Colors.white,
-                ),
+    return Semantics(
+      button: true,
+      toggled: control.value.isPlaying,
+      label: control.value.isPlaying ? 'Pausar el vídeo' : 'Reproducir el vídeo',
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            control.value.isPlaying ? control.pause() : control.play();
+          });
+        },
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: control.value.size.width,
+                height: control.value.size.height,
+                child: VideoPlayer(control),
               ),
             ),
-        ],
+            if (!control.value.isPlaying)
+              Container(
+                color: AppColors.tinta.withValues(alpha: 0.28),
+                child: const Center(
+                  child: Icon(
+                    Icons.play_circle_fill_rounded,
+                    size: 54,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -68,12 +68,18 @@ class TarjetaCata extends ConsumerWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (cata.esSurtido)
-                  Text(
-                    cata.sabores
-                        .map((Sabor s) => Rellenos.de(s.rellenoId).emoji)
-                        .join(' '),
-                    style: const TextStyle(fontSize: 13),
-                    maxLines: 1,
+                  // Sin esto, el lector de pantalla recita los emoji uno a
+                  // uno ("hamburguesa, pescado, seta") sin decir qué son.
+                  Semantics(
+                    label: 'Sabores: ${cata.sabores.map((Sabor s) => Rellenos.de(s.rellenoId).nombre).join(', ')}',
+                    excludeSemantics: true,
+                    child: Text(
+                      cata.sabores
+                          .map((Sabor s) => Rellenos.de(s.rellenoId).emoji)
+                          .join(' '),
+                      style: const TextStyle(fontSize: 13),
+                      maxLines: 1,
+                    ),
                   ),
                 const SizedBox(height: 2),
                 Text(

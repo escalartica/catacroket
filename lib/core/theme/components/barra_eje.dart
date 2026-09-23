@@ -80,10 +80,16 @@ class BarraEje extends StatelessWidget {
           ),
           SizedBox(
             width: 30,
-            child: Text(
-              '$valor',
-              textAlign: TextAlign.end,
-              style: AppTypography.cifraS,
+            // Igual que en el deslizador: 30 de ancho no dan para un "10"
+            // con la letra ampliada.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                '$valor',
+                textAlign: TextAlign.end,
+                style: AppTypography.cifraS,
+              ),
             ),
           ),
         ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../tokens/app_spacing.dart';
+import '../tokens/app_colors.dart';
 import '../tokens/app_typography.dart';
 import 'boton.dart';
 
@@ -50,20 +51,30 @@ class Cabecera extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Text(
-                  titulo,
-                  style: AppTypography.tituloXL,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                // Encoge antes que recortar: con la letra al 1,3 un nombre
+                // de bar largo perdía letras, que es peor que verse pequeño.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    titulo,
+                    style: AppTypography.tituloXL,
+                    maxLines: 1,
+                  ),
                 ),
                 if (subtitulo != null) ...<Widget>[
                   const SizedBox(height: 2),
                   Text(
                     subtitulo!,
+                    // tintaSuave y no una tinta con alfa: la regla de oro de
+                    // la paleta. Al 65 % se quedaba en 4,76:1; así, 5,24:1.
                     style: AppTypography.cuerpoS.copyWith(
-                      color: AppTypography.cuerpoS.color?.withValues(alpha: 0.65),
+                      color: AppColors.tintaSuave,
                     ),
-                    maxLines: 1,
+                    // Con la letra grande, el subtítulo se reparte en dos
+                    // líneas en vez de comerse la mitad de los datos.
+                    maxLines:
+                        MediaQuery.textScalerOf(context).scale(1) > 1.15 ? 2 : 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],

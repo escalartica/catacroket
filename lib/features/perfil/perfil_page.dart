@@ -340,37 +340,43 @@ class _Medalla extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 62,
-      child: Column(
-        children: <Widget>[
-          Transform.rotate(
-            angle: conseguida ? -0.1 : 0,
-            child: Opacity(
-              opacity: conseguida ? 1 : 0.45,
-              child: Container(
-                width: 54,
-                height: 54,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: conseguida ? AppColors.sol : AppColors.superficieCalida,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.tinta, width: AppShape.borde),
-                  boxShadow: conseguida
-                      ? AppShape.sombra(const Offset(2, 2))
-                      : AppShape.sinSombra,
+    // Conseguida o no se dice sólo con color y opacidad, que es justo lo que
+    // no llega a quien usa lector de pantalla. Y es el sentido del widget.
+    return Semantics(
+      label: '${medalla.nombre}, ${conseguida ? 'conseguida' : 'aún no'}',
+      excludeSemantics: true,
+      child: SizedBox(
+        width: 62,
+        child: Column(
+          children: <Widget>[
+            Transform.rotate(
+              angle: conseguida ? -0.1 : 0,
+              child: Opacity(
+                opacity: conseguida ? 1 : 0.45,
+                child: Container(
+                  width: 54,
+                  height: 54,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: conseguida ? AppColors.sol : AppColors.superficieCalida,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.tinta, width: AppShape.borde),
+                    boxShadow: conseguida
+                        ? AppShape.sombra(const Offset(2, 2))
+                        : AppShape.sinSombra,
+                  ),
+                  child: Text(medalla.emoji, style: const TextStyle(fontSize: 22)),
                 ),
-                child: Text(medalla.emoji, style: const TextStyle(fontSize: 22)),
               ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            medalla.nombre,
-            textAlign: TextAlign.center,
-            style: AppTypography.etiqueta.copyWith(fontSize: 10.5),
-          ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              medalla.nombre,
+              textAlign: TextAlign.center,
+              style: AppTypography.etiqueta.copyWith(fontSize: 10.5),
+            ),
+          ],
+        ),
       ),
     );
   }

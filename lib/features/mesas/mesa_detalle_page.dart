@@ -561,24 +561,31 @@ class _MiniCorte extends ConsumerWidget {
     final Cata? cata = ref.watch(cataProvider(cataId));
     if (cata == null) return const SizedBox.shrink();
 
-    return GestureDetector(
-      onTap: () => context.push('/cata/${cata.id}'),
-      child: Container(
-        width: 50,
-        height: 50,
-        margin: const EdgeInsets.only(right: 6),
-        padding: const EdgeInsets.all(3),
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: Rellenos.de(cata.rellenoId).color,
-          borderRadius: BorderRadius.circular(AppShape.radioS),
-          border: Border.all(color: AppColors.tinta, width: 2),
-        ),
-        child: ElCorte(
-          corte: cata.corte,
-          rellenoId: cata.rellenoId,
-          semilla: cata.id,
-          vapor: false,
+    // El dibujo no dice nada a un lector de pantalla: sin esto es un botón
+    // sin nombre, indistinguible de no estar ahí.
+    return Semantics(
+      button: true,
+      label: '${cata.sitio}, nota ${Formato.nota(cata.puntuacion)}',
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: () => context.push('/cata/${cata.id}'),
+        child: Container(
+          width: 50,
+          height: 50,
+          margin: const EdgeInsets.only(right: 6),
+          padding: const EdgeInsets.all(3),
+          clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(
+            color: Rellenos.de(cata.rellenoId).color,
+            borderRadius: BorderRadius.circular(AppShape.radioS),
+            border: Border.all(color: AppColors.tinta, width: 2),
+          ),
+          child: ElCorte(
+            corte: cata.corte,
+            rellenoId: cata.rellenoId,
+            semilla: cata.id,
+            vapor: false,
+          ),
         ),
       ),
     );

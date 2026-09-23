@@ -89,9 +89,14 @@ class _Contador extends StatelessWidget {
         Container(
           width: 52,
           alignment: Alignment.center,
-          child: Text(
-            '$valor',
-            style: AppTypography.cifraM,
+          // liveRegion: si no, tocas "una más" y el lector de pantalla no
+          // dice cuántas llevas; hay que ir a buscarlo a mano.
+          child: Semantics(
+            liveRegion: true,
+            child: Text(
+              '$valor',
+              style: AppTypography.cifraM,
+            ),
           ),
         ),
         Semantics(

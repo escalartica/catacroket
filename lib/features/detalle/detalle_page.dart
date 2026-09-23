@@ -433,10 +433,17 @@ class DetallePage extends ConsumerWidget {
               // lleva a ningún bar; una manzana concreta, sí.
               if (cata.tieneUbicacion) ...<Widget>[
                 const SizedBox(height: AppSpacing.m),
-                Pegatina(
-                  padding: const EdgeInsets.all(AppSpacing.s),
-                  onTap: () => context.push('/ruta?cata=${cata.id}'),
-                  child: MapaMini(lat: cata.lat!, lon: cata.lon!, alto: 138),
+                // FlutterMap no aporta nada al árbol de accesibilidad, así
+                // que sin etiqueta esto se anunciaba como "botón" a secas.
+                Semantics(
+                  button: true,
+                  label: 'Ver ${cata.sitio} en la ruta croquetera',
+                  excludeSemantics: true,
+                  child: Pegatina(
+                    padding: const EdgeInsets.all(AppSpacing.s),
+                    onTap: () => context.push('/ruta?cata=${cata.id}'),
+                    child: MapaMini(lat: cata.lat!, lon: cata.lon!, alto: 138),
+                  ),
                 ),
               ],
 
@@ -543,7 +550,15 @@ class _BotonMordisco extends ConsumerWidget {
             HapticFeedback.mediumImpact();
             ref.read(catasProvider.notifier).darMordisco(cata.id);
           },
-          child: Text('🤌 ${cata.mordiscos}', style: AppTypography.etiqueta),
+          // El color lo decide textoSobre, que es la regla de oro de la
+          // paleta. A ojo salía 4,59:1 —pasa AA por nueve centésimas— y en
+          // cuanto cambiara `chicle` se rompía sin que nadie se enterara.
+          child: Text(
+            '🤌 ${cata.mordiscos}',
+            style: AppTypography.etiqueta.copyWith(
+              color: AppColors.textoSobre(AppColors.chicle),
+            ),
+          ),
         ),
       ),
     );

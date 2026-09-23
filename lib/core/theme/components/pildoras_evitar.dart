@@ -175,7 +175,9 @@ class _DialogoEvitarState extends State<_DialogoEvitar> {
                     behavior: HitTestBehavior.opaque,
                     onTap: () => Navigator.of(context).pop(s),
                     child: Container(
-                      constraints: const BoxConstraints(minHeight: 40),
+                      // 44 como todo lo demás en la app: era el único
+                      // control que se quedaba por debajo.
+                      constraints: const BoxConstraints(minHeight: 44),
                       alignment: Alignment.center,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 9),
