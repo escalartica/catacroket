@@ -18,6 +18,10 @@ import '../../../core/theme/tokens/app_typography.dart';
 Future<Mesa?> hojaMesa(BuildContext context, {Mesa? mesa}) {
   return showModalBottomSheet<Mesa>(
     context: context,
+    // Por el Navigator raíz: si no, la hoja se abre dentro de la concha y la
+    // barra de pestañas se dibuja encima, tapando los botones de abajo. En la
+    // de crear una mesa dejaba "Crear la mesa" y "Cancelar" inalcanzables.
+    useRootNavigator: true,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (BuildContext context) => _HojaMesa(mesa: mesa),

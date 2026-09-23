@@ -199,6 +199,9 @@ class _Retrato extends ConsumerWidget {
   Future<void> _hoja(BuildContext context, WidgetRef ref) async {
     await showModalBottomSheet<void>(
       context: context,
+      // Por el Navigator raíz: dentro de la concha, la barra de pestañas se
+      // dibuja encima de la hoja y le tapa los botones de abajo.
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (BuildContext hoja) => _HojaFoto(
         tieneFoto: yo.tieneFoto,
