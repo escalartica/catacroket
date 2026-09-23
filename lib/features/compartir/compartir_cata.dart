@@ -159,7 +159,8 @@ class _HojaCompartirState extends State<_HojaCompartir> {
 
   @override
   Widget build(BuildContext context) {
-    final double ancho = MediaQuery.sizeOf(context).width;
+    final Size pantalla = MediaQuery.sizeOf(context);
+    final double ancho = pantalla.width;
     // El lienzo mide siempre lo mismo y se encoge sólo para enseñarlo: la
     // imagen que sale tiene que pesar igual en un iPhone SE que en un Max.
     final double escala =
@@ -167,7 +168,13 @@ class _HojaCompartirState extends State<_HojaCompartir> {
 
     return SafeArea(
       top: false,
-      child: Container(
+      // La hoja se acota en alto. Sin esto, el Column de dentro crecía todo
+      // lo que le pedía su contenido y se salía por abajo: en un iPhone 16
+      // Pro la vista previa dejaba el último botón debajo de las rayas
+      // amarillas y negras de desbordamiento, que las veía el usuario.
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: pantalla.height * 0.92),
+        child: Container(
         margin: const EdgeInsets.all(AppSpacing.s),
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.l,
@@ -196,7 +203,14 @@ class _HojaCompartirState extends State<_HojaCompartir> {
             const SizedBox(height: AppSpacing.m),
 
             // El lienzo, a tamaño real, encogido sólo para la vista previa.
-            SizedBox(
+            //
+            // Flexible y no un alto fijo: el ancho no es la única
+            // restricción. Calculando la escala sólo con el ancho, en una
+            // pantalla baja la vista previa se comía el sitio de los
+            // botones. Así se lleva el hueco que sobre y el FittedBox de
+            // dentro la encoge hasta caber.
+            Flexible(
+              child: SizedBox(
               width: _anchoEstampa * escala,
               height: _altoEstampa * escala,
               child: FittedBox(
@@ -225,6 +239,7 @@ class _HojaCompartirState extends State<_HojaCompartir> {
                   ),
                 ),
               ),
+              ),
             ),
 
             const SizedBox(height: AppSpacing.l),
@@ -250,6 +265,7 @@ class _HojaCompartirState extends State<_HojaCompartir> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

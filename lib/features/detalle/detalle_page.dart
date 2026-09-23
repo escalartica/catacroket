@@ -123,7 +123,10 @@ class DetallePage extends ConsumerWidget {
           child: Column(
             children: <Widget>[
               Text(
-                '${cata.ciudad.toUpperCase()} ${cata.paisInfo.bandera} · ${cata.sitio.toUpperCase()}',
+                // Por `lugar` y no montando la cadena aquí: él sabe que sin
+                // ciudad hay que decir el país. Hecho a mano, una cata sin
+                // ciudad dejaba un espacio suelto y la bandera huérfana.
+                '${cata.lugar.toUpperCase()} · ${cata.sitio.toUpperCase()}',
                 textAlign: TextAlign.center,
                 style: AppTypography.antetitulo.copyWith(
                   color: AppColors.tintaSuave,
@@ -393,7 +396,11 @@ class DetallePage extends ConsumerWidget {
                     _Fila(
                       icono: '📍',
                       titulo: cata.sitio,
-                      subtitulo: '${cata.ciudad}, ${cata.paisInfo.nombre}',
+                      // Sin ciudad, "${cata.ciudad}, España" daría una coma
+                      // suelta al principio.
+                      subtitulo: cata.ciudad.isEmpty
+                          ? cata.paisInfo.nombre
+                          : '${cata.ciudad}, ${cata.paisInfo.nombre}',
                       valor: 'Ver',
                       onTap: () => context.push('/ruta?cata=${cata.id}'),
                     ),

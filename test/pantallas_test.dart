@@ -1,5 +1,7 @@
 import 'package:catacroket/core/data/siembra.dart';
 import 'package:catacroket/core/models/cata.dart';
+import 'package:catacroket/core/models/corte.dart';
+import 'package:catacroket/core/models/sabor.dart';
 import 'package:catacroket/core/providers/catas_provider.dart';
 import 'package:catacroket/features/detalle/detalle_page.dart';
 import 'package:catacroket/features/libre/barra_libre_page.dart';
@@ -224,6 +226,30 @@ void main() {
       );
     });
 
+    testWidgets('una cata sin ciudad no enseña comas ni banderas sueltas', (
+      WidgetTester tester,
+    ) async {
+      // La cabecera y la tarjeta del mapa montaban su texto a mano con
+      // `cata.ciudad`, así que con la ciudad vacía salía " 🇪🇸 · BAR" y
+      // ", España". Ahora lo decide el modelo, que ya sabía hacerlo.
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: <Override>[
+            catasProvider.overrideWith((Ref ref) => _UnaSinCiudad()),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: DetallePage(cataId: 'sin-ciudad')),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(tester.takeException(), isNull);
+      expect(find.textContaining('SIN CIUDAD'), findsNothing);
+      expect(find.textContaining('ESPAÑA · BAR ANÓNIMO'), findsOneWidget);
+    });
+
     testWidgets('una cata que ya no existe no revienta la pantalla', (
       WidgetTester tester,
     ) async {
@@ -240,5 +266,23 @@ void main() {
 class _CatasVacias extends CatasNotifier {
   _CatasVacias() {
     state = const <Cata>[];
+  }
+}
+
+/// Una cata en la que no se rellenó la ciudad.
+class _UnaSinCiudad extends CatasNotifier {
+  _UnaSinCiudad() {
+    state = <Cata>[
+      Cata(
+        id: 'sin-ciudad',
+        sitio: 'Bar Anónimo',
+        ciudad: '',
+        corte: const Corte(crujiente: 7, cremosidad: 7, sabor: 7, relleno: 7),
+        sabores: const <Sabor>[Sabor(rellenoId: 'jamon')],
+        autorId: 'tu',
+        mesaId: 'libreta',
+        fecha: DateTime(2026),
+      ),
+    ];
   }
 }
