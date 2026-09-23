@@ -51,15 +51,173 @@ class CarruselMedios extends StatelessWidget {
                 ),
                 child: medio.esVideo
                     ? _Video(ruta: medio.ruta)
-                    : Image.file(
-                        File(medio.ruta),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const _MedioRoto(),
+                    // La miniatura recorta para llenar la tarjeta, así que
+                    // de una foto apaisada se pierden los lados. Tocarla la
+                    // abre entera: hasta ahora el recorte era lo único que
+                    // se llegaba a ver de una foto propia.
+                    : GestureDetector(
+                        onTap: () => _verEntera(context, medios, i),
+                        child: Image.file(
+                          File(medio.ruta),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const _MedioRoto(),
+                        ),
                       ),
               ),
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Abre las fotos a pantalla completa, empezando por la que se ha tocado.
+void _verEntera(BuildContext context, List<Medio> medios, int desde) {
+  final List<Medio> fotos =
+      medios.where((Medio m) => !m.esVideo).toList();
+  if (fotos.isEmpty) return;
+
+  // El índice viene de la lista entera, que puede llevar vídeos por medio.
+  final int inicio = fotos.indexOf(medios[desde]).clamp(0, fotos.length - 1);
+
+  Navigator.of(context, rootNavigator: true).push<void>(
+    PageRouteBuilder<void>(
+      opaque: false,
+      barrierColor: AppColors.tinta.withValues(alpha: 0.92),
+      pageBuilder: (_, _, _) => _Visor(fotos: fotos, inicio: inicio),
+      transitionsBuilder: (_, Animation<double> animacion, _, Widget hijo) =>
+          FadeTransition(opacity: animacion, child: hijo),
+      transitionDuration: const Duration(milliseconds: 180),
+    ),
+  );
+}
+
+/// La foto, entera y sin recortar.
+///
+/// `BoxFit.contain` y no `cover`: aquí el objetivo es justo el contrario que
+/// en la miniatura. Allí se recorta para que todas las tarjetas midan lo
+/// mismo; aquí se enseña lo que hay, aunque sobren franjas a los lados.
+class _Visor extends StatefulWidget {
+  const _Visor({required this.fotos, required this.inicio});
+
+  final List<Medio> fotos;
+  final int inicio;
+
+  @override
+  State<_Visor> createState() => _VisorState();
+}
+
+class _VisorState extends State<_Visor> {
+  late final PageController _paginas =
+      PageController(initialPage: widget.inicio);
+  late int _actual = widget.inicio;
+
+  @override
+  void dispose() {
+    _paginas.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool varias = widget.fotos.length > 1;
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        children: <Widget>[
+          // Tocar el fondo cierra. Es lo que todo el mundo intenta primero.
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.of(context).pop(),
+              child: PageView.builder(
+                controller: _paginas,
+                itemCount: widget.fotos.length,
+                onPageChanged: (int i) => setState(() => _actual = i),
+                itemBuilder: (BuildContext context, int i) => Semantics(
+                  label: 'Foto ${i + 1} de ${widget.fotos.length}',
+                  image: true,
+                  excludeSemantics: true,
+                  child: InteractiveViewer(
+                    minScale: 1,
+                    maxScale: 4,
+                    child: Center(
+                      child: Image.file(
+                        File(widget.fotos[i].ruta),
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => const _MedioRoto(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Cuántas son y cuál estás viendo. Sólo si hay más de una.
+          if (varias)
+            Positioned(
+              bottom: AppSpacing.xl,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.crema,
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(
+                      color: AppColors.tinta,
+                      width: AppShape.bordeFino,
+                    ),
+                  ),
+                  child: Text(
+                    '${_actual + 1} de ${widget.fotos.length}',
+                    style: AppTypography.etiqueta,
+                  ),
+                ),
+              ),
+            ),
+
+          Positioned(
+            top: AppSpacing.m,
+            right: AppSpacing.pantalla,
+            child: SafeArea(
+              child: Semantics(
+                button: true,
+                label: 'Cerrar la foto',
+                excludeSemantics: true,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.of(context).pop(),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.crema,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.tinta,
+                        width: AppShape.bordeFino,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.close_rounded,
+                      size: 20,
+                      color: AppColors.tinta,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
