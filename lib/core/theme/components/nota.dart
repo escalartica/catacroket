@@ -26,7 +26,12 @@ class Nota extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Transform.rotate(
+    // "8,5 sobre 10" y no "ocho coma cinco, barra, diez": los dos trozos de
+    // texto son uno solo y así se dicen.
+    return Semantics(
+      label: 'Nota ${Formato.nota(valor)} sobre 10',
+      excludeSemantics: true,
+      child: Transform.rotate(
       angle: (grande ? -4 : -3) * math.pi / 180,
       child: Container(
         padding: EdgeInsets.symmetric(
@@ -62,6 +67,7 @@ class Nota extends StatelessWidget {
               ),
           ],
         ),
+      ),
       ),
     );
   }

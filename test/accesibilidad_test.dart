@@ -1,4 +1,6 @@
 import 'package:catacroket/app/concha.dart';
+import 'package:catacroket/core/models/persona.dart';
+import 'package:catacroket/core/theme/components/avatar.dart';
 import 'package:catacroket/core/theme/components/campo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -121,6 +123,60 @@ void main() {
       anunciaActiva(tester, 'Mesas', activa: false);
 
       handle.dispose();
+    });
+  });
+
+  group('Pila de avatares', () {
+    Persona quien(String nombre) =>
+        Persona(id: nombre, nombre: nombre, color: const Color(0xFFFFC93C));
+
+    test('una sola persona se dice y ya está', () {
+      expect(PilaAvatares.enVoz(<Persona>[quien('Marta')], 0), 'Marta');
+    });
+
+    test('dos van con "y"', () {
+      expect(
+        PilaAvatares.enVoz(<Persona>[quien('Marta'), quien('Javi')], 0),
+        'Marta y Javi',
+      );
+    });
+
+    test('tres, con comas y una "y" al final', () {
+      expect(
+        PilaAvatares.enVoz(
+          <Persona>[quien('Marta'), quien('Javi'), quien('Ana')],
+          0,
+        ),
+        'Marta, Javi y Ana',
+      );
+    });
+
+    test('los que no caben se cuentan al final', () {
+      expect(
+        PilaAvatares.enVoz(
+          <Persona>[
+            quien('Marta'),
+            quien('Javi'),
+            quien('Ana'),
+            quien('Leo'),
+            quien('Sara'),
+          ],
+          2,
+        ),
+        // Cinco personas con dos fuera: se ven tres.
+        'Marta, Javi, Ana y 2 más',
+      );
+    });
+
+    test('si no cabe ninguna, sólo la cuenta', () {
+      expect(
+        PilaAvatares.enVoz(<Persona>[quien('Marta'), quien('Javi')], 2),
+        '2 más',
+      );
+    });
+
+    test('sin nadie no se queda en blanco', () {
+      expect(PilaAvatares.enVoz(<Persona>[], 0), 'Nadie');
     });
   });
 

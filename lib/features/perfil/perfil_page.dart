@@ -78,7 +78,10 @@ class PerfilPage extends ConsumerWidget {
                   children: <Widget>[
                     const EtiquetaPanel(texto: 'Camino al siguiente rango'),
                     const SizedBox(height: AppSpacing.m),
-                    Container(
+                    Semantics(
+                      label: 'Camino al siguiente rango',
+                      value: '${(perfil.progreso * 100).round()} %',
+                      child: Container(
                       height: 18,
                       decoration: BoxDecoration(
                         color: AppColors.superficieCalida,
@@ -94,6 +97,7 @@ class PerfilPage extends ConsumerWidget {
                             child: Container(color: AppColors.uva),
                           ),
                         ),
+                      ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.s),
