@@ -96,4 +96,74 @@ void main() {
     expect(Semanas.lunesDe(domingo), DateTime(2026, 9, 21));
     expect(Semanas.lunesDe(DateTime(2026, 9, 21, 0, 1)), DateTime(2026, 9, 21));
   });
+
+  group('Los cambios de hora no mueven la semana', () {
+    // Una `Duration` son horas absolutas, no días de calendario. Restar siete
+    // días a un lunes a medianoche cruzando un cambio de hora daba las 23:00
+    // del domingo anterior, y la semana entera se corría una hora: una cata
+    // apuntada un domingo por la noche pasaba a contar en la semana
+    // siguiente, y la racha aparecía rota.
+    //
+    // Este test recorre dos años enteros. En un huso sin cambio de hora no
+    // encontraría nada, y eso está bien: no prueba menos de lo que hay.
+
+    test('todo lunes calculado cae a las cero horas de un lunes', () {
+      final List<String> desviados = <String>[];
+
+      for (DateTime d = DateTime(2025, 1, 1, 12);
+          d.isBefore(DateTime(2027, 1, 1));
+          d = DateTime(d.year, d.month, d.day + 1, 12)) {
+        final DateTime lunes = Semanas.lunesDe(d);
+        if (lunes.hour != 0 || lunes.weekday != DateTime.monday) {
+          desviados.add('${d.toIso8601String()} -> ${lunes.toIso8601String()}');
+        }
+
+        for (int s = 1; s <= 8; s++) {
+          final DateTime atras = Semanas.diasAntes(lunes, 7 * s);
+          if (atras.hour != 0 || atras.weekday != DateTime.monday) {
+            desviados.add('$s sem antes de $lunes -> $atras');
+          }
+        }
+      }
+
+      expect(
+        desviados,
+        isEmpty,
+        reason: 'con `subtract(Duration(...))` salían 1008 desviados en estos '
+            'mismos dos años. Primeros: ${desviados.take(3).toList()}',
+      );
+    });
+
+    test('una cata del domingo por la noche cuenta en su semana', () {
+      // El domingo 30 de marzo de 2025 fue el cambio de hora de primavera en
+      // España. Una cata a las once y media de esa noche es de esa semana, no
+      // de la siguiente, y la racha tiene que verlo así.
+      final DateTime domingoTarde = DateTime(2025, 3, 30, 23, 30);
+      final DateTime lunesSiguiente = DateTime(2025, 3, 31, 11);
+
+      expect(
+        Semanas.hayEn(<DateTime>[domingoTarde], Semanas.lunesDe(domingoTarde)),
+        isTrue,
+      );
+      expect(
+        Semanas.racha(<DateTime>[domingoTarde], hoy: lunesSiguiente),
+        1,
+        reason: 'catar el domingo mantiene viva la racha el lunes',
+      );
+    });
+
+    test('la racha aguanta entera de un lado a otro del cambio', () {
+      // Seis semanas seguidas catando, con el cambio de hora en medio.
+      final DateTime hoy = DateTime(2025, 4, 21, 11);
+      final List<DateTime> catas = <DateTime>[
+        for (int s = 0; s < 6; s++)
+          Semanas.diasAntes(Semanas.lunesDe(hoy), 7 * s).add(
+            const Duration(days: 2, hours: 21),
+          ),
+      ];
+
+      expect(Semanas.racha(catas, hoy: hoy), 6);
+    });
+  });
+
 }

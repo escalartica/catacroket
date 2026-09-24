@@ -8,12 +8,29 @@
 abstract final class Semanas {
   /// El lunes de la semana en la que cae [dia], a las cero horas.
   static DateTime lunesDe(DateTime dia) =>
-      DateTime(dia.year, dia.month, dia.day)
-          .subtract(Duration(days: dia.weekday - 1));
+      diasAntes(DateTime(dia.year, dia.month, dia.day), dia.weekday - 1);
+
+  /// [cuantos] dias antes de [dia], por calendario y no por reloj.
+  ///
+  /// Esto NO es `subtract(Duration(days: n))`, y la diferencia importa. Una
+  /// `Duration` son horas absolutas: restar siete dias a un lunes a las cero
+  /// horas, cruzando un cambio de hora, da las 23:00 del domingo anterior. La
+  /// semana entera se corria una hora.
+  ///
+  /// Lo que provocaba: una cata apuntada un domingo por la noche contaba en la
+  /// semana siguiente, y la racha aparecia rota sin que nadie hubiera hecho
+  /// nada mal. Que es exactamente el fallo que ya se arreglo una vez aqui, por
+  /// otro motivo. Medido: 1008 limites de semana desviados en dos anos.
+  ///
+  /// `DateTime(ano, mes, dia - n)` normaliza el desbordamiento de mes y de ano
+  /// por su cuenta y siempre devuelve la medianoche local, haya cambio de hora
+  /// o no.
+  static DateTime diasAntes(DateTime dia, int cuantos) =>
+      DateTime(dia.year, dia.month, dia.day - cuantos);
 
   /// Si alguna de [fechas] cae en la semana que empieza en [inicio].
   static bool hayEn(Iterable<DateTime> fechas, DateTime inicio) {
-    final DateTime fin = inicio.add(const Duration(days: 7));
+    final DateTime fin = diasAntes(inicio, -7);
     return fechas.any((DateTime f) => !f.isBefore(inicio) && f.isBefore(fin));
   }
 
@@ -30,7 +47,7 @@ abstract final class Semanas {
 
     int cuenta = 0;
     for (int semana = desde; semana < 104 + desde; semana++) {
-      if (!hayEn(fechas, lunes.subtract(Duration(days: 7 * semana)))) break;
+      if (!hayEn(fechas, diasAntes(lunes, 7 * semana))) break;
       cuenta++;
     }
     return cuenta;
@@ -49,7 +66,7 @@ abstract final class Semanas {
     final DateTime lunes = lunesDe(hoy ?? DateTime.now());
     return <bool>[
       for (int atras = cuantas - 1; atras >= 0; atras--)
-        hayEn(fechas, lunes.subtract(Duration(days: 7 * atras))),
+        hayEn(fechas, diasAntes(lunes, 7 * atras)),
     ];
   }
 }
