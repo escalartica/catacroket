@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../errores.dart';
 
 import '../data/paises.dart';
 import '../models/cata.dart';
@@ -106,6 +110,91 @@ class Borrador {
   /// formato tiene que proponer lo suyo mientras nadie lo contradiga; en
   /// cuanto lo contradices, manda tu número y ya no se mueve.
   final bool unidadesTocadas;
+
+  /// ¿Hay algo escrito que se perdería?
+  ///
+  /// Vive aquí y no en la pantalla porque lo usan dos sitios: el diálogo de
+  /// «¿dejar la cata a medias?» y el guardado automático. Estaba escrito a
+  /// mano en el formulario, que es el patrón de siempre: una pantalla sabiendo
+  /// del modelo más de lo que le toca.
+  ///
+  /// Se mira el contenido y no el paso: se puede estar en el paso 3 sin haber
+  /// escrito nada, porque todo tiene valor de partida.
+  bool get tieneAlgoEscrito =>
+      sitio.trim().isNotEmpty ||
+      ciudad.trim().isNotEmpty ||
+      sabores.isNotEmpty ||
+      medios.isNotEmpty ||
+      nota.trim().isNotEmpty ||
+      lugar != null;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'sitio': sitio,
+        'ciudad': ciudad,
+        'pais': pais,
+        'sabores': sabores.map((Sabor s) => s.toJson()).toList(),
+        'surtido': surtido,
+        'corte': corte.toJson(),
+        'precio': precio,
+        'mesaId': mesaId,
+        'nota': nota,
+        'acompanantes': acompanantes,
+        'medios': medios.map((Medio m) => m.toJson()).toList(),
+        'aptas': aptas.map((Dieta d) => d.id).toList(),
+        'lugar': lugar?.toJson(),
+        'receta': receta.toJson(),
+        'tiro': tiro?.id,
+        'formato': formato.name,
+        'unidades': unidades,
+        'unidadesTocadas': unidadesTocadas,
+      };
+
+  /// Lo que faltaba de guardar no se guarda: `editando` y `mediosOriginales`.
+  ///
+  /// No es un olvido, es lo que impide un desastre. `editando` lleva el id de
+  /// la cata que se está corrigiendo; si volviera de un guardado y el usuario
+  /// no se diera cuenta de en qué está, darle a publicar pisaría una cata que
+  /// ya existía. Un borrador recuperado es siempre una cata nueva.
+  factory Borrador.fromJson(Map<String, dynamic> json) => Borrador(
+        sitio: json['sitio'] as String? ?? '',
+        ciudad: json['ciudad'] as String? ?? '',
+        pais: json['pais'] as String? ?? Paises.porDefecto,
+        sabores: (json['sabores'] as List<dynamic>? ?? <dynamic>[])
+            .map((dynamic e) => Sabor.fromJson(
+                Map<String, dynamic>.from(e as Map<dynamic, dynamic>)))
+            .toList(),
+        surtido: json['surtido'] as bool? ?? false,
+        corte: json['corte'] == null
+            ? const Corte.media()
+            : Corte.fromJson(
+                Map<String, dynamic>.from(
+                  json['corte'] as Map<dynamic, dynamic>,
+                ),
+              ),
+        precio: json['precio'] as String? ?? '',
+        mesaId: json['mesaId'] as String? ?? Mesa.libretaId,
+        nota: json['nota'] as String? ?? '',
+        acompanantes: (json['acompanantes'] as List<dynamic>? ?? <dynamic>[])
+            .map((dynamic e) => e.toString())
+            .toList(),
+        medios: (json['medios'] as List<dynamic>? ?? <dynamic>[])
+            .map((dynamic e) => Medio.fromJson(
+                Map<String, dynamic>.from(e as Map<dynamic, dynamic>)))
+            .toList(),
+        aptas: Dieta.desdeJson(json['aptas']),
+        lugar: Lugar.desdeJson(json['lugar']),
+        receta: json['receta'] == null
+            ? const Receta()
+            : Receta.fromJson(
+                Map<String, dynamic>.from(
+                  json['receta'] as Map<dynamic, dynamic>,
+                ),
+              ),
+        tiro: TiroAlPlato.desdeId(json['tiro']),
+        formato: Formato.deNombre(json['formato'] as String? ?? ''),
+        unidades: (json['unidades'] as num?)?.toInt() ?? 0,
+        unidadesTocadas: json['unidadesTocadas'] as bool? ?? false,
+      );
 
   /// Para quién vale, según lo que se lleve contestado. Se recalcula a cada
   /// toque para que el formulario lo enseñe en vivo: contestar "bechamel
@@ -220,7 +309,119 @@ class Borrador {
 }
 
 class BorradorNotifier extends StateNotifier<Borrador> {
-  BorradorNotifier() : super(const Borrador());
+  BorradorNotifier() : super(const Borrador()) {
+    _recuperar();
+  }
+
+  static const String _clave = 'catacroket.borrador.v1';
+
+  /// Cuánto aguanta un borrador guardado.
+  ///
+  /// Un borrador se pierde por una interrupción —entra una llamada, abres la
+  /// cámara y el móvil mata la app por memoria, te vas a contestar un mensaje—
+  /// y eso se mide en minutos o en horas, no en semanas. Pasados tres días,
+  /// devolver un formulario a medias con un bar que ya no recuerdas confunde
+  /// más de lo que ayuda: abrirías «apuntar una cata» y te encontrarías con
+  /// media cata de otro día sin saber de dónde sale.
+  ///
+  /// Tres días y no uno: catas un viernes por la noche, se queda el móvil sin
+  /// batería, lo cargas el sábado. Eso tiene que volver.
+  static const Duration _caduca = Duration(days: 3);
+
+  Timer? _pendiente;
+
+  /// Escribir en disco en cada pulsación del teclado sería absurdo: el sitio,
+  /// la ciudad y la nota se escriben letra a letra. Medio segundo después de
+  /// parar es de sobra para lo que esto protege, que es cerrarse la app.
+  static const Duration _respiro = Duration(milliseconds: 500);
+
+  /// Un solo sitio por el que pasan TODOS los cambios de estado.
+  ///
+  /// Se sobrescribe el setter en vez de llamar a guardar en cada método: hay
+  /// veintitantos y el que se olvide alguien sería justo el que se pierde.
+  @override
+  set state(Borrador value) {
+    super.state = value;
+    _guardarPronto();
+  }
+
+  void _guardarPronto() {
+    _pendiente?.cancel();
+    _pendiente = Timer(_respiro, _guardar);
+  }
+
+  /// Guarda el borrador, o borra el guardado si ya no hay nada que guardar.
+  ///
+  /// Las correcciones no se guardan: ver `Borrador.fromJson`. Volver con una
+  /// corrección a medias sin saber a qué cata pertenece acabaría pisando una
+  /// cata que ya existe.
+  Future<void> _guardar() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final Borrador b = state;
+
+      if (b.esEdicion || !b.tieneAlgoEscrito) {
+        await prefs.remove(_clave);
+        return;
+      }
+
+      await prefs.setString(
+        _clave,
+        jsonEncode(<String, dynamic>{
+          'cuando': DateTime.now().toIso8601String(),
+          'borrador': b.toJson(),
+        }),
+      );
+    } catch (error, pila) {
+      Errores.registrar(error, pila, origen: 'borrador.guardar');
+    }
+  }
+
+  /// Devuelve el borrador de la sesión anterior, si lo hay y no ha caducado.
+  ///
+  /// No pisa nada: si para cuando llega la lectura del disco el usuario ya ha
+  /// empezado a escribir, se queda lo suyo. Pasa poco, pero pasaría con el
+  /// móvil ocupado, y perder lo que alguien acaba de teclear por recuperar lo
+  /// de anteayer sería el remedio peor que la enfermedad.
+  Future<void> _recuperar() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String? crudo = prefs.getString(_clave);
+      if (crudo == null || crudo.isEmpty) return;
+
+      final Map<String, dynamic> guardado =
+          Map<String, dynamic>.from(jsonDecode(crudo) as Map<dynamic, dynamic>);
+
+      final DateTime? cuando =
+          DateTime.tryParse(guardado['cuando'] as String? ?? '');
+      if (cuando == null || DateTime.now().difference(cuando) > _caduca) {
+        await prefs.remove(_clave);
+        return;
+      }
+
+      if (state.tieneAlgoEscrito || state.esEdicion) return;
+
+      super.state = Borrador.fromJson(
+        Map<String, dynamic>.from(
+          guardado['borrador'] as Map<dynamic, dynamic>,
+        ),
+      );
+    } catch (error, pila) {
+      // Un borrador ilegible se tira sin más: es lo menos importante que hay
+      // guardado y no puede impedir abrir el formulario.
+      Errores.registrar(error, pila, origen: 'borrador.recuperar');
+      try {
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_clave);
+      } catch (_) {}
+    }
+  }
+
+  @override
+  void dispose() {
+    _pendiente?.cancel();
+    super.dispose();
+  }
 
   void limpiar() => state = const Borrador();
 

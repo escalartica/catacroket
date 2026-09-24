@@ -74,19 +74,13 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
 
   /// ¿Hay algo escrito que se perdería al salir?
   ///
-  /// Se mira el contenido y no el paso: alguien puede estar en el paso 3 sin
-  /// haber escrito nada (todo tiene valor por defecto) y entonces preguntar
-  /// sobra. Al corregir se pregunta siempre, porque ahí lo escrito es de una
-  /// cata que ya existe y no hay forma barata de saber si lo has cambiado.
+  /// Al corregir se pregunta siempre, porque ahí lo escrito es de una cata que
+  /// ya existe y no hay forma barata de saber si lo has cambiado. Para lo
+  /// demás decide el borrador: qué cuenta como «algo escrito» es cosa suya, no
+  /// de esta pantalla, y antes estaba copiado aquí a mano.
   bool get _hayAlgoQuePerder {
     final Borrador b = ref.read(borradorProvider);
-    if (b.esEdicion) return true;
-    return b.sitio.trim().isNotEmpty ||
-        b.ciudad.trim().isNotEmpty ||
-        b.sabores.isNotEmpty ||
-        b.medios.isNotEmpty ||
-        b.nota.trim().isNotEmpty ||
-        b.lugar != null;
+    return b.esEdicion || b.tieneAlgoEscrito;
   }
 
   /// Salir del formulario, preguntando si hay trabajo dentro.
