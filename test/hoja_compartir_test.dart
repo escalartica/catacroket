@@ -21,15 +21,24 @@ void main() {
     SharedPreferences.setMockInitialValues(<String, Object>{});
   });
 
-  Cata cata({String sitio = 'Bar Manoli', String ciudad = 'Sevilla'}) => Cata(
+  Cata cata({
+    String sitio = 'Bar Manoli',
+    String ciudad = 'Sevilla',
+    String nota = '',
+    List<Sabor> sabores = const <Sabor>[Sabor(rellenoId: 'jamon')],
+    List<String> acompanantes = const <String>[],
+  }) =>
+      Cata(
         id: 'x',
         sitio: sitio,
         ciudad: ciudad,
         corte: const Corte(crujiente: 9, cremosidad: 5, sabor: 5, relleno: 5),
-        sabores: const <Sabor>[Sabor(rellenoId: 'jamon')],
+        sabores: sabores,
         autorId: 'tu',
         mesaId: 'libreta',
         fecha: DateTime(2026),
+        nota: nota,
+        acompanantes: acompanantes,
       );
 
   /// Abre la hoja sobre una pantalla del tamaño que se le diga.
@@ -123,6 +132,87 @@ void main() {
       await abrir(
         tester,
         laCata: cata(sitio: 'Restaurante Casa Manoli Hermanos y Sobrinos S.L.'),
+      );
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('un relleno escrito a mano larguísimo tampoco', (
+      WidgetTester tester,
+    ) async {
+      // El nombre del bar sale de una caja de texto, pero el relleno propio
+      // también, y ése no lo probaba nadie. La estampa es un lienzo de 360x450
+      // clavados —tiene que pesar igual en un SE que en un Max—, así que aquí
+      // lo que no cabe no crece: se sale.
+      await abrir(
+        tester,
+        laCata: cata(
+          sabores: const <Sabor>[
+            Sabor(
+              rellenoId: 'otro',
+              propio: 'Bechamel de puerro confitado con boletus salteados y '
+                  'un toque de trufa negra de Teruel',
+            ),
+          ],
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('un apunte de tres párrafos tampoco', (
+      WidgetTester tester,
+    ) async {
+      await abrir(
+        tester,
+        laCata: cata(
+          nota: 'Estaba tremenda, de las mejores que he probado en mi vida, '
+              'con una bechamel finísima que se deshacía en la boca y un '
+              'rebozado que sonaba al morderlo, y encima el camarero nos '
+              'contó que la receta es de la abuela del dueño.',
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('con media mesa de acompañantes tampoco', (
+      WidgetTester tester,
+    ) async {
+      await abrir(
+        tester,
+        laCata: cata(
+          acompanantes: const <String>[
+            'María del Carmen',
+            'Juan Antonio',
+            'Rosa',
+            'Paco',
+            'Inmaculada Concepción',
+            'Fernando',
+          ],
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('todo largo a la vez, en un iPhone SE', (
+      WidgetTester tester,
+    ) async {
+      await abrir(
+        tester,
+        pantalla: const Size(320, 568),
+        laCata: cata(
+          sitio: 'Restaurante Marisquería y Tapería Casa Ricardo Hermanos '
+              'Fundado en 1954',
+          ciudad: 'Santiago de Compostela',
+          nota: 'De las mejores que he probado en toda mi vida, sin ninguna '
+              'duda, y mira que he probado croquetas.',
+          sabores: const <Sabor>[
+            Sabor(rellenoId: 'otro', propio: 'Boletus con trufa negra'),
+          ],
+          acompanantes: const <String>['María del Carmen', 'Juan Antonio'],
+        ),
       );
 
       expect(tester.takeException(), isNull);

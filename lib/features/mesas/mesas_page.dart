@@ -148,7 +148,22 @@ class _TarjetaMesa extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Expanded(child: Text(mesa.nombre, style: AppTypography.tituloM)),
+              // A una línea: un nombre de mesa lo escribe el usuario y no
+              // tiene límite, y sin esto «Los que quedamos los jueves para
+              // probar croquetas por Triana» estiraba la tarjeta a tres
+              // líneas y dejaba la lista hecha un acordeón.
+              //
+              // En la ficha de la mesa sí se lee entero, que es donde toca:
+              // allí el nombre es el título de la pantalla y no una fila de
+              // una lista.
+              Expanded(
+                child: Text(
+                  mesa.nombre,
+                  style: AppTypography.tituloM,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(

@@ -55,14 +55,27 @@ class ChipCata extends StatelessWidget {
             Text(emoji!, style: const TextStyle(fontSize: 12)),
             const SizedBox(width: 4),
           ],
-          Text(
-            texto,
-            // El color del texto lo decide el fondo: esta pastilla se pinta
-            // con el color del relleno, de la dieta o de la mesa, y algunos
-            // de esos colores no admiten tinta encima.
-            style: AppTypography.etiqueta.copyWith(
-              fontSize: compacto ? 11 : 12,
-              color: AppColors.textoSobre(color),
+          // Flexible y no Text a secas: casi todas las pastillas llevan dos
+          // palabras, pero la del relleno lleva lo que el usuario escribió, y
+          // eso no tiene límite. Con un relleno propio largo la pastilla se
+          // salía 203 píxeles de la estampa que se comparte, o sea que las
+          // rayas amarillas y negras de Flutter se quedaban grabadas en el PNG
+          // que llega al grupo de WhatsApp.
+          //
+          // Un `Wrap` sabe mandar una pastilla entera a la línea de abajo,
+          // pero no sabe encoger una que ya es más ancha que la línea.
+          Flexible(
+            child: Text(
+              texto,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              // El color del texto lo decide el fondo: esta pastilla se pinta
+              // con el color del relleno, de la dieta o de la mesa, y algunos
+              // de esos colores no admiten tinta encima.
+              style: AppTypography.etiqueta.copyWith(
+                fontSize: compacto ? 11 : 12,
+                color: AppColors.textoSobre(color),
+              ),
             ),
           ),
         ],

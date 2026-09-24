@@ -2,8 +2,11 @@ import 'package:catacroket/core/models/cata.dart';
 import 'package:catacroket/core/models/corte.dart';
 import 'package:catacroket/core/models/persona.dart';
 import 'package:catacroket/core/models/sabor.dart';
+import 'package:catacroket/core/models/mesa.dart';
 import 'package:catacroket/core/providers/catas_provider.dart';
+import 'package:catacroket/core/providers/mesas_provider.dart';
 import 'package:catacroket/features/detalle/detalle_page.dart';
+import 'package:catacroket/features/mesas/mesas_page.dart';
 import 'package:catacroket/features/vitrina/vitrina_page.dart';
 import 'package:catacroket/features/vitrina/widgets/tarjeta_cata.dart';
 import 'package:flutter/material.dart';
@@ -203,6 +206,51 @@ void main() {
       );
 
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('En la lista de mesas', () {
+    /// El nombre de una mesa lo escribe el usuario y tampoco tiene límite.
+    Future<double> altoDelNombre(WidgetTester tester, String nombre) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(440, 956);
+      addTearDown(tester.view.reset);
+
+      final ProviderContainer contenedor = ProviderContainer();
+      addTearDown(contenedor.dispose);
+      contenedor.read(mesasProvider.notifier).state = <Mesa>[
+        Mesa(
+          id: 'la-mesa',
+          nombre: nombre,
+          descripcion: 'Los de siempre',
+          colorHex: 0xFFFFC93C,
+          miembros: const <String>['tu'],
+          codigo: 'CROC12',
+        ),
+      ];
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: contenedor,
+          child: const MaterialApp(home: Scaffold(body: MesasPage())),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+
+      return tester.getSize(find.text(nombre).first).height;
+    }
+
+    testWidgets('un nombre de mesa larguísimo no crece a varias líneas', (
+      WidgetTester tester,
+    ) async {
+      final double corto = await altoDelNombre(tester, 'Los de siempre');
+      final double largo = await altoDelNombre(
+        tester,
+        'Los que quedamos los jueves para probar croquetas por Triana',
+      );
+
+      expect(largo, corto, reason: 'el nombre de la mesa tiene que recortarse');
     });
   });
 
