@@ -400,10 +400,34 @@ class MesaDetallePage extends ConsumerWidget {
         ) ??
         false;
 
-    if (!seguro) return;
-    await ref.read(mesasProvider.notifier).borrar(mesa.id);
+    if (!seguro || !context.mounted) return;
+
+    // El mensajero se coge antes de navegar: en cuanto se va de esta pantalla,
+    // su contexto ya no sirve para pedirlo.
+    final ScaffoldMessengerState mensajero = ScaffoldMessenger.of(context);
+
+    final int movidas = await ref.read(mesasProvider.notifier).borrar(mesa.id);
     await HapticFeedback.heavyImpact();
-    if (context.mounted) context.go('/mesas');
+    if (!context.mounted) return;
+    context.go('/mesas');
+
+    // El diálogo prometió que las catas no se pierden; esto lo confirma una
+    // vez hecho, que es cuando de verdad tranquiliza. Antes se navegaba en
+    // silencio: la mesa desaparecía de la lista y había que fiarse de que lo
+    // que catasteis estaba en alguna parte.
+    mensajero
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            movidas == 0
+                ? '«${mesa.nombre}» borrada.'
+                : '«${mesa.nombre}» borrada. '
+                    '${Formato.plural(movidas, 'cata', 'catas')} '
+                    '${movidas == 1 ? 'está' : 'están'} en tu libreta.',
+          ),
+        ),
+      );
   }
 }
 

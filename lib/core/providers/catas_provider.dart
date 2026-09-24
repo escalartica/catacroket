@@ -121,9 +121,26 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
   /// vacía, que es lo que significa "restablecer" para quien la usa. Devolver
   /// dieciocho croquetas ajenas a alguien que acaba de pedir borrar las suyas
   /// sería lo contrario de lo que pidió.
+  ///
+  /// Se lleva también las fotos y los vídeos. Durante un tiempo no lo hacía, y
+  /// era el peor sitio donde faltaba: esto lo pulsa precisamente quien quiere
+  /// recuperar espacio, así que la app se quedaba con cientos de megas de
+  /// vídeos de catas que ya no existen y que no hay forma de borrar desde
+  /// ninguna pantalla.
   Future<void> restablecer() async {
+    final List<Cata> habia = state;
     state = Siembra.catas();
     await _guardar();
+
+    // Se compara con lo que queda, no se borra a ciegas: los datos de
+    // demostración podrían apuntar a alguna de las mismas rutas, y borrar un
+    // fichero que sigue en uso dejaría una ficha con un hueco.
+    final List<Medio> siguen = <Medio>[
+      for (final Cata c in state) ...c.medios,
+    ];
+    for (final Cata c in habia) {
+      await _limpiarMedios(c, siguen);
+    }
   }
 }
 

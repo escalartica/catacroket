@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:catacroket/core/models/cata.dart';
 import 'package:catacroket/core/models/corte.dart';
+import 'package:catacroket/core/models/medio.dart';
 import 'package:catacroket/core/models/sabor.dart';
 import 'package:catacroket/core/providers/catas_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +16,7 @@ Cata cata({
   String mesaId = 'libreta',
   int crujiente = 7,
   int mordiscos = 0,
+  List<Medio> medios = const <Medio>[],
 }) =>
     Cata(
       id: id,
@@ -29,6 +33,7 @@ Cata cata({
       mesaId: mesaId,
       fecha: DateTime(2026),
       mordiscos: mordiscos,
+      medios: medios,
     );
 
 void main() {
@@ -141,6 +146,77 @@ void main() {
         referenciaVieja.where((Cata c) => c.id == 'nueva-de-verdad'),
         isEmpty,
       );
+    });
+  });
+
+  group('Las fotos y los vídeos no se quedan ocupando sitio', () {
+    // Aquí se usan ficheros de verdad porque lo que hay que comprobar es que
+    // desaparezcan del disco. Un doble de MediosService probaría que se le
+    // llama, que no es lo mismo: lo que llena el móvil es el fichero.
+    late Directory carpeta;
+
+    setUp(() => carpeta = Directory.systemTemp.createTempSync('catas_medios'));
+    tearDown(() {
+      if (carpeta.existsSync()) carpeta.deleteSync(recursive: true);
+    });
+
+    Medio foto(String nombre) {
+      final File f = File('${carpeta.path}/$nombre')
+        ..writeAsBytesSync(<int>[0, 1, 2]);
+      return Medio(tipo: TipoMedio.foto, ruta: f.path);
+    }
+
+    test('al borrar una cata se van sus ficheros', () async {
+      final Medio suya = foto('suya.jpg');
+      await notifier().anadir(cata(id: 'con-foto', medios: <Medio>[suya]));
+
+      await notifier().borrar('con-foto');
+
+      expect(File(suya.ruta).existsSync(), isFalse);
+    });
+
+    test('al quitar una foto editando, se va del disco', () async {
+      final Medio quitada = foto('quitada.jpg');
+      final Medio sigue = foto('sigue.jpg');
+      await notifier().anadir(
+        cata(id: 'editable', medios: <Medio>[quitada, sigue]),
+      );
+
+      await notifier().actualizar(
+        cata(id: 'editable', medios: <Medio>[sigue]),
+      );
+
+      expect(File(quitada.ruta).existsSync(), isFalse);
+      expect(File(sigue.ruta).existsSync(), isTrue,
+          reason: 'la que se queda no se puede borrar');
+    });
+
+    test('restablecer también se los lleva', () async {
+      // El caso que se colaba. «Restablecer» dice «deja la app como recién
+      // instalada», y lo pulsa justo quien quiere recuperar espacio: si las
+      // catas desaparecen pero sus vídeos siguen ahí, la app se queda
+      // ocupando cientos de megas que ya no le sirven a nadie y que no hay
+      // forma de borrar desde ninguna pantalla.
+      final Medio una = foto('una.jpg');
+      final Medio otra = foto('otra.jpg');
+      await notifier().anadir(cata(id: 'primera', medios: <Medio>[una]));
+      await notifier().anadir(cata(id: 'segunda', medios: <Medio>[otra]));
+
+      await notifier().restablecer();
+
+      expect(File(una.ruta).existsSync(), isFalse);
+      expect(File(otra.ruta).existsSync(), isFalse);
+    });
+
+    test('un fichero que ya no está no hace fallar el borrado', () async {
+      // Pasa: el usuario restaura una copia en un móvil nuevo, donde las
+      // rutas apuntan a ficheros que nunca se copiaron.
+      final Medio fantasma = foto('fantasma.jpg');
+      await notifier().anadir(cata(id: 'sin-fichero', medios: <Medio>[fantasma]));
+      File(fantasma.ruta).deleteSync();
+
+      await expectLater(notifier().borrar('sin-fichero'), completes);
+      expect(catas().where((Cata c) => c.id == 'sin-fichero'), isEmpty);
     });
   });
 }

@@ -54,85 +54,67 @@ void main() {
     return reloj.elapsedMilliseconds;
   }
 
+  /// En microsegundos, para comparar dos tamaños. En milisegundos enteros el
+  /// más pequeño puede dar 12 o 13 y eso mueve la proporción un 8% sin que
+  /// haya pasado nada.
+  int microsEn(void Function() algo) {
+    algo();
+
+    final Stopwatch reloj = Stopwatch()..start();
+    algo();
+    reloj.stop();
+    return reloj.elapsedMicroseconds;
+  }
+
   group('Agrupar los globos del mapa', () {
-    test('con 500 catas cabe en un fotograma', () {
+    // Sobre medir tiempos en un test: la suite ejecuta varios ficheros a la
+    // vez, así que la CPU va cargada y un umbral en milisegundos puede fallar
+    // sin que nadie haya tocado nada. Ya pasó aquí. Por eso queda un solo
+    // umbral absoluto, con holgura de sobra, y la comprobación de que no
+    // crece al cuadrado se hace por proporción entre dos tamaños, que es
+    // inmune a la carga: infla las dos medidas por igual y se cancela.
+
+    test('agrupar 500 catas no bloquea el mapa', () {
       // Esto se recalcula en cada movimiento del mapa, y a 60 fps hay 16 ms
-      // por fotograma. Pasarse significa que el mapa se arrastra a tirones
-      // al arrastrarlo, que es la peor forma de ir lento.
-      final List<Cata> muchas = porLaCiudad(500);
-
-      final int milis = milisEn(() => agruparCatas(muchas, 12));
-
-      expect(
-        milis,
-        lessThan(16),
-        reason: 'agrupar 500 catas ha tardado $milis ms y el fotograma dura '
-            '16: el mapa se movería a tirones',
-      );
-    });
-
-    test('el tiempo no se dispara al doblar las catas', () {
-      // La comprobación que de verdad importa. Si al doblar los datos el
-      // tiempo se multiplica por mucho más de cuatro, hay algo que crece
-      // peor que al cuadrado y lo que hoy son 500 mañana no se aguanta.
-      final int con250 = milisEn(() => agruparCatas(porLaCiudad(250), 12));
-      final int con500 = milisEn(() => agruparCatas(porLaCiudad(500), 12));
-
-      // Con tiempos pequeños el ruido de medida manda, así que se compara
-      // sólo si hay algo que medir.
-      if (con250 >= 5) {
-        expect(
-          con500,
-          lessThan(con250 * 8),
-          reason: 'de 250 a 500 catas el tiempo ha pasado de $con250 ms a '
-              '$con500 ms: crece demasiado deprisa',
-        );
-      }
-    });
-
-    test('a zoom de calle, que es el caso peor, tampoco', () {
-      // Aquí cada cata es su propio grupo, así que se compara todo con todo
-      // para descubrir que está lejos. Tardaba 207 ms con 500 catas; ahora 6.
+      // por fotograma. Tarda entre 1 y 6 ms; el umbral es muy superior a
+      // propósito, para que no falle por la carga de la máquina. Aun así
+      // pilla lo que venía a pillar: antes de arreglarlo eran 207 ms.
       final List<Cata> muchas = porLaCiudad(500);
 
       final int milis = milisEn(() => agruparCatas(muchas, 17));
 
-      expect(milis, lessThan(30), reason: 'ha tardado $milis ms');
-    });
-
-    test('con 2.000 catas sigue siendo usable', () {
-      // Alguien que lleve años. Si aquí se dispara, la app se vuelve
-      // inservible justo para quien más la ha usado.
-      final List<Cata> muchisimas = porLaCiudad(2000);
-
-      final int milis = milisEn(() => agruparCatas(muchisimas, 17));
-
       expect(
         milis,
-        lessThan(60),
-        reason: 'agrupar 2.000 catas ha tardado $milis ms',
+        lessThan(80),
+        reason: 'agrupar 500 catas ha tardado $milis ms. El fotograma dura '
+            '16, así que el mapa se arrastraría a tirones al arrastrarlo',
       );
     });
 
-    test('el tiempo deja de crecer con el número de catas', () {
-      // Este test existe por un fallo mío. Al acelerar esto cambié dos cosas
-      // a la vez y atribuí la mejora a la que no era; al revertir una para
-      // comprobarlo, los otros tests siguieron pasando, porque sus umbrales
-      // están justo al filo de lo que tarda la versión a medias.
+    test('el tiempo no crece al cuadrado', () {
+      // La comprobación que de verdad importa, y que faltaba. Los umbrales
+      // absolutos de antes quedaban justo al filo: al revertir a mano la
+      // mejora que evita el crecimiento cuadrático, seguían pasando.
       //
-      // Con 6.000 la diferencia ya no cabe en el ruido: agrupando por
-      // casillas vecinas son 23 ms, y comparando todas las parejas unos 585,
-      // porque eso crece al cuadrado y esto no. Si alguien deshace la parte
-      // de las casillas, aquí se entera.
-      final List<Cata> muchisimas = porLaCiudad(6000);
+      // Con cuatro veces más catas: agrupando por casillas vecinas el tiempo
+      // se multiplica por 2,9 (12 ms -> 36); comparando todas las parejas,
+      // por 18,7 (129 ms -> 2.419). Un tope de 7 deja sitio de sobra para el
+      // ruido y muy lejos de lo otro. Comprobado deshaciendo el cambio.
+      final List<Cata> pocas = porLaCiudad(3000);
+      final List<Cata> cuatroVeces = porLaCiudad(12000);
 
-      final int milis = milisEn(() => agruparCatas(muchisimas, 17));
+      final int conPocas = microsEn(() => agruparCatas(pocas, 17));
+      final int conMuchas = microsEn(() => agruparCatas(cuatroVeces, 17));
 
+      final double razon = conMuchas / conPocas;
       expect(
-        milis,
-        lessThan(120),
-        reason: 'agrupar 6.000 catas ha tardado $milis ms. Si son cientos, '
-            'es que se están comparando todas las parejas otra vez',
+        razon,
+        lessThan(7),
+        reason: 'al cuadruplicar las catas el tiempo se ha multiplicado por '
+            '${razon.toStringAsFixed(1)} (${conPocas}us -> ${conMuchas}us). '
+            'Eso es crecimiento cuadrático: probablemente se están '
+            'comparando todas las parejas otra vez, en vez de sólo las '
+            'casillas vecinas',
       );
     });
 
