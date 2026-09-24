@@ -3,6 +3,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color;
 
+import '../capturas.dart';
 import '../models/cata.dart';
 import '../models/mesa.dart';
 import '../models/persona.dart';
@@ -27,7 +28,11 @@ import 'datos_demo.dart';
 ///     flutter run --dart-define=CATACROKET_VACIA=true
 abstract final class Siembra {
   /// Si se siembran los datos de ejemplo.
-  static const bool conEjemplos = !kReleaseMode && !_forzarVacia;
+  ///
+  /// El modo capturas siembra aunque sea release, porque una ficha de tienda
+  /// con la app vacía no enseña nada. Ver `core/capturas.dart`.
+  static const bool conEjemplos =
+      paraCapturas || (!kReleaseMode && !_forzarVacia);
 
   static const bool _forzarVacia = bool.fromEnvironment('CATACROKET_VACIA');
 

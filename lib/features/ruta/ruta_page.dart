@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 // rompería el pico del globo. Aquí sólo hace falta LatLng.
 import 'package:latlong2/latlong.dart' show LatLng;
 
+import '../../core/capturas.dart';
 import '../../core/models/cata.dart';
 import '../../core/models/lugar.dart';
 import '../../core/models/persona.dart';
@@ -342,8 +343,10 @@ class _RutaPageState extends ConsumerState<RutaPage> {
       children: <Widget>[
         Cabecera(
           titulo: 'Ruta croquetera',
-          // Sólo en depuración: en una compilación de release no existe.
-          accion: kDebugMode
+          // Sólo en depuración: en una compilación de release no existe. Y
+          // tampoco en modo capturas, porque una captura tiene que enseñar la
+          // app que se baja la gente, no la que usamos nosotros.
+          accion: kDebugMode && !paraCapturas
               ? BotonRedondo(
                   icono: Icons.bug_report_rounded,
                   etiqueta: 'Estado del mapa',

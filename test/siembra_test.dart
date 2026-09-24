@@ -1,3 +1,4 @@
+import 'package:catacroket/core/capturas.dart';
 import 'package:catacroket/core/data/siembra.dart';
 import 'package:catacroket/core/models/cata.dart';
 import 'package:catacroket/core/models/mesa.dart';
@@ -49,6 +50,21 @@ void main() {
     });
 
     test('hay más de una mesa', () {
+      expect(Siembra.mesasCon(true).length, greaterThan(1));
+    });
+  });
+
+  group('El modo capturas', () {
+    test('apagado si nadie lo pide', () {
+      // Lo importante de todo este fichero: que nadie se baje la app y se
+      // encuentre dieciocho croquetas que no ha comido. El interruptor nuevo
+      // no puede abrir esa puerta por descuido, y hay que escribirlo entero
+      // en la línea de órdenes para encenderlo.
+      expect(paraCapturas, isFalse);
+    });
+
+    test('encendido, hay con qué llenar una captura', () {
+      expect(Siembra.catasCon(true), isNotEmpty);
       expect(Siembra.mesasCon(true).length, greaterThan(1));
     });
   });
