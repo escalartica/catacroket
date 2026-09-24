@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +11,7 @@ import '../../arte/croqui.dart';
 import '../../core/data/rangos.dart';
 import '../../core/models/persona.dart';
 import '../../core/bitacora.dart';
+import '../../core/copia.dart';
 import '../../core/data/enlaces.dart';
 import '../../core/providers/catas_provider.dart';
 import '../../core/models/dieta.dart';
@@ -273,6 +277,42 @@ class PerfilPage extends ConsumerWidget {
     }
   }
 
+  /// Saca las catas de la app en un fichero que el usuario se queda.
+  ///
+  /// Por la hoja del sistema y no a un sitio fijo: cada uno la guarda donde
+  /// la va a encontrar —correo, Archivos, Drive— y así la copia no depende
+  /// de que esta app siga instalada.
+  Future<void> _guardarCopia(BuildContext context) async {
+    try {
+      final String contenido = await Copia.hacer();
+      final Directory temporal = await getTemporaryDirectory();
+      final File fichero = File('${temporal.path}/${Copia.nombreFichero()}')
+        ..writeAsStringSync(contenido);
+
+      if (!context.mounted) return;
+      final RenderBox? origen = context.findRenderObject() as RenderBox?;
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: <XFile>[XFile(fichero.path, mimeType: 'application/json')],
+          text: 'Copia de mis catas de Catacroket. Guárdala donde la vayas a '
+              'encontrar: con ella se recuperan en otro móvil.',
+          subject: 'Mis catas de Catacroket',
+          sharePositionOrigin: origen == null
+              ? null
+              : origen.localToGlobal(Offset.zero) & origen.size,
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(content: Text('No se ha podido crear la copia.')),
+        );
+    }
+  }
+
   /// Manda los fallos apuntados por donde el usuario quiera.
   ///
   /// Por la hoja del sistema y no a un correo fijo: así elige él —correo,
@@ -302,7 +342,8 @@ class PerfilPage extends ConsumerWidget {
       builder: (BuildContext context) => AlertDialog(
         title: const Text('Ajustes'),
         content: Text(
-          'Todavía no hay cuenta ni nube: las catas viven en este móvil.\n\n'
+          'Todavía no hay cuenta ni nube: las catas viven en este móvil. '
+          'Guarda una copia de vez en cuando y no dependerás de él.\n\n'
           '«Ver las explicaciones» vuelve a enseñar los carteles de cada '
           'apartado. «Restablecer» borra tus catas y deja los datos de '
           'ejemplo.'
@@ -311,6 +352,15 @@ class PerfilPage extends ConsumerWidget {
               'Si quieres, mándalos y se arreglan.'}',
         ),
         actions: <Widget>[
+          // Lo primero de la lista. Es lo único de aquí dentro que evita
+          // perder años de libreta, y hasta ahora no existía.
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _guardarCopia(context);
+            },
+            child: const Text('Guardar una copia'),
+          ),
           if (fallos.isNotEmpty)
             TextButton(
               onPressed: () {
