@@ -84,13 +84,27 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
     }
   }
 
-  Future<void> _guardar() async {
+  /// Guarda y dice si de verdad se ha escrito.
+  ///
+  /// El booleano no es por gusto: `setString` no lanza cuando no puede
+  /// guardar, devuelve false. Ese false se ignoraba, así que una cata podía no
+  /// llegar al disco sin excepción, sin aviso y sin nada que apuntar.
+  Future<bool> _guardar() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
+      final bool escrito = await prefs.setString(
         _clave,
         jsonEncode(state.map((Cata c) => c.toJson()).toList()),
       );
+
+      if (!escrito) {
+        Errores.registrar(
+          StateError('el móvil ha rechazado guardar las catas'),
+          null,
+          origen: 'catas.guardar',
+        );
+      }
+      return escrito;
     } catch (error, pila) {
       // La sesión sigue funcionando, pero esto no es inofensivo: la cata está
       // en memoria y no en el disco, así que la app dice «guardada» y al
@@ -98,12 +112,19 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
       // sin espacio. Al menos queda apuntado en la bitácora, que el usuario
       // puede mandar desde Ajustes.
       Errores.registrar(error, pila, origen: 'catas.guardar');
+      return false;
     }
   }
 
-  Future<void> anadir(Cata cata) async {
+  /// Apunta una cata nueva. Devuelve si ha quedado guardada en el disco.
+  ///
+  /// La pantalla necesita saberlo: hasta ahora daba por hecho que sí, lanzaba
+  /// confeti y limpiaba el formulario. Si no se había guardado, el usuario
+  /// perdía el trabajo dos veces —la cata y lo que había escrito— y encima con
+  /// una celebración por delante.
+  Future<bool> anadir(Cata cata) async {
     state = <Cata>[cata, ...state];
-    await _guardar();
+    return _guardar();
   }
 
   /// Guarda una cata corregida en el sitio que ya ocupaba.
@@ -111,16 +132,20 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
   /// No la mueve al principio del feed: corregir una falta de ortografía de
   /// hace un mes no es una cata nueva y no debería reordenarle el feed a
   /// nadie. La fecha tampoco se toca; es la de cuando te la comiste.
-  Future<void> actualizar(Cata cata) async {
+  /// Devuelve si ha quedado guardada, igual que [anadir].
+  Future<bool> actualizar(Cata cata) async {
     final Cata? antes = _buscar(cata.id);
     state = <Cata>[
       for (final Cata c in state)
         if (c.id == cata.id) cata else c,
     ];
-    await _guardar();
+    final bool guardada = await _guardar();
 
-    // Las fotos que se quitaron al editar ya no las referencia nadie.
-    if (antes != null) await _limpiarMedios(antes, cata.medios);
+    // Las fotos que se quitaron al editar ya no las referencia nadie. Sólo si
+    // el cambio ha llegado al disco: si no, la cata sigue siendo la de antes y
+    // borrar sus fotos dejaría una ficha con huecos al reiniciar.
+    if (antes != null && guardada) await _limpiarMedios(antes, cata.medios);
+    return guardada;
   }
 
   Cata? _buscar(String id) {
@@ -138,6 +163,10 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
     }
   }
 
+  /// Un mordisco es lo único que no devuelve si se guardó, y a propósito: no
+  /// hay nada que decirle al usuario ni nada que deshacer. Si no se guarda, el
+  /// contador se queda como estaba al reiniciar. Queda apuntado en la bitácora
+  /// como todo lo demás.
   Future<void> darMordisco(String id) async {
     state = <Cata>[
       for (final Cata c in state)
@@ -150,11 +179,18 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
   ///
   /// Dejar los ficheros en disco llenaría el móvil de medios de catas que ya
   /// no existen y que el usuario no puede ver ni borrar desde ninguna parte.
-  Future<void> borrar(String id) async {
+  /// Sólo se tocan los ficheros si el borrado ha llegado al disco. Si no, la
+  /// cata reaparece al reiniciar, y entonces la habríamos dejado sin sus fotos:
+  /// una ficha con huecos es peor que un fichero de más.
+  Future<bool> borrar(String id) async {
     final Cata? fuera = _buscar(id);
     state = state.where((Cata c) => c.id != id).toList();
-    await _guardar();
-    if (fuera != null) await _limpiarMedios(fuera, const <Medio>[]);
+    final bool guardado = await _guardar();
+
+    if (fuera != null && guardado) {
+      await _limpiarMedios(fuera, const <Medio>[]);
+    }
+    return guardado;
   }
 
   /// Vuelve a los datos de demostración. Está en el perfil, en ajustes.
@@ -170,10 +206,14 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
   /// recuperar espacio, así que la app se quedaba con cientos de megas de
   /// vídeos de catas que ya no existen y que no hay forma de borrar desde
   /// ninguna pantalla.
-  Future<void> restablecer() async {
+  Future<bool> restablecer() async {
     final List<Cata> habia = state;
     state = Siembra.catas();
-    await _guardar();
+    final bool guardado = await _guardar();
+
+    // Igual que en [borrar]: si no se ha podido guardar, las catas volverán al
+    // reiniciar y sus fotos tienen que seguir ahí.
+    if (!guardado) return false;
 
     // Se compara con lo que queda, no se borra a ciegas: los datos de
     // demostración podrían apuntar a alguna de las mismas rutas, y borrar un
@@ -184,6 +224,7 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
     for (final Cata c in habia) {
       await _limpiarMedios(c, siguen);
     }
+    return true;
   }
 }
 

@@ -152,13 +152,35 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
     final Cata cata = cataDesdeBorrador(b, original: original);
 
     final CatasNotifier catas = ref.read(catasProvider.notifier);
-    if (original == null) {
-      await catas.anadir(cata);
-      await HapticFeedback.heavyImpact();
-    } else {
-      await catas.actualizar(cata);
-      await HapticFeedback.mediumImpact();
+    final bool esNueva = original == null;
+    final bool guardada =
+        esNueva ? await catas.anadir(cata) : await catas.actualizar(cata);
+
+    if (!mounted) return;
+
+    // No ha llegado al disco. Antes esto no se miraba: se lanzaba el confeti,
+    // se limpiaba el formulario y se iba a la pantalla de «publicada» igual,
+    // así que el usuario perdía la cata y además lo que había escrito, con una
+    // celebración por delante. Ahora el borrador se queda donde está y el botón
+    // sigue ahí para volver a intentarlo.
+    if (!guardada) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se ha podido guardar. Mira si al móvil le queda sitio y '
+              'vuelve a intentarlo: no has perdido nada de lo escrito.',
+            ),
+          ),
+        );
+      return;
     }
+
+    // Fuerte para una cata nueva, media para una corrección: no es lo mismo.
+    await (esNueva
+        ? HapticFeedback.heavyImpact()
+        : HapticFeedback.mediumImpact());
 
     if (!mounted) return;
     ref.read(borradorProvider.notifier).limpiar();
@@ -166,7 +188,7 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
 
     // Una cata nueva merece confeti. Una corrección, no: lo que quieres es
     // ver cómo ha quedado.
-    context.go(original == null ? '/publicada/${cata.id}' : '/cata/${cata.id}');
+    context.go(esNueva ? '/publicada/${cata.id}' : '/cata/${cata.id}');
   }
 
   @override

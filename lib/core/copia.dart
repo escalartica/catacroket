@@ -84,8 +84,15 @@ class Copia {
 
   /// Mete una copia en el móvil, sustituyendo lo que hubiera.
   ///
-  /// Devuelve false si el texto no es una copia válida. No lanza: quien la
-  /// llama está en una pantalla y necesita poder decirlo, no reventar.
+  /// Devuelve false si el texto no es una copia válida, o si el móvil no ha
+  /// podido guardarla. No lanza: quien la llama está en una pantalla y
+  /// necesita poder decirlo, no reventar.
+  ///
+  /// Lo segundo faltaba, y era lo peor que podía faltar aquí: `setString` no
+  /// lanza cuando no puede escribir, devuelve false, y ese false se tiraba. La
+  /// pantalla decía «restaurado» sin que se hubiera restaurado nada. Mentir
+  /// está mal en cualquier sitio; en la pantalla a la que va alguien que
+  /// acaba de perder el móvil, más.
   ///
   /// Sustituye en vez de mezclar. Mezclar suena mejor y es peor: sin saber
   /// cuál de dos versiones de la misma cata es la buena, acabarías con
@@ -101,18 +108,24 @@ class Copia {
 
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+      // Se intentan todas aunque una falle: restaurar a medias es mejor que no
+      // restaurar nada, y lo que hay que hacer con el fallo es contarlo, no
+      // parar. Pero se devuelve false, para que la pantalla no cante victoria.
+      bool todoEscrito = true;
       for (final String clave in claves) {
         final Object? valor = datos[clave];
         if (valor is String) {
-          await prefs.setString(clave, valor);
+          if (!await prefs.setString(clave, valor)) todoEscrito = false;
         } else if (valor is List<dynamic>) {
-          await prefs.setStringList(
+          final bool ok = await prefs.setStringList(
             clave,
             valor.map((dynamic e) => e.toString()).toList(),
           );
+          if (!ok) todoEscrito = false;
         }
       }
-      return true;
+      return todoEscrito;
     } catch (_) {
       return false;
     }

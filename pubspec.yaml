@@ -46,6 +46,12 @@ dependencies:
   uuid: ^4.3.3
 
 dev_dependencies:
+  # Sólo para los tests: un almacenamiento falso que rechaza escribir, para
+  # poder probar qué hace la app en un móvil sin espacio. Va declarado aquí y
+  # no aprovechado de rebote a través de shared_preferences, porque una
+  # dependencia que no se declara es una dependencia que desaparece sola.
+  shared_preferences_platform_interface: ^2.4.2
+
   flutter_test:
     sdk: flutter
 
