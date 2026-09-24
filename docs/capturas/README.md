@@ -58,8 +58,25 @@ La primera es la que decide: el 90% de la gente no pasa de la tercera.
 5. **Una mesa** — el ranking, que es el argumento para bajársela en grupo.
 6. **La estampa de compartir** — lo que acaba en el grupo de WhatsApp.
 
-## Lo que hay aquí ahora
+## Lo que hay aquí
 
-`1-vitrina.png`, hecha a mano durante la revisión. Las demás están sin hacer:
-se quedaron a medias porque el disco del portátil se llenó dos veces seguidas
-mientras se compilaba.
+Las seis, a 1320 × 2868, sacadas del modo capturas con la barra de estado
+puesta a las 9:41 y los carteles de ayuda cerrados:
+
+1. `1-vitrina.png` — el feed, con la racha, la croqueta del día y la caja de
+   buscar.
+2. `2-ruta.png` — el mapa con los globos agrupados. La que mejor explica la
+   app de un vistazo, y la que iría segunda.
+3. `3-mesas.png` — las tres mesas con sus códigos y su gente.
+4. `4-perfil.png` — el croquetómetro: rango, cifras y tu paladar.
+5. `5-ficha.png` — el corte dibujado. Es lo que no tiene ninguna otra app y el
+   argumento de venta de verdad.
+6. `6-estampa.png` — lo que acaba en el grupo de WhatsApp.
+
+Están sin retocar: son la app tal cual, sin marcos ni rótulos encima. Si se
+les quiere poner un titular a cada una —que en la App Store funciona—, va
+encima de éstas, no en lugar de ellas.
+
+Falta el paso 3 del formulario, el del corte y la prueba del tiro al plato,
+que hay que atravesar dos pasos para llegar. Merece la pena si se quiere una
+séptima.
