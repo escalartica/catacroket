@@ -50,6 +50,43 @@ void main() {
     test('sin apunte no deja unas comillas vacías colgando', () {
       expect(CompartirService.cata(cata()), isNot(contains('«»')));
     });
+
+    test('dice de dónde sale', () {
+      // Es el camino que más se usa —un toque, sin generar imagen— y durante
+      // un tiempo era el único que no mencionaba la app. Quien lo recibía en
+      // el grupo leía una nota y un bar y no tenía forma de saber que existía
+      // algo que descargar. La estampa sí lo decía; ésta no lleva imagen, así
+      // que no lo decía nadie.
+      expect(CompartirService.cata(cata()), contains('Catacroket'));
+    });
+
+    test('la primera línea sigue cabiendo en una notificación', () {
+      // La firma va debajo a propósito: la vista previa de una notificación
+      // enseña la primera línea, y ahí lo que hace falta es la croqueta.
+      final String primera = CompartirService.cata(
+        cata(nota: 'La mejor del barrio'),
+      ).split('\n').first;
+
+      expect(primera, contains('Bar Manoli'));
+      expect(primera, isNot(contains('Catacroket')));
+    });
+  });
+
+  group('La firma', () {
+    test('la usan los dos caminos de compartir, con la misma frase', () {
+      // Tenían dos versiones distintas de lo mismo, una dentro de un widget.
+      expect(CompartirService.firma(), contains('Catacroket'));
+    });
+
+    test('lleva el enlace sólo si la app está publicada', () {
+      // Mandar a alguien un enlace que no va a ninguna parte es peor que no
+      // mandarlo, así que mientras no haya ficha la firma es sólo el nombre.
+      if (CompartirService.hayEnlace) {
+        expect(CompartirService.firma(), contains('https'));
+      } else {
+        expect(CompartirService.firma(), isNot(contains('http')));
+      }
+    });
   });
 
   group('Las invitaciones', () {

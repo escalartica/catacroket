@@ -32,17 +32,35 @@ class CompartirService {
     }
   }
 
+  /// De dónde sale esto, con el enlace si la app ya está publicada.
+  ///
+  /// Vive aquí y no dentro de una pantalla porque la usan los dos caminos de
+  /// compartir, y tenían dos versiones distintas de la misma frase.
+  static String firma() => hayEnlace
+      ? 'Catado con Catacroket.\n${Enlaces.tienda}'
+      : 'Catado con Catacroket.';
+
+  static bool get hayEnlace => Enlaces.hayTienda;
+
   /// "Esto es lo que me estoy comiendo ahora mismo."
   ///
   /// Es el mensaje del momento: se manda con la croqueta todavía en el plato,
-  /// así que va al grano y cabe en la vista previa de una notificación.
+  /// así que la primera línea va al grano y cabe en la vista previa de una
+  /// notificación.
+  ///
+  /// La firma va debajo, en su propia línea, y no es un adorno: éste es el
+  /// camino que más se usa —un toque, sin generar imagen— y durante un tiempo
+  /// era el único que no decía de dónde venía. Quien lo recibía en el grupo
+  /// leía una nota y un bar, y no tenía forma de saber que existía una app.
+  /// La ruta de la estampa sí lo decía, porque la imagen lleva el nombre
+  /// dentro; ésta no lleva imagen.
   static String cata(Cata c) {
     final String plato = c.esSurtido
         ? 'Surtido de ${c.sabores.length}'
         : c.saborPrincipal.nombre;
     final String nota = '${Formato.nota(c.puntuacion)}/10';
     final String apunte = c.nota.trim().isEmpty ? '' : ' «${c.nota.trim()}»';
-    return '$plato en ${c.sitio} (${c.lugar}): $nota.$apunte';
+    return '$plato en ${c.sitio} (${c.lugar}): $nota.$apunte\n${firma()}';
   }
 
   /// "Vente a la app."
