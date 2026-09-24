@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../utils/texto.dart';
+import 'buscador.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/rellenos.dart';
@@ -103,7 +105,8 @@ class _PildorasRellenoState extends ConsumerState<PildorasRelleno> {
           ),
         if (hayBuscador) ...<Widget>[
           const SizedBox(height: AppSpacing.s),
-          _Buscador(
+          Buscador(
+            pista: 'Buscar relleno',
             control: _buscador,
             onCambio: (String v) => setState(() => _busqueda = v),
             onLimpiar: _busqueda.isEmpty ? null : _limpiarBusqueda,
@@ -198,23 +201,8 @@ class _PildorasRellenoState extends ConsumerState<PildorasRelleno> {
           ? r.perfil.esVegano
           : r.perfil.esVegetariano);
 
-  static bool _coincide(Relleno r, String busqueda) {
-    final String q = busqueda.trim().toLowerCase();
-    if (q.isEmpty) return true;
-    return _sinTildes(r.nombre.toLowerCase()).contains(_sinTildes(q));
-  }
-
-  static String _sinTildes(String texto) {
-    const String con = 'áàäâéèëêíìïîóòöôúùüûñç';
-    const String sin = 'aaaaeeeeiiiioooouuuunc';
-    final StringBuffer salida = StringBuffer();
-    for (final int unidad in texto.runes) {
-      final String c = String.fromCharCode(unidad);
-      final int i = con.indexOf(c);
-      salida.write(i >= 0 ? sin[i] : c);
-    }
-    return salida.toString();
-  }
+  static bool _coincide(Relleno r, String busqueda) =>
+      Texto.contiene(r.nombre, busqueda);
 
   /// Primero lo que puedes comer, después lo demás.
   static List<PerfilRelleno> _orden(Set<Dieta> mias) {
@@ -296,74 +284,6 @@ class _AvisoFiltro extends StatelessWidget {
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Buscador extends StatelessWidget {
-  const _Buscador({
-    required this.control,
-    required this.onCambio,
-    required this.onLimpiar,
-  });
-
-  final TextEditingController control;
-  final ValueChanged<String> onCambio;
-
-  /// Nulo cuando no hay nada que borrar.
-  final VoidCallback? onLimpiar;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.superficie,
-        borderRadius: BorderRadius.circular(AppShape.radioPildora),
-        border: Border.all(color: AppColors.tinta, width: AppShape.borde),
-      ),
-      padding: const EdgeInsets.only(left: 14),
-      child: Row(
-        children: <Widget>[
-          const Icon(Icons.search_rounded, size: 20, color: AppColors.tinta),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: control,
-              onChanged: onCambio,
-              style: AppTypography.cuerpo.copyWith(fontSize: 15),
-              cursorColor: AppColors.tinta,
-              decoration: InputDecoration(
-                hintText: 'Buscar relleno',
-                hintStyle: AppTypography.cuerpo.copyWith(
-                  fontSize: 15,
-                  color: AppColors.tintaSuave,
-                  fontWeight: FontWeight.w600,
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 13),
-              ),
-            ),
-          ),
-          if (onLimpiar != null)
-            Semantics(
-              button: true,
-              label: 'Borrar la búsqueda',
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onLimpiar,
-                child: const SizedBox(
-                  width: 46,
-                  height: 46,
-                  child: Icon(
-                    Icons.close_rounded,
-                    size: 18,
-                    color: AppColors.tinta,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );

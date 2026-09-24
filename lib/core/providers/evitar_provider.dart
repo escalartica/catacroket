@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../utils/texto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../errores.dart';
@@ -84,18 +86,10 @@ final evitarProvider =
 /// buscar y guardar usen exactamente la misma regla.
 abstract final class Evitar {
   /// Minusculas y sin tildes. Lo justo para que "jamon" encuentre "Jamon".
-  static String normalizar(String texto) {
-    const String con = 'aaaaaeeeeiiiiooooouuuunc';
-    const String conTildes = 'áàäâãéèëêíìïîóòöôõúùüûñç';
-
-    final StringBuffer salida = StringBuffer();
-    for (final int unidad in texto.toLowerCase().runes) {
-      final String letra = String.fromCharCode(unidad);
-      final int i = conTildes.indexOf(letra);
-      salida.write(i == -1 ? letra : con[i]);
-    }
-    return salida.toString().trim();
-  }
+  ///
+  /// La regla vive en `utils/texto.dart` y no aqui: habia dos copias por la
+  /// app y ya habian dejado de hacer lo mismo.
+  static String normalizar(String texto) => Texto.normalizar(texto);
 
   /// Cuales de [evitar] aparecen en [textos].
   ///

@@ -194,6 +194,24 @@ class Cata {
   List<String> get loQueLleva =>
       <String>[for (final Sabor s in sabores) ...s.nombres];
 
+  /// Los textos por los que se puede encontrar esta cata al buscar.
+  ///
+  /// Van sueltos y no pegados en una sola cadena para que una palabra no case
+  /// a caballo entre dos campos: con «Bar Manoli» y «Sevilla» juntos, buscar
+  /// «manoli sevilla» encontraría algo que en la ficha no se lee así.
+  ///
+  /// La nota sí entra, al revés que en [loQueLleva]. Son dos cosas distintas:
+  /// allí una coincidencia en la nota sería una falsa alarma de alergia, y
+  /// aquí es justo lo que se busca —«aquella que ponía que picaba»—, porque
+  /// la búsqueda la pide el usuario y la lee él.
+  List<String> get paraBuscar => <String>[
+        sitio,
+        ciudad,
+        nota,
+        ...loQueLleva,
+        ...acompanantes,
+      ];
+
   List<Relleno> get rellenos => sabores
       .expand((Sabor s) => s.idsParaDietas)
       .toSet()

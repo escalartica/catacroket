@@ -12,6 +12,7 @@ import '../models/medio.dart';
 import '../models/mesa.dart';
 import '../models/persona.dart';
 import '../services/medios_service.dart';
+import '../utils/texto.dart';
 import 'evitar_provider.dart';
 import 'mi_dieta_provider.dart';
 import 'yo_provider.dart';
@@ -301,16 +302,46 @@ enum FiltroVitrina { todo, misMesas, mias }
 
 final filtroVitrinaProvider = StateProvider<FiltroVitrina>((ref) => FiltroVitrina.todo);
 
+/// Desde cuántas catas aparece la caja de buscar en La Vitrina.
+///
+/// Por debajo se ven todas bajando un poco el dedo, y la caja sería un mueble
+/// más en una cabecera que ya lleva la racha, la croqueta del día, la Barra
+/// Libre y tres filtros. Cada cosa de una pantalla tiene que ganarse el sitio.
+const int catasParaBuscar = 12;
+
+/// La regla vive aquí, al lado del feed, y no en la pantalla: si la caja no se
+/// ve, lo que hubiera escrito en ella no puede seguir filtrando por detrás.
+final sePuedeBuscarProvider = Provider<bool>(
+  (ref) => ref.watch(catasProvider).length >= catasParaBuscar,
+);
+
+/// Lo escrito en la caja de buscar de La Vitrina.
+///
+/// Existe porque sin esto la app no cumplía lo que promete. El argumento es
+/// «meses después ves dónde estaba aquella que no se te olvida», y con
+/// doscientas catas la única forma de encontrarla era bajar con el dedo.
+final busquedaVitrinaProvider = StateProvider<String>((ref) => '');
+
 final feedProvider = Provider<List<Cata>>((ref) {
   final List<Cata> catas = ref.watch(catasRecientesProvider);
-  switch (ref.watch(filtroVitrinaProvider)) {
-    case FiltroVitrina.todo:
-      return catas;
-    case FiltroVitrina.misMesas:
-      return catas.where((Cata c) => c.mesaId != Mesa.libretaId).toList();
-    case FiltroVitrina.mias:
-      return catas.where((Cata c) => c.autorId == DatosDemo.yo).toList();
-  }
+
+  final List<Cata> delFiltro = switch (ref.watch(filtroVitrinaProvider)) {
+    FiltroVitrina.todo => catas,
+    FiltroVitrina.misMesas =>
+      catas.where((Cata c) => c.mesaId != Mesa.libretaId).toList(),
+    FiltroVitrina.mias =>
+      catas.where((Cata c) => c.autorId == DatosDemo.yo).toList(),
+  };
+
+  // La búsqueda se aplica después del filtro y no al revés: los dos son del
+  // usuario y los ve a la vez, así que tienen que cumplirse los dos.
+  final String busca = ref.watch(busquedaVitrinaProvider);
+  if (!ref.watch(sePuedeBuscarProvider)) return delFiltro;
+  if (Texto.normalizar(busca).isEmpty) return delFiltro;
+
+  return delFiltro
+      .where((Cata c) => Texto.contieneEnAlguno(c.paraBuscar, busca))
+      .toList();
 });
 
 // ── Barra Libre ─────────────────────────────────────────────────────────────

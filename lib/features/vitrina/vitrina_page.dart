@@ -7,6 +7,7 @@ import '../../core/models/cata.dart';
 import '../../core/models/persona.dart';
 import '../../core/providers/catas_provider.dart';
 import '../../core/providers/perfil_provider.dart';
+import '../../core/theme/components/buscador.dart';
 import '../../core/theme/components/boton.dart';
 import '../../core/theme/components/cabecera.dart';
 import '../../core/theme/components/chip.dart';
@@ -86,6 +87,10 @@ class VitrinaPage extends ConsumerWidget {
               const EntradaBarraLibre(),
               if (!primerDia) ...<Widget>[
                 const SizedBox(height: AppSpacing.l),
+                if (ref.watch(sePuedeBuscarProvider)) ...<Widget>[
+                  const _BuscadorDeCatas(),
+                  const SizedBox(height: AppSpacing.m),
+                ],
                 Segmentado<FiltroVitrina>(
                   seleccion: filtro,
                   onCambio: (FiltroVitrina f) =>
@@ -108,7 +113,12 @@ class VitrinaPage extends ConsumerWidget {
           ),
         ),
         if (feed.isEmpty)
-          SliverToBoxAdapter(child: _VitrinaVacia(primerDia: primerDia))
+          SliverToBoxAdapter(
+            child: _VitrinaVacia(
+              primerDia: primerDia,
+              buscando: ref.watch(busquedaVitrinaProvider).trim(),
+            ),
+          )
         else
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pantalla),
@@ -138,10 +148,16 @@ class VitrinaPage extends ConsumerWidget {
 }
 
 class _VitrinaVacia extends StatelessWidget {
-  const _VitrinaVacia({required this.primerDia});
+  const _VitrinaVacia({required this.primerDia, this.buscando = ''});
 
   /// Si no hay ni una cata en toda la app, o sólo ninguna en este filtro.
   final bool primerDia;
+
+  /// Lo que hay escrito en la caja de buscar, si hay algo.
+  ///
+  /// Sin esto, buscar «granada» sin resultados decía «prueba con Todo», que
+  /// no es lo que pasa ni lo que arregla el problema.
+  final String buscando;
 
   @override
   Widget build(BuildContext context) {
@@ -158,15 +174,62 @@ class _VitrinaVacia extends StatelessWidget {
           Croqui(ancho: primerDia ? 110 : 150),
           const SizedBox(height: AppSpacing.l),
           Text(
-            primerDia
-                ? 'Aquí irán tus croquetas.\nDale al botón rojo y apunta la '
-                    'primera.'
-                : 'Ninguna cata con este filtro.\nPrueba con «Todo».',
+            switch ((primerDia, buscando.isNotEmpty)) {
+              (true, _) => 'Aquí irán tus croquetas.\nDale al botón rojo y '
+                  'apunta la primera.',
+              (false, true) => 'Ninguna cata con «$buscando».\nSe busca por '
+                  'bar, ciudad, relleno, apunte y con quién estabas.',
+              (false, false) => 'Ninguna cata con este filtro.\nPrueba con '
+                  '«Todo».',
+            },
             textAlign: TextAlign.center,
             style: AppTypography.cuerpo,
           ),
         ],
       ),
+    );
+  }
+}
+
+/// La caja de buscar de La Vitrina.
+///
+/// Es un widget aparte y con estado propio porque necesita un
+/// `TextEditingController`, y meterlo en la pantalla obligaría a convertirla
+/// entera en `StatefulWidget` por una caja de texto.
+class _BuscadorDeCatas extends ConsumerStatefulWidget {
+  const _BuscadorDeCatas();
+
+  @override
+  ConsumerState<_BuscadorDeCatas> createState() => _BuscadorDeCatasState();
+}
+
+class _BuscadorDeCatasState extends ConsumerState<_BuscadorDeCatas> {
+  late final TextEditingController _control =
+      TextEditingController(text: ref.read(busquedaVitrinaProvider));
+
+  @override
+  void dispose() {
+    _control.dispose();
+    super.dispose();
+  }
+
+  void _escribir(String texto) =>
+      ref.read(busquedaVitrinaProvider.notifier).state = texto;
+
+  @override
+  Widget build(BuildContext context) {
+    final String busca = ref.watch(busquedaVitrinaProvider);
+
+    return Buscador(
+      control: _control,
+      pista: 'Buscar entre tus catas',
+      onCambio: _escribir,
+      onLimpiar: busca.isEmpty
+          ? null
+          : () {
+              _control.clear();
+              _escribir('');
+            },
     );
   }
 }
