@@ -35,6 +35,27 @@ class Errores {
   ///
   /// [origen] dice de qué parte viene (framework, plataforma, provider) para
   /// poder distinguirlos de un vistazo en la consola.
+  ///
+  /// ── El día que se quiera mandar los fallos fuera ─────────────────────
+  ///
+  /// Éste es el único sitio que hay que tocar. No hace falta buscar dónde
+  /// estaban los try/catch ni añadir nada en las pantallas.
+  ///
+  /// Con Sentry serían tres pasos:
+  ///
+  /// 1. `sentry_flutter` en pubspec.yaml.
+  /// 2. En `arrancar`, envolver el cuerpo en `SentryFlutter.init`, con el
+  ///    DSN del proyecto.
+  /// 3. Aquí abajo, una línea más:
+  ///    `unawaited(Sentry.captureException(error, stackTrace: pila));`
+  ///
+  /// Lo que hay que decidir antes, y no es una decisión técnica: hoy la app
+  /// no manda nada a ningún servidor y lo dice en Ajustes. Mandar trazas
+  /// fuera cambia eso, aunque no lleven datos personales, así que la
+  /// política de privacidad de la ficha de tienda tendría que reflejarlo.
+  ///
+  /// Mientras tanto los fallos no se pierden: van a la bitácora del móvil y
+  /// el usuario puede mandarlos desde Ajustes.
   static void registrar(
     Object error,
     StackTrace? pila, {
