@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../errores.dart';
+
 /// Quién eres tú: nombre y foto.
 ///
 /// Hasta ahora el nombre estaba escrito a fuego en la pantalla («Cehache») y
@@ -67,8 +69,8 @@ class YoNotifier extends StateNotifier<Yo> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString(_claveNombre, limpio);
-    } catch (_) {
-      // Best-effort, como el resto del almacenamiento local.
+    } catch (error, pila) {
+      Errores.registrar(error, pila, origen: 'yo.guardar');
     }
   }
 

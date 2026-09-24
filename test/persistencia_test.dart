@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:catacroket/core/data/siembra.dart';
+import 'package:catacroket/core/errores.dart';
 import 'package:catacroket/core/models/cata.dart';
 import 'package:catacroket/core/models/corte.dart';
 import 'package:catacroket/core/models/dieta.dart';
@@ -170,6 +171,118 @@ void main() {
       esLaSiembra(catas);
     });
   });
+
+  group('Lo que no se ha podido leer no se pierde', () {
+    const String ilegible = 'catacroket.catas.ilegible.v1';
+
+    /// Un guardado de verdad que esta versión no sabe interpretar.
+    ///
+    /// No es un caso de laboratorio: basta con que una actualización cambie
+    /// el tipo de un campo y `fromJson` reviente, y entonces le pasa a todos
+    /// los usuarios a la vez, el mismo día.
+    const String loQueHabia = '[{"id":"la-de-mi-boda",'
+        '"sitio":"Casa Ricardo","corte":"esto ya no cuela"}]';
+
+    test('el primer cambio del usuario no lo pisa', () async {
+      // Éste era el fallo. Al no poder leer, el estado se quedaba con los
+      // datos de demostración; en cuanto el usuario tocaba algo se llamaba a
+      // guardar, y guardar escribía la demostración encima de la única copia
+      // que existía de sus catas. Sin aviso y sin vuelta atrás.
+      SharedPreferences.setMockInitialValues(
+        <String, Object>{clave: loQueHabia},
+      );
+      final ProviderContainer c = await arrancar();
+
+      await c.read(catasProvider.notifier).anadir(cata(id: 'la-de-hoy'));
+      c.dispose();
+
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getString(ilegible),
+        loQueHabia,
+        reason: 'lo que no se pudo leer tiene que quedar apartado antes de '
+            'que el siguiente guardado lo pise',
+      );
+    });
+
+    test('lo apartado la primera vez no lo pisa lo de después', () async {
+      // Al segundo arranque lo guardado ya es la siembra, que se lee bien. La
+      // guarda está por si acaso: el primer apartado es el del usuario, y
+      // cualquier otro sería de la app funcionando con la demostración.
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        clave: 'basura nueva',
+        ilegible: loQueHabia,
+      });
+      final ProviderContainer c = await arrancar();
+      c.dispose();
+
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(ilegible), loQueHabia);
+    });
+
+    test('un guardado que se lee bien no aparta nada', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        clave: jsonEncode(<Map<String, dynamic>>[cata().toJson()]),
+      });
+      final ProviderContainer c = await arrancar();
+      c.dispose();
+
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(ilegible), isNull);
+    });
+
+    test('sin nada guardado tampoco', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final ProviderContainer c = await arrancar();
+      c.dispose();
+
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(ilegible), isNull);
+    });
+  });
+
+
+  group('Un fallo al leer deja rastro', () {
+    // El embudo de errores existía y no lo usaba nadie salvo los fallos no
+    // capturados de Flutter. O sea: si alguien decía «he perdido mis catas»,
+    // la bitácora que puede mandar desde Ajustes venía vacía. Esto comprueba
+    // que los providers están enchufados de verdad, no sólo que el embudo
+    // está escrito.
+    late List<String> apuntados;
+
+    setUp(() {
+      apuntados = <String>[];
+      Errores.apuntarEn(
+        (Object error, StackTrace? pila, String origen) =>
+            apuntados.add(origen),
+      );
+    });
+
+    tearDown(() => Errores.apuntarEn((_, _, _) {}));
+
+    test('un guardado ilegible se apunta y dice de dónde viene', () async {
+      SharedPreferences.setMockInitialValues(
+        <String, Object>{clave: 'esto no es json {{{'},
+      );
+      final ProviderContainer c = await arrancar();
+      c.dispose();
+
+      expect(apuntados, contains('catas.cargar'));
+    });
+
+    test('un arranque normal no apunta nada', () async {
+      // Un embudo que se queja cuando todo va bien es un embudo que se acaba
+      // ignorando.
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        clave: jsonEncode(<Map<String, dynamic>>[cata().toJson()]),
+      });
+      final ProviderContainer c = await arrancar();
+      c.dispose();
+
+      expect(apuntados, isEmpty);
+    });
+  });
+
 }
 
 /// Los identificadores con los que arranca la app cuando no hay nada guardado.

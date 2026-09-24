@@ -39,7 +39,10 @@ class MiDietaNotifier extends StateNotifier<Set<Dieta>> {
         state.map((Dieta d) => d.id).toList(),
       );
     } catch (_) {
-      // Best-effort, como el resto del almacenamiento local.
+      // Best-effort, como el resto del almacenamiento local. Tampoco se
+      // apunta, por lo mismo que en `visto_provider`: perder una dieta
+      // marcada se arregla volviéndola a marcar, y la bitácora tiene veinte
+      // sitios que hacen falta para lo que no se arregla solo.
     }
   }
 

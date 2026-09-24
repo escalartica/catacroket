@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../errores.dart';
+
 /// Lo que quien usa la app no quiere encontrarse.
 ///
 /// Va aparte de `miDietaProvider` a proposito, y la diferencia importa:
@@ -33,8 +35,11 @@ class EvitarNotifier extends StateNotifier<Set<String>> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       state = <String>{...?prefs.getStringList(_clave)};
-    } catch (_) {
-      // Si no se puede leer, no se evita nada. Es el fallo mas inofensivo.
+    } catch (error, pila) {
+      // Si no se puede leer, no se evita nada: la app deja de avisar de lo que
+      // el usuario apuntó que no quiere. No es el fallo más inofensivo, es de
+      // los que más conviene poder ver luego.
+      Errores.registrar(error, pila, origen: 'evitar.cargar');
     }
   }
 
@@ -42,8 +47,8 @@ class EvitarNotifier extends StateNotifier<Set<String>> {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(_clave, state.toList());
-    } catch (_) {
-      // Best-effort, como el resto del almacenamiento local.
+    } catch (error, pila) {
+      Errores.registrar(error, pila, origen: 'evitar.guardar');
     }
   }
 

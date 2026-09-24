@@ -31,6 +31,10 @@ class Copia {
   /// nuevo es mejor que se vuelvan a enseñar.
   static const List<String> claves = <String>[
     'catacroket.catas.v1',
+    // Catas que la app no ha sabido leer y apartó sin tocarlas. Van en la
+    // copia porque el fichero es JSON legible: si una actualización rompe el
+    // formato, están ahí para rescatarlas a mano en vez de perdidas.
+    'catacroket.catas.ilegible.v1',
     'catacroket.mesas.v1',
     'catacroket.evitar.v1',
     'catacroket.midieta.v1',

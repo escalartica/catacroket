@@ -186,6 +186,13 @@ void main() {
       expect(Copia.claves, contains('catacroket.midieta.v1'));
     });
 
+    test('y las catas que la app no ha sabido leer', () {
+      // Si una actualización rompe el formato, esas catas se apartan sin
+      // tocarlas. Dejarlas fuera de la copia sería perderlas del todo: es
+      // justo lo que hay que poder rescatar a mano del JSON.
+      expect(Copia.claves, contains('catacroket.catas.ilegible.v1'));
+    });
+
     test('los carteles de ayuda cerrados NO entran', () {
       // En un móvil nuevo es mejor que se vuelvan a enseñar: estás
       // empezando otra vez, aunque tus catas sean las de siempre.

@@ -8,6 +8,7 @@ import '../data/datos_demo.dart';
 import '../data/siembra.dart';
 import '../models/cata.dart';
 import '../models/mesa.dart';
+import '../errores.dart';
 import 'catas_provider.dart';
 
 /// Mesas del usuario.
@@ -47,8 +48,9 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
             ? leidas
             : <Mesa>[Siembra.libreta, ...leidas];
       }
-    } catch (_) {
+    } catch (error, pila) {
       // Un guardado corrupto no puede dejar al usuario sin mesas.
+      Errores.registrar(error, pila, origen: 'mesas.cargar');
     }
   }
 
@@ -59,8 +61,10 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
         _clave,
         jsonEncode(state.map((Mesa m) => m.toJson()).toList()),
       );
-    } catch (_) {
-      // Best-effort, como en las catas.
+    } catch (error, pila) {
+      // Best-effort, como en las catas, y apuntado por lo mismo: una mesa que
+      // creaste y desaparece al reiniciar tiene que dejar rastro.
+      Errores.registrar(error, pila, origen: 'mesas.guardar');
     }
   }
 

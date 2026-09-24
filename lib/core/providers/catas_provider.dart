@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../data/datos_demo.dart';
 import '../data/siembra.dart';
+import '../errores.dart';
 import '../models/cata.dart';
 import '../models/dieta.dart';
 import '../models/medio.dart';
@@ -28,10 +29,28 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
 
   static const String _clave = 'catacroket.catas.v1';
 
+  /// Donde se aparta un guardado que no se ha podido interpretar.
+  ///
+  /// Existe porque faltaba, y era el fallo más grave que tenía la app. Al no
+  /// poder leer, el estado se quedaba con los datos de demostración; en cuanto
+  /// el usuario tocaba cualquier cosa se llamaba a `_guardar()`, y guardar
+  /// escribía la demostración encima de la única copia que había de sus catas.
+  /// Sin aviso y sin vuelta atrás.
+  ///
+  /// Y no hace falta un disco roto para llegar ahí: basta con que una versión
+  /// futura cambie el tipo de un campo y `Cata.fromJson` reviente. Eso no le
+  /// pasa a un usuario con mala suerte, le pasa a todos el mismo día.
+  ///
+  /// Lo apartado viaja en la copia de seguridad (ver `Copia.claves`). El
+  /// fichero es JSON legible a ojo a propósito, así que unas catas que la app
+  /// no entiende se pueden rescatar a mano desde ahí.
+  static const String _claveIlegible = 'catacroket.catas.ilegible.v1';
+
   Future<void> _cargar() async {
+    String? crudo;
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      final String? crudo = prefs.getString(_clave);
+      crudo = prefs.getString(_clave);
       if (crudo == null || crudo.isEmpty) return;
 
       final List<dynamic> lista = jsonDecode(crudo) as List<dynamic>;
@@ -40,9 +59,28 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
           .toList();
 
       if (leidas.isNotEmpty) state = leidas;
+    } catch (error, pila) {
+      // Un guardado corrupto no puede dejar la app en blanco: se sigue con lo
+      // que haya en memoria. Pero tampoco puede desaparecer, así que primero
+      // se aparta tal cual, antes de que nadie pueda pisarlo.
+      await _apartarIlegible(crudo);
+      Errores.registrar(error, pila, origen: 'catas.cargar');
+    }
+  }
+
+  /// Guarda tal cual un texto que no se ha podido interpretar.
+  ///
+  /// Si ya hay uno apartado no se toca: el primero es el del usuario, y
+  /// cualquier otro vendría de la app funcionando ya con la demostración.
+  Future<void> _apartarIlegible(String? crudo) async {
+    if (crudo == null || crudo.isEmpty) return;
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      if (prefs.getString(_claveIlegible) != null) return;
+      await prefs.setString(_claveIlegible, crudo);
     } catch (_) {
-      // Un guardado corrupto no puede dejar la app en blanco: se ignora y se
-      // sigue con lo que haya en memoria.
+      // Si tampoco se puede escribir esto, no hay nada más que hacer aquí, y
+      // reventar dejaría la app sin arrancar por algo que ya iba mal.
     }
   }
 
@@ -53,8 +91,13 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
         _clave,
         jsonEncode(state.map((Cata c) => c.toJson()).toList()),
       );
-    } catch (_) {
-      // Guardar es best-effort. Si falla, la sesión sigue funcionando.
+    } catch (error, pila) {
+      // La sesión sigue funcionando, pero esto no es inofensivo: la cata está
+      // en memoria y no en el disco, así que la app dice «guardada» y al
+      // reiniciar no está. El caso realista no es un disco roto, es un móvil
+      // sin espacio. Al menos queda apuntado en la bitácora, que el usuario
+      // puede mandar desde Ajustes.
+      Errores.registrar(error, pila, origen: 'catas.guardar');
     }
   }
 

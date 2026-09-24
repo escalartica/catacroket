@@ -53,6 +53,11 @@ class VistoNotifier extends StateNotifier<Set<String>> {
       await prefs.setStringList(_clave, state.toList());
     } catch (_) {
       // Best-effort: si no se guarda, se volverá a enseñar. Molesta, no rompe.
+      //
+      // A propósito no se apunta en la bitácora, y no es un olvido: si el
+      // almacenamiento se rompe fallan todos los providers a la vez, y la
+      // bitácora sólo guarda veinte entradas. Llenarla con esto taparía el
+      // «catas.guardar», que es el que hay que poder leer.
     }
   }
 
