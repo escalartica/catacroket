@@ -95,7 +95,12 @@ class _HojaMesaState extends ConsumerState<_HojaMesa> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      padding: EdgeInsets.only(
+        // viewInsetsOf sube con el teclado; paddingOf cubre la barra de
+        // navegación de Android cuando el teclado está cerrado.
+        bottom: MediaQuery.viewInsetsOf(context).bottom +
+            MediaQuery.paddingOf(context).bottom,
+      ),
       child: Container(
         margin: const EdgeInsets.all(AppSpacing.s),
         padding: const EdgeInsets.all(AppSpacing.l),

@@ -157,16 +157,24 @@ class DetallePage extends ConsumerWidget {
                 children: <Widget>[
                   Nota(valor: cata.puntuacion, grande: true, conSufijo: true),
                   const SizedBox(width: 14),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text('La nota', style: AppTypography.tituloS.copyWith(fontSize: 16)),
-                      Text(
-                        'Gana por ${cata.corte.ejeFuerte}',
-                        style: AppTypography.cuerpoS.copyWith(fontSize: 13),
-                      ),
-                    ],
+                  // Flexible: con el texto grande de accesibilidad estas dos
+                  // líneas crecen y la fila se salía 76 píxeles. Así se parten
+                  // en vez de salirse, y a tamaño normal no cambia nada.
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(
+                          'La nota',
+                          style: AppTypography.tituloS.copyWith(fontSize: 16),
+                        ),
+                        Text(
+                          'Gana por ${cata.corte.ejeFuerte}',
+                          style: AppTypography.cuerpoS.copyWith(fontSize: 13),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

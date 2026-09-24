@@ -159,7 +159,7 @@ class _VisorState extends State<_Visor> {
           // Cuántas son y cuál estás viendo. Sólo si hay más de una.
           if (varias)
             Positioned(
-              bottom: AppSpacing.xl,
+              bottom: AppSpacing.xl + MediaQuery.paddingOf(context).bottom,
               left: 0,
               right: 0,
               child: Center(

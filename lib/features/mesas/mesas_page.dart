@@ -189,18 +189,29 @@ class _TarjetaMesa extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: <Widget>[
-              _Dato(valor: '${catas.length}', etiqueta: 'catas'),
-              const SizedBox(width: AppSpacing.l),
-              _Dato(
-                valor: media == null ? '—' : Formato.nota(media),
-                etiqueta: 'media',
+              // Wrap y no tres huecos fijos: con el texto grande de los
+              // ajustes de accesibilidad las tres cifras no caben en una línea
+              // y la fila se salía 23 píxeles. Así bajan a la siguiente en vez
+              // de salirse, y a tamaño normal se ven exactamente igual.
+              Expanded(
+                child: Wrap(
+                  spacing: AppSpacing.l,
+                  runSpacing: AppSpacing.s,
+                  crossAxisAlignment: WrapCrossAlignment.end,
+                  children: <Widget>[
+                    _Dato(valor: '${catas.length}', etiqueta: 'catas'),
+                    _Dato(
+                      valor: media == null ? '—' : Formato.nota(media),
+                      etiqueta: 'media',
+                    ),
+                    _Dato(
+                      valor: '${mesa.miembros.length}',
+                      etiqueta: mesa.miembros.length == 1 ? 'tú' : 'personas',
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(width: AppSpacing.l),
-              _Dato(
-                valor: '${mesa.miembros.length}',
-                etiqueta: mesa.miembros.length == 1 ? 'tú' : 'personas',
-              ),
-              const Spacer(),
+              const SizedBox(width: AppSpacing.s),
               PilaAvatares(
                 personas: mesa.miembros
                     .map((String id) => personas[id] ?? Persona.desconocida)
