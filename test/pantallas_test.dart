@@ -160,6 +160,67 @@ void main() {
       expect(find.text('CAMINO AL SIGUIENTE RANGO'), findsOneWidget);
       expect(find.text('catas'), findsWidgets);
     });
+
+    testWidgets('«Restablecer» no borra de un solo toque', (
+      WidgetTester tester,
+    ) async {
+      // Era la única acción destructiva de la app sin confirmación: borrar
+      // una cata pregunta, borrar una mesa pregunta, y borrarlo todo se hacía
+      // con un toque, en una lista donde el botón de al lado es «Ver las
+      // explicaciones» y tiene exactamente el mismo aspecto.
+      final ProviderContainer contenedor = ProviderContainer();
+      addTearDown(contenedor.dispose);
+      final int antes = contenedor.read(catasProvider).length;
+      expect(antes, greaterThan(0), reason: 'hace falta algo que perder');
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: contenedor,
+          child: const MaterialApp(home: Scaffold(body: PerfilPage())),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      await tester.tap(find.byIcon(Icons.settings_rounded));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.tap(find.text('Restablecer'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(
+        find.text('¿Borrarlo todo?'),
+        findsOneWidget,
+        reason: 'tiene que preguntar antes',
+      );
+      expect(
+        contenedor.read(catasProvider).length,
+        antes,
+        reason: 'y no haber borrado nada todavía',
+      );
+    });
+
+    testWidgets('la confirmación ofrece guardar una copia antes', (
+      WidgetTester tester,
+    ) async {
+      // Ofrecer el remedio en el momento del riesgo vale más que haberlo
+      // explicado dos pantallas antes: quien llega aquí es justo quien no ha
+      // guardado ninguna copia.
+      await montar(tester, const PerfilPage());
+
+      await tester.tap(find.byIcon(Icons.settings_rounded));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Restablecer'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Guardar una copia primero'), findsOneWidget);
+      expect(find.text('Dejarlo como está'), findsOneWidget);
+      expect(find.text('Borrarlo todo'), findsOneWidget);
+    });
   });
 
   group('Barra Libre', () {

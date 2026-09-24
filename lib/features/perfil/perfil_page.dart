@@ -13,6 +13,7 @@ import '../../core/models/persona.dart';
 import '../../core/bitacora.dart';
 import '../../core/copia.dart';
 import '../../core/data/enlaces.dart';
+import '../../core/data/siembra.dart';
 import '../../core/providers/catas_provider.dart';
 import '../../core/models/dieta.dart';
 import '../../core/providers/mesas_provider.dart';
@@ -331,6 +332,83 @@ class PerfilPage extends ConsumerWidget {
     );
   }
 
+  /// Segunda pregunta antes de borrarlo todo.
+  ///
+  /// No la había, y era la única acción destructiva de la app que iba sin
+  /// ella: borrar una cata pregunta, borrar una mesa pregunta, y borrarlo todo
+  /// se hacía con un toque, en una lista donde el botón de al lado es «Ver las
+  /// explicaciones» y tiene exactamente el mismo aspecto.
+  ///
+  /// Lleva «Guardar una copia primero» dentro. Ofrecer el remedio en el
+  /// momento del riesgo vale más que haberlo explicado dos pantallas antes:
+  /// quien llega aquí es justo quien no ha guardado ninguna.
+  Future<void> _confirmarRestablecer(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final int catas = ref.read(catasProvider).length;
+    final int mesas = ref.read(mesasProvider).length;
+
+    final _QueHacer? que = await showDialog<_QueHacer>(
+      context: context,
+      builder: (BuildContext dialogo) => AlertDialog(
+        backgroundColor: AppColors.superficie,
+        title: const Text('¿Borrarlo todo?'),
+        content: Text(
+          catas == 0
+              ? 'No tienes ninguna cata apuntada, así que no se pierde nada.'
+              : 'Se van tus ${Formato.plural(catas, 'cata', 'catas')} y tus '
+                  '${Formato.plural(mesas, 'mesa', 'mesas')}, con sus fotos y '
+                  'sus vídeos. No se puede deshacer y no hay copia en la nube: '
+                  'si no te has guardado una, se van para siempre.',
+        ),
+        actions: <Widget>[
+          if (catas > 0)
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(dialogo).pop(_QueHacer.guardarCopia),
+              child: const Text('Guardar una copia primero'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogo).pop(_QueHacer.nada),
+            child: const Text('Dejarlo como está'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogo).pop(_QueHacer.borrar),
+            child: const Text('Borrarlo todo'),
+          ),
+        ],
+      ),
+    );
+
+    if (!context.mounted) return;
+
+    if (que == _QueHacer.guardarCopia) {
+      await _guardarCopia(context);
+      return;
+    }
+    if (que != _QueHacer.borrar) return;
+
+    final ScaffoldMessengerState mensajero = ScaffoldMessenger.of(context);
+    final bool hecho = await ref.read(catasProvider.notifier).restablecer();
+    await ref.read(mesasProvider.notifier).restablecer();
+
+    // Restablecer puede fallar igual que guardar: si el móvil no escribe, las
+    // catas siguen ahí y al reiniciar reaparecen. Decirlo evita que alguien
+    // crea que ha borrado sus datos cuando no lo ha hecho.
+    mensajero
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            hecho
+                ? 'Listo. La app está como recién instalada.'
+                : 'No se ha podido borrar. Tus catas siguen donde estaban.',
+          ),
+        ),
+      );
+  }
+
   void _ajustes(BuildContext context, WidgetRef ref) {
     // Sólo se ofrece contar un fallo si hay alguno apuntado. Un botón de
     // "algo ha ido mal" siempre visible en una app que funciona sólo siembra
@@ -345,8 +423,9 @@ class PerfilPage extends ConsumerWidget {
           'Todavía no hay cuenta ni nube: las catas viven en este móvil. '
           'Guarda una copia de vez en cuando y no dependerás de él.\n\n'
           '«Ver las explicaciones» vuelve a enseñar los carteles de cada '
-          'apartado. «Restablecer» borra tus catas y deja los datos de '
-          'ejemplo.'
+          'apartado. «Restablecer» borra todas tus catas y tus mesas: '
+          '${Siembra.conEjemplos ? 'en esta versión de pruebas vuelven los '
+              'datos de ejemplo' : 'la app se queda como recién instalada'}.'
           '${fallos.isEmpty ? '' : '\n\nLa app ha tenido '
               '${fallos.length} ${fallos.length == 1 ? 'fallo' : 'fallos'}. '
               'Si quieres, mándalos y se arreglan.'}',
@@ -384,9 +463,8 @@ class PerfilPage extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () {
-              ref.read(catasProvider.notifier).restablecer();
-              ref.read(mesasProvider.notifier).restablecer();
               Navigator.of(context).pop();
+              _confirmarRestablecer(context, ref);
             },
             child: const Text('Restablecer'),
           ),
@@ -665,3 +743,9 @@ class _ComoComo extends StatelessWidget {
     );
   }
 }
+
+/// Qué eligió el usuario en la confirmación de borrarlo todo.
+///
+/// Un enum y no un bool porque hay tres salidas, no dos: borrar, no borrar, y
+/// «guardar una copia primero», que es la que de verdad importa que exista.
+enum _QueHacer { borrar, nada, guardarCopia }
