@@ -61,10 +61,27 @@ void main() {
       expect(find.textContaining('Racha'), findsWidgets);
     });
 
-    testWidgets('los tres filtros del feed están puestos', (
+    testWidgets('los tres filtros del feed se ven sin hacer scroll', (
       WidgetTester tester,
     ) async {
+      // En un móvil de verdad y no en los 800x600 de fábrica de un test. La
+      // cabecera de esta pantalla lleva ya la marca, el título, el cartel de
+      // ayuda, la racha, la croqueta del día, la Barra Libre y la caja de
+      // buscar: es la que más carga acumula, y cada cosa que se le añade
+      // empuja la lista hacia abajo. Este test es el que avisa.
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(440, 956); // iPhone 16 Pro Max
+      addTearDown(tester.view.reset);
+
+      // Con el cartel de ayuda ya cerrado, que es como se ve la pantalla a
+      // partir del segundo día. El primero es otra historia y tiene su propio
+      // grupo de tests más abajo.
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'catacroket.visto.v1': <String>['pista.vitrina'],
+      });
+
       await montar(tester, const VitrinaPage());
+      await tester.pump(const Duration(milliseconds: 300));
 
       expect(find.text('Todo'), findsOneWidget);
       expect(find.text('Mis mesas'), findsOneWidget);
