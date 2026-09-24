@@ -6,7 +6,6 @@ import 'app/router.dart';
 import 'core/bitacora.dart';
 import 'core/errores.dart';
 import 'core/theme/app_theme.dart';
-import 'core/theme/tokens/app_colors.dart';
 
 void main() {
   // Todo el arranque va dentro de la zona vigilada, no sólo el runApp: el
@@ -26,12 +25,18 @@ Future<void> _arrancar() async {
 
   // Barra de estado transparente con iconos oscuros: el fondo de la app es
   // crema, así que los iconos blancos por defecto de Android desaparecerían.
+  // En Android 15+ el edge-to-edge está forzado: systemNavigationBarColor se
+  // ignora y la app debe extenderse debajo de la barra del sistema. Con
+  // extendBody:true y el padding dinámico de _BarraPestanas ya está resuelto;
+  // poner Colors.transparent aquí evita un rectángulo de otro color en los
+  // Androids donde sí se aplica.
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
       statusBarBrightness: Brightness.light,
-      systemNavigationBarColor: AppColors.superficie,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarContrastEnforced: false,
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );

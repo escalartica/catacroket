@@ -43,21 +43,29 @@ class Buscador extends StatelessWidget {
           const Icon(Icons.search_rounded, size: 20, color: AppColors.tinta),
           const SizedBox(width: 8),
           Expanded(
-            child: TextField(
-              controller: control,
-              onChanged: onCambio,
-              textInputAction: TextInputAction.search,
-              style: AppTypography.cuerpo.copyWith(fontSize: 15),
-              cursorColor: AppColors.tinta,
-              decoration: InputDecoration(
-                hintText: pista,
-                hintStyle: AppTypography.cuerpo.copyWith(
-                  fontSize: 15,
-                  color: AppColors.tintaSuave,
-                  fontWeight: FontWeight.w600,
+            // La pista sólo se ve mientras la caja está vacía. En cuanto
+            // escribes algo desaparece, y sin esta etiqueta un lector de
+            // pantalla leería lo tecleado sin decir nunca en qué campo estás.
+            // Es el mismo arreglo que lleva `Campo`.
+            child: Semantics(
+              label: pista,
+              textField: true,
+              child: TextField(
+                controller: control,
+                onChanged: onCambio,
+                textInputAction: TextInputAction.search,
+                style: AppTypography.cuerpo.copyWith(fontSize: 15),
+                cursorColor: AppColors.tinta,
+                decoration: InputDecoration(
+                  hintText: pista,
+                  hintStyle: AppTypography.cuerpo.copyWith(
+                    fontSize: 15,
+                    color: AppColors.tintaSuave,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
                 ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(vertical: 13),
               ),
             ),
           ),

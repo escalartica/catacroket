@@ -14,5 +14,10 @@ class AppSpacing {
   static const double pantalla = 20;
 
   /// Hueco que deja la barra de pestañas al final de cada lista.
-  static const double huecoBarra = 108;
+  ///
+  /// La barra mide ~69 dp fijos (relleno + iconos + etiquetas) más el inset
+  /// del sistema (home indicator en iPhone ≈ 34 dp; barra de 3 botones en
+  /// Android ≈ 48 dp; navegación por gestos ≈ 0 dp). 120 dp cubre el peor
+  /// caso conocido con un par de dp de margen.
+  static const double huecoBarra = 120;
 }
