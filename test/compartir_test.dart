@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:catacroket/core/data/enlaces.dart';
 import 'package:catacroket/core/models/cata.dart';
 import 'package:catacroket/core/models/corte.dart';
@@ -88,6 +90,36 @@ void main() {
         ),
         contains(Enlaces.dondeEsta),
       );
+    });
+  });
+
+  group('La otra app', () {
+    test('el enlace apunta a la App Store, no a cualquier sitio', () {
+      expect(Enlaces.palito, startsWith('https://apps.apple.com/'));
+      expect(Enlaces.hayPalito, isTrue);
+    });
+
+    test('hayPalito y palito no pueden contradecirse', () {
+      expect(Enlaces.hayPalito, Enlaces.palito.isNotEmpty);
+    });
+
+    test('el logo está donde dice y no en assets/brand', () {
+      // assets/brand es la marca de Catacroket. Meter ahí el logo de otra
+      // app confundiría a quien abra la carpeta dentro de seis meses.
+      expect(Enlaces.logoPalito, startsWith('assets/palito/'));
+    });
+
+    test('el fichero del logo existe de verdad', () {
+      // Un asset que falta no lo detecta el analizador: sale como un hueco
+      // en el móvil y ya está.
+      expect(File(Enlaces.logoPalito).existsSync(), isTrue);
+    });
+
+    test('la carpeta del logo está declarada en pubspec', () {
+      // Se puede copiar el fichero y olvidarse de declararlo. Entonces
+      // existe en disco, el test de arriba pasa, y en la app no se ve.
+      final String pubspec = File('pubspec.yaml').readAsStringSync();
+      expect(pubspec, contains('assets/palito/'));
     });
   });
 

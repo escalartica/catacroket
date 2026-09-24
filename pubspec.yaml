@@ -58,6 +58,8 @@ flutter:
   assets:
     - assets/brand/
     - assets/icon/
+    # El logo de la otra app. Aparte de assets/brand/, que es la nuestra.
+    - assets/palito/
 
   fonts:
     - family: Fredoka

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,6 +8,7 @@ import '../../arte/croqui.dart';
 import '../../core/data/rangos.dart';
 import '../../core/models/persona.dart';
 import '../../core/bitacora.dart';
+import '../../core/data/enlaces.dart';
 import '../../core/providers/catas_provider.dart';
 import '../../core/models/dieta.dart';
 import '../../core/providers/mesas_provider.dart';
@@ -248,6 +250,8 @@ class PerfilPage extends ConsumerWidget {
                 onTap: () => _invitar(context),
               ),
               const SizedBox(height: AppSpacing.xl),
+              const _OtraApp(),
+              const SizedBox(height: AppSpacing.xl),
               const _Firma(),
               const SizedBox(height: AppSpacing.huecoBarra),
             ],
@@ -423,6 +427,90 @@ class _Medalla extends StatelessWidget {
 }
 
 /// La firma del pie: la marca, discreta, donde se mira sin buscarla.
+/// La otra app de los mismos.
+///
+/// Va al final del Perfil, no en el feed ni en una pestaña: es una
+/// recomendación, no una función de Catacroket. Quien nunca baje hasta aquí
+/// no se entera, y está bien que sea así.
+///
+/// Y explica por qué existe en vez de limitarse a enseñar un logo:
+/// Catacroket es sólo de croquetas a propósito —es lo que la hace
+/// reconocible— así que a quien quiera apuntar ensaladillas y tortillas hay
+/// que mandarlo a otro sitio, no ensanchar ésta hasta que no sea de nada.
+class _OtraApp extends StatelessWidget {
+  const _OtraApp();
+
+  Future<void> _abrir() async {
+    try {
+      await launchUrl(
+        Uri.parse(Enlaces.palito),
+        mode: LaunchMode.externalApplication,
+      );
+    } on Object catch (_) {
+      // Si no se puede abrir la tienda no hay nada que decir: es una
+      // recomendación, no una acción que el usuario estuviera esperando.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!Enlaces.hayPalito) return const SizedBox.shrink();
+
+    return Semantics(
+      button: true,
+      label: 'Palito de Sabores, la otra app. Abre la App Store',
+      excludeSemantics: true,
+      child: Pegatina(
+        onTap: _abrir,
+        padding: const EdgeInsets.all(AppSpacing.m),
+        child: Row(
+          children: <Widget>[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppShape.radioM),
+              child: Image.asset(
+                Enlaces.logoPalito,
+                width: 54,
+                height: 54,
+                fit: BoxFit.cover,
+                // Si el logo faltara, la fila sigue teniendo sentido sin él.
+                errorBuilder: (_, _, _) => const SizedBox(width: 54, height: 54),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.m),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    'Palito de Sabores',
+                    style: AppTypography.tituloS.copyWith(fontSize: 16),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Aquí sólo hay croquetas. Si además catas ensaladillas, '
+                    'tortillas o postres, ésa es la libreta.',
+                    style: AppTypography.cuerpoS.copyWith(
+                      fontSize: 12.5,
+                      height: 1.3,
+                      color: AppColors.tintaSuave,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.s),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.tinta,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _Firma extends StatelessWidget {
   const _Firma();
 
