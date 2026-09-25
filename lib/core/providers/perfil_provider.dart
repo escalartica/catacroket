@@ -5,13 +5,16 @@ import '../data/rangos.dart';
 import '../models/cata.dart';
 import '../models/corte.dart';
 import '../models/semanas.dart';
+import '../utils/texto.dart';
 import 'catas_provider.dart';
+import 'yo_provider.dart';
 
 /// Resumen del Croquetómetro. Todo se calcula a partir de las catas: no hay
 /// contadores guardados que puedan desincronizarse de la realidad.
 class Perfil {
   const Perfil({
     required this.catas,
+    required this.comidas,
     required this.media,
     required this.ciudades,
     required this.paises,
@@ -22,7 +25,15 @@ class Perfil {
     required this.medallas,
   });
 
+  /// Las que subiste tú: las apuntaste con tu móvil.
   final int catas;
+
+  /// Las que te has comido, que no es lo mismo.
+  ///
+  /// Cuentan las tuyas y además aquellas en las que alguien te puso como
+  /// acompañante: estabas en la mesa y te la comiste, aunque la apuntara
+  /// otro. En un grupo eso es lo normal — apunta uno por todos.
+  final int comidas;
 
   /// Nulo mientras no haya ninguna cata: así la pantalla pinta un guion en
   /// vez de un 0,0 que parecería una nota malísima.
@@ -79,14 +90,26 @@ class Perfil {
 }
 
 final perfilProvider = Provider<Perfil>((ref) {
-  final List<Cata> mias = ref
-      .watch(catasRecientesProvider)
-      .where((Cata c) => c.autorId == DatosDemo.yo)
-      .toList();
+  final List<Cata> todas = ref.watch(catasRecientesProvider);
+  final List<Cata> mias =
+      todas.where((Cata c) => c.autorId == DatosDemo.yo).toList();
 
-  if (mias.isEmpty) {
+  // Las que te has comido: las tuyas más aquellas donde alguien te nombró
+  // como acompañante. En un grupo apunta uno por todos, así que quien no
+  // teclea saldría con cero catas aunque se las haya comido todas.
+  //
+  // El nombre se compara sin tildes y sin mayúsculas porque lo escribe otra
+  // persona a mano: «Cehache», «cehache» y «Ceháche» son el mismo.
+  final String tuNombre = Texto.normalizar(ref.watch(yoProvider).nombre);
+  final int comidas = todas.where((Cata c) {
+    if (c.autorId == DatosDemo.yo) return true;
+    return c.acompanantes.any((String a) => Texto.normalizar(a) == tuNombre);
+  }).length;
+
+  if (mias.isEmpty && comidas == 0) {
     return const Perfil(
       catas: 0,
+      comidas: 0,
       media: null,
       ciudades: 0,
       paises: 0,
@@ -127,6 +150,7 @@ final perfilProvider = Provider<Perfil>((ref) {
 
   return Perfil(
     catas: n,
+    comidas: comidas,
     media: mediaDe(mias),
     ciudades: ciudades.length,
     paises: paises.length,

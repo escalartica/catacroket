@@ -137,14 +137,34 @@ class PerfilPage extends ConsumerWidget {
               // ── Cifras ───────────────────────────────────────────────────
               Row(
                 children: <Widget>[
+                  // Subidas y comidas no son lo mismo en cuanto catáis en
+                  // grupo: apunta uno por todos, así que quien no teclea
+                  // saldría con cero aunque se las haya comido todas.
+                  //
+                  // Pero mientras no haya ninguna de otro, los dos números
+                  // son idénticos y poner «6 subidas, 6 comidas» es decir lo
+                  // mismo dos veces y ocupar sitio para nada. Se desdobla
+                  // sólo cuando de verdad difieren.
                   Expanded(
                     child: _Cifra(
                       valor: '${perfil.catas}',
-                      etiqueta: 'catas',
+                      etiqueta: perfil.comidas > perfil.catas
+                          ? 'subidas'
+                          : 'catas',
                       color: AppColors.chicle,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.s),
+                  if (perfil.comidas > perfil.catas) ...<Widget>[
+                    Expanded(
+                      child: _Cifra(
+                        valor: '${perfil.comidas}',
+                        etiqueta: 'comidas',
+                        color: AppColors.uva,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.s),
+                  ],
                   Expanded(
                     child: _Cifra(
                       valor: perfil.media == null ? '—' : Formato.nota(perfil.media!),

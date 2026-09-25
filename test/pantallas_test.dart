@@ -175,7 +175,21 @@ void main() {
       await montar(tester, const PerfilPage());
 
       expect(find.text('CAMINO AL SIGUIENTE RANGO'), findsOneWidget);
-      expect(find.text('catas'), findsWidgets);
+      expect(find.text('nota media'), findsWidgets);
+    });
+
+    testWidgets('separa las que subiste de las que te comiste', (
+      WidgetTester tester,
+    ) async {
+      // En los datos de ejemplo hay catas de otros donde tú sales como
+      // acompañante, así que los dos números difieren y se enseñan los dos.
+      // Cuando coinciden —nadie te ha nombrado todavía— se enseña sólo
+      // «catas», que es lo que hay que decir para no repetir el mismo
+      // número dos veces.
+      await montar(tester, const PerfilPage());
+
+      expect(find.text('subidas'), findsWidgets);
+      expect(find.text('comidas'), findsWidgets);
     });
 
     testWidgets('«Restablecer» no borra de un solo toque', (

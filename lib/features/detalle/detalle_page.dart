@@ -236,6 +236,16 @@ class DetallePage extends ConsumerWidget {
                     children: <Widget>[
                       const EtiquetaPanel(texto: 'La bandeja'),
                       const SizedBox(height: AppSpacing.m),
+
+                      // Quién ganó y quién perdió, antes de la lista.
+                      //
+                      // El modelo ya lo calculaba y no se enseñaba en ninguna
+                      // pantalla. Es la frase que se dice al salir del bar
+                      // —«ganó la de calamar, la de jamón era de cartón»— y
+                      // es justo lo que quiere contar quien pide una ración
+                      // variada.
+                      _Veredicto(cata: cata),
+
                       for (final Sabor sabor in cata.sabores)
                         _FilaBandeja(sabor: sabor),
                     ],
@@ -866,6 +876,79 @@ class _ComoEstaHecha extends StatelessWidget {
               compacto: true,
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+/// La mejor y la peor de una bandeja.
+///
+/// No se enseña si todas empataron: «ganó la de jamón y perdió la de jamón»
+/// no dice nada. Con empate se dice el empate, que sí dice algo.
+class _Veredicto extends StatelessWidget {
+  const _Veredicto({required this.cata});
+
+  final Cata cata;
+
+  @override
+  Widget build(BuildContext context) {
+    final Sabor? mejor = cata.mejorSabor;
+    final Sabor? peor = cata.peorSabor;
+    if (mejor == null || peor == null) return const SizedBox.shrink();
+
+    final bool empate = mejor.veredicto == peor.veredicto;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.m),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          if (empate)
+            _Linea(
+              emoji: '🤝',
+              texto: 'Todas igual de ${mejor.veredicto.nombre.toLowerCase()}.',
+            )
+          else ...<Widget>[
+            _Linea(
+              emoji: '🏆',
+              texto: 'Ganó la de ${mejor.nombre.toLowerCase()}',
+              cola: mejor.veredicto.nombre.toLowerCase(),
+            ),
+            const SizedBox(height: 4),
+            _Linea(
+              emoji: '🥀',
+              texto: 'La peor, la de ${peor.nombre.toLowerCase()}',
+              cola: peor.veredicto.nombre.toLowerCase(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _Linea extends StatelessWidget {
+  const _Linea({required this.emoji, required this.texto, this.cola});
+
+  final String emoji;
+  final String texto;
+  final String? cola;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(emoji, style: const TextStyle(fontSize: 15)),
+        const SizedBox(width: 8),
+        // Flexible porque los nombres los escribe el usuario y no tienen
+        // límite: «carrillada ibérica con pimentón de la Vera» existe.
+        Flexible(
+          child: Text(
+            cola == null ? texto : '$texto: $cola',
+            style: AppTypography.cuerpoS.copyWith(height: 1.3),
+          ),
         ),
       ],
     );
