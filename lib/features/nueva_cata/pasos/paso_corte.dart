@@ -72,13 +72,24 @@ class PasoCorte extends ConsumerWidget {
           children: <Widget>[
             Nota(valor: nota, grande: true),
             const SizedBox(width: 14),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Text('La nota', style: AppTypography.tituloS.copyWith(fontSize: 16)),
-                Text(_frase(nota), style: AppTypography.cuerpoS.copyWith(fontSize: 13)),
-              ],
+            // Flexible: con el texto grande de accesibilidad estas dos líneas
+            // crecen y la fila se sale. Es la misma fila que hay en la ficha
+            // de una cata, y tenía el mismo fallo.
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text(
+                    'La nota',
+                    style: AppTypography.tituloS.copyWith(fontSize: 16),
+                  ),
+                  Text(
+                    _frase(nota),
+                    style: AppTypography.cuerpoS.copyWith(fontSize: 13),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -182,9 +193,13 @@ class _TiroAlPlato extends StatelessWidget {
       children: <Widget>[
         Row(
           children: <Widget>[
-            Text(
-              'La prueba del tiro al plato',
-              style: AppTypography.tituloS.copyWith(fontSize: 15),
+            // Flexible por lo mismo: con el texto al doble, el título y el
+            // «opcional» no caben en una línea.
+            Flexible(
+              child: Text(
+                'La prueba del tiro al plato',
+                style: AppTypography.tituloS.copyWith(fontSize: 15),
+              ),
             ),
             const SizedBox(width: 6),
             Text(

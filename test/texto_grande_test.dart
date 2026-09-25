@@ -7,6 +7,10 @@ import 'package:catacroket/core/data/siembra.dart';
 import 'package:catacroket/features/detalle/detalle_page.dart';
 import 'package:catacroket/features/libre/barra_libre_page.dart';
 import 'package:catacroket/features/mesas/mesas_page.dart';
+import 'package:catacroket/features/nueva_cata/pasos/paso_corte.dart';
+import 'package:catacroket/features/nueva_cata/pasos/paso_detalles.dart';
+import 'package:catacroket/features/nueva_cata/pasos/paso_sabores.dart';
+import 'package:catacroket/features/nueva_cata/pasos/paso_sitio.dart';
 import 'package:catacroket/features/perfil/perfil_page.dart';
 import 'package:catacroket/features/vitrina/vitrina_page.dart';
 import 'package:catacroket/features/vitrina/widgets/tarjeta_cata.dart';
@@ -138,6 +142,32 @@ void main() {
 
         expect(tester.takeException(), isNull);
       });
+
+      // Los cuatro pasos de apuntar una cata. Es la pantalla que más se usa y
+      // en la que más se escribe, así que es donde peor sienta que el texto
+      // grande rompa algo.
+      //
+      // Van dentro de un `SingleChildScrollView` porque es como los monta
+      // `NuevaCataPage`: sueltos se desbordarían a lo alto sin que eso
+      // significara nada, y el test estaría midiendo su propio montaje en vez
+      // de la app. Lo que sí importa aquí es que no se salgan de ANCHO, que es
+      // lo que ningún scroll arregla.
+      for (final (String nombre, Widget paso) in <(String, Widget)>[
+        ('el paso del sitio', const PasoSitio()),
+        ('el paso de los sabores', const PasoSabores()),
+        ('el paso del corte', const PasoCorte()),
+        ('el paso de los detalles', const PasoDetalles()),
+      ]) {
+        testWidgets(nombre, (WidgetTester tester) async {
+          await montar(
+            tester,
+            SingleChildScrollView(child: paso),
+            escala: escala,
+          );
+
+          expect(tester.takeException(), isNull);
+        });
+      }
     });
   }
 }
