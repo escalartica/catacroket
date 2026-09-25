@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Catacroket no rastrea a nadie. No hay analítica, ni servidor, ni
+	     identificadores de publicidad: las catas viven en el móvil y no salen
+	     de ahí. Lo único que se pide por red son las imágenes del mapa, y eso
+	     no lleva datos de quien las pide. -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+
+	<!-- Sin dominios de rastreo. -->
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!-- Ningún dato recogido. Ni cuenta, ni correo, ni contactos, ni
+	     ubicación enviada a ninguna parte: el punto de la cata se guarda en el
+	     propio móvil, junto a la cata. -->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<!-- APIs que Apple obliga a justificar. La app en sí no usa ninguna
+	     directamente: las que hacen falta las declara cada complemento en su
+	     propio manifiesto (`shared_preferences` los ajustes, `geolocator` la
+	     ubicación, `image_picker` las fotos). -->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>

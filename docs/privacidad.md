@@ -1,110 +1,86 @@
-# Privacidad y datos — Catacroket
+# Política de privacidad de Catacroket
 
-Lo que la app hace con los datos, escrito para tres sitios a la vez: la
-política de privacidad que hay que publicar, las etiquetas de privacidad de
-App Store y el formulario de seguridad de datos de Google Play.
+Última actualización: 25 de septiembre de 2026
 
-Fecha de revisión: septiembre de 2026. Versión auditada: 0.1.0.
+## Lo corto
 
-## Resumen
+Catacroket no recoge nada. No hay cuenta, no hay servidor y no hay analítica.
+Lo que apuntas se queda en tu móvil.
 
-Catacroket **no tiene cuentas, no tiene servidor y no manda tus datos a
-ninguna parte**. Todo lo que apuntas —catas, notas, fotos, mesas, tu nombre y
-tu foto— vive en tu móvil y en las copias de seguridad de tu propio móvil.
+## Lo que se guarda, y dónde
 
-Hay dos excepciones, y las dos las provoca el usuario tocando algo:
+Tus catas —el bar, la ciudad, las notas, lo que escribiste, las fotos que
+hagas y el punto del mapa— se guardan **en el propio móvil**, en el
+almacenamiento privado de la aplicación. No se envían a ningún sitio. No
+tenemos servidores donde pudieran estar, ni forma de verlas.
 
-1. **El mapa.** Las imágenes del mapa se descargan de OpenStreetMap. Al
-   pedirlas se envía la zona que estás mirando.
-2. **Buscar un bar.** Al escribir el nombre de un sitio, o al tocar «estoy
-   aquí», se envía ese texto o tus coordenadas a Nominatim (OpenStreetMap)
-   para traducirlo a una dirección.
+Si borras la aplicación, se borran con ella.
 
-Ninguna de las dos lleva tu nombre, tu identificador ni nada que te señale.
+## La ubicación
 
-## Qué se guarda y dónde
+Se pide sólo cuando pulsas para poner el punto de una cata en el mapa, y sirve
+para eso: escribir unas coordenadas junto a la cata, en tu móvil.
 
-| Dato | Dónde vive | Sale del móvil |
-|---|---|---|
-| Catas (sitio, nota, corte, apuntes, precio) | `SharedPreferences` | No |
-| Fotos y vídeos de croquetas | Carpeta de documentos de la app | No |
-| Tu nombre y tu foto de perfil | `SharedPreferences` + carpeta de la app | No |
-| Mesas, miembros y códigos | `SharedPreferences` | No |
-| Tu dieta y tu lista de «esto no me lo pongas» | `SharedPreferences` | No |
-| Coordenadas de una cata | `SharedPreferences` | Sólo al geocodificar, ver abajo |
+Hay una excepción que conviene decir clara. Para rellenar solos la ciudad y el
+país, esas coordenadas se le mandan a **Nominatim**, el servicio de búsqueda de
+direcciones de OpenStreetMap, que responde con el nombre del sitio. O sea: en
+ese momento un punto aproximado de dónde estás sale del móvil hacia sus
+servidores, junto a tu dirección IP, como en cualquier petición a una web.
 
-Nada está cifrado por la app: se apoya en el cifrado del sistema operativo,
-que es lo que protege el almacenamiento de cualquier app en un móvil con
-código de desbloqueo.
+No pasa por nosotros y no guardamos copia: la respuesta llega al móvil, se
+escribe la ciudad y ahí acaba. Su política está en
+<https://osmfoundation.org/wiki/Privacy_Policy>.
 
-## Terceros
+Puedes no dar la ubicación. La aplicación funciona igual: el punto se pone a
+mano en el mapa, y entonces no se consulta nada.
 
-**OpenStreetMap** (Fundación OpenStreetMap, Reino Unido) recibe:
+## Las fotos
 
-- Las coordenadas de la zona del mapa que se está mirando, al cargar cada
-  imagen del mapa.
-- El texto que escribes al buscar un bar.
-- Tus coordenadas exactas, **sólo** si tocas «estoy aquí», para traducirlas a
-  una dirección.
+La cámara y el carrete se usan sólo cuando tú eliges una foto para una cata o
+para tu avatar. La copia se guarda en el almacenamiento privado de la
+aplicación. No se sube a ninguna parte.
 
-Se identifica a la app con un User-Agent (`com.escalartica.catacroket`), que
-es lo que su política de uso exige. No se manda ningún identificador de
-usuario, ni de dispositivo, ni publicitario.
+## El mapa
 
-**No hay** analítica, ni publicidad, ni rastreadores, ni Firebase, ni Crashlytics.
+Los mapas los dibuja **OpenStreetMap**. Para eso el móvil les pide las
+imágenes del trozo de mapa que estás mirando, y esa petición —como cualquier
+petición a una web— lleva tu dirección IP y la zona que se está viendo.
 
-## Permisos y para qué
+Eso ocurre entre tu móvil y sus servidores; nosotros no intervenimos ni
+recibimos copia. Su política está en
+<https://wiki.osmfoundation.org/wiki/Privacy_Policy>.
 
-| Permiso | Cuándo se pide | Si lo deniegas |
-|---|---|---|
-| Ubicación (en uso) | Sólo al tocar «estoy aquí» al apuntar una cata | Pones el punto a mano en el mapa |
-| Cámara | Al elegir «cámara» para una foto | Eliges de la galería, o te quedas sin foto |
-| Fotos | Al elegir «galería» | Usas la cámara, o te quedas sin foto |
-| Micrófono | Al grabar un vídeo de 15 s | Grabas sin sonido, o no grabas |
+Junto con la consulta de la ciudad que se explica arriba, eso es todo lo que
+sale por red en la aplicación.
 
-La ubicación **nunca** se pide en segundo plano ni al abrir la app.
+## Compartir
 
-## Copias de seguridad
+Cuando compartes una cata, la aplicación prepara una imagen y se la pasa al
+selector del sistema o a WhatsApp. A partir de ahí manda la aplicación que
+elijas y su política, no la nuestra. Nada de eso pasa por nosotros.
 
-**iOS**: las fotos y los datos de la app entran en la copia de iCloud del
-usuario, como cualquier otra app. Es lo que permite no perder años de catas al
-cambiar de móvil.
+## Rastreo y publicidad
 
-**Android**: igual, con una excepción deliberada. Tu dieta y tu lista de
-alergias **quedan fuera** de la copia automática
-(`res/xml/reglas_copia.xml`). Son datos de salud y no tienen por qué acabar
-en Google Drive sin que nadie lo haya pedido; se vuelven a marcar en diez
-segundos desde la pantalla de bienvenida.
+No hay. Ni anuncios, ni identificadores de publicidad, ni rastreo entre
+aplicaciones, ni perfilado. Nada de lo que hagas en Catacroket se cruza con
+ningún otro sitio.
 
 ## Menores
 
-La app no está dirigida a menores de 13 años y no pide la edad. No recoge nada
-que permita identificar a una persona.
+La aplicación no pide datos personales a nadie, tenga la edad que tenga.
 
-## Borrar tus datos
+## Tus derechos
 
-Ajustes → Restablecer deja la app como recién instalada. Desinstalarla borra
-todo lo demás. Como no hay servidor, no hay nada que pedirle a nadie.
+Como no tenemos ningún dato tuyo, no hay nada que pedirnos, corregir ni
+suprimir. Lo que hay está en tu móvil y lo gestionas tú: dentro de la
+aplicación se borra cata a cata, y desinstalándola se va todo.
+
+## Cambios
+
+Si algún día la aplicación empezara a recoger algo —una cuenta para compartir
+mesas entre varias personas, por ejemplo—, se dirá aquí y se avisará dentro de
+la aplicación antes de que pase.
 
 ## Contacto
 
-<!-- PENDIENTE: correo de contacto. App Store y Play lo exigen y tiene que
-     ser uno que se lea de verdad. -->
-
----
-
-## Respuestas para los formularios
-
-**App Store — etiquetas de privacidad**
-
-- *Data Not Collected*. La app no recoge ningún dato asociado al usuario.
-- Si el formulario pregunta por *Location*: **no se recoge**; se usa en el
-  dispositivo y se envía a un tercero sólo para traducirla a una dirección,
-  sin asociarla a ninguna identidad.
-- *Tracking*: no. No hay IDFA ni nada parecido.
-
-**Google Play — seguridad de datos**
-
-- ¿Recoge o comparte datos? **No.**
-- ¿Los datos están cifrados en tránsito? Sí: todo lo que sale va por HTTPS.
-- ¿El usuario puede pedir que se borren sus datos? Sí, desde la propia app.
+escalartica@gmail.com
