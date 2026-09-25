@@ -154,7 +154,7 @@ class _CampoNombre extends StatelessWidget {
         style: AppTypography.cuerpo,
         cursorColor: AppColors.tinta,
         decoration: InputDecoration(
-          hintText: 'Marta',
+          hintText: 'Quién estaba contigo (opcional)',
           hintStyle: AppTypography.cuerpo.copyWith(
             color: AppColors.tintaSuave,
             fontWeight: FontWeight.w600,

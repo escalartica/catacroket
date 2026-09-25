@@ -32,14 +32,14 @@ class PasoSitio extends ConsumerWidget {
         Campo(
           etiqueta: 'Sitio',
           valor: borrador.sitio,
-          pista: 'Bar Manoli',
+          pista: 'Nombre del bar o restaurante',
           onCambio: notifier.sitio,
         ),
         const SizedBox(height: AppSpacing.l),
         Campo(
           etiqueta: 'Ciudad',
           valor: borrador.ciudad,
-          pista: 'Sevilla',
+          pista: 'En qué ciudad o pueblo',
           onCambio: notifier.ciudad,
         ),
         const SizedBox(height: AppSpacing.l),

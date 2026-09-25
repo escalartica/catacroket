@@ -207,6 +207,15 @@ void main() {
     ) async {
       await montar(tester);
 
+      // Hay que desplazar hasta él: la prueba va al final del paso, después
+      // de los cuatro sliders, para no partirlos en dos. Como haría quien
+      // rellena el formulario.
+      // `pump` con duración y no `pumpAndSettle`: el vapor de la croqueta es
+      // una animación en bucle, así que esperar a que «todo se asiente» no
+      // termina nunca.
+      await tester.ensureVisible(find.text('Hormigón armado'));
+      await tester.pump(const Duration(milliseconds: 400));
+
       await tester.tap(find.text('Hormigón armado'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));

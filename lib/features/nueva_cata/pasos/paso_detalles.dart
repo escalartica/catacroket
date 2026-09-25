@@ -30,7 +30,7 @@ class PasoDetalles extends ConsumerWidget {
         Campo(
           etiqueta: 'Precio por croqueta',
           valor: borrador.precio,
-          pista: '2,20',
+          pista: 'Lo que cuesta una croqueta',
           teclado: const TextInputType.numberWithOptions(decimal: true),
           onCambio: notifier.precio,
         ),

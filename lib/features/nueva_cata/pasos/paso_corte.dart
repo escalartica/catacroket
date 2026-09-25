@@ -53,20 +53,26 @@ class PasoCorte extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        // El dibujo, más contenido que en la ficha y por un motivo concreto:
+        // aquí la gracia es ver cómo cambia mientras mueves los cuatro ejes, y
+        // para eso tienen que caber el dibujo y los cuatro sliders en la misma
+        // pantalla. A 200 de ancho no cabían: había que dejar de ver la
+        // croqueta para llegar al último slider, que es justo lo contrario de
+        // lo que se quiere.
         Pegatina(
           color: Color.lerp(relleno.color, Colors.white, 0.78)!,
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.m),
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.s),
           child: Center(
             child: ElCorte(
               corte: corte,
               rellenoId: relleno.id,
               semilla: 'en-vivo',
               animado: true,
-              ancho: 200,
+              ancho: 150,
             ),
           ),
         ),
-        const SizedBox(height: AppSpacing.l),
+        const SizedBox(height: AppSpacing.m),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
@@ -100,11 +106,6 @@ class PasoCorte extends ConsumerWidget {
           valor: borrador.corte.crujiente,
           color: BarraEje.colores['crujiente']!,
           onCambio: (int v) => notifier.eje('crujiente', v),
-        ),
-        const SizedBox(height: AppSpacing.m),
-        _TiroAlPlato(
-          elegido: borrador.tiro,
-          onElegir: notifier.tiro,
         ),
         const SizedBox(height: AppSpacing.l),
         SliderCorte(
@@ -166,6 +167,19 @@ class PasoCorte extends ConsumerWidget {
             fontSize: 12.5,
             color: AppColors.tintaSuave,
           ),
+        ),
+
+        // Las preguntas, juntas y después de los cuatro sliders.
+        //
+        // Antes el tiro al plato iba metido entre el primer slider y el
+        // segundo, y partía el grupo en dos: movías el crujiente, te
+        // encontrabas una pregunta y tenías que seguir bajando para encontrar
+        // los otros tres. Los cuatro ejes mueven el mismo dibujo, así que su
+        // gracia es verlos seguidos y notar qué cambia cada uno.
+        const SizedBox(height: AppSpacing.xl),
+        _TiroAlPlato(
+          elegido: borrador.tiro,
+          onElegir: notifier.tiro,
         ),
       ],
     );

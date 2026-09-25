@@ -24,6 +24,30 @@ class CarruselMedios extends StatelessWidget {
   Widget build(BuildContext context) {
     if (medios.isEmpty) return const SizedBox.shrink();
 
+    // Con una sola foto no hay tira que deslizar, y montarla igualmente la
+    // dejaba pegada al borde izquierdo mientras el título, el dibujo y la
+    // nota iban centrados debajo: la ficha entera parecía descolocada por una
+    // foto. Con una se centra y punto; desde dos, la tira tiene sentido.
+    //
+    // Y se centra FUERA de la lista, no dentro: en una lista horizontal cada
+    // elemento recibe ancho sin límite, así que un `Center` ahí dentro no
+    // tiene respecto a qué centrar.
+    if (medios.length == 1) {
+      return SizedBox(
+        height: 220,
+        // La altura se repite a propósito: en una lista horizontal el
+        // elemento se estira solo a lo alto, y aquí, fuera de ella, sin esto
+        // la tarjeta se quedaba en su altura natural —cero— y la foto ni se
+        // veía ni se dejaba tocar.
+        child: Center(
+          child: SizedBox(
+            height: 220,
+            child: _tarjeta(context, medios.first, 0),
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
       height: 220,
       child: ListView.separated(
@@ -31,42 +55,45 @@ class CarruselMedios extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pantalla),
         itemCount: medios.length,
         separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.m),
-        itemBuilder: (BuildContext context, int i) {
-          final Medio medio = medios[i];
-          // "Foto 1 de 3" en vez de silencio: sin esto el carrusel entero no
-          // existe para quien no ve las imágenes.
-          return Semantics(
-            label: medio.esVideo
-                ? 'Vídeo ${i + 1} de ${medios.length}'
-                : 'Foto ${i + 1} de ${medios.length}',
-            image: !medio.esVideo,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppShape.radioL),
-              child: Container(
-                width: 200,
-                decoration: BoxDecoration(
-                  color: AppColors.superficieCalida,
-                  borderRadius: BorderRadius.circular(AppShape.radioL),
-                  border: Border.all(color: AppColors.tinta, width: AppShape.borde),
+        itemBuilder: (BuildContext context, int i) =>
+            _tarjeta(context, medios[i], i),
+      ),
+    );
+  }
+
+  /// Una foto o un vídeo, con su tamaño y su etiqueta.
+  Widget _tarjeta(BuildContext context, Medio medio, int i) {
+    // "Foto 1 de 3" en vez de silencio: sin esto el carrusel entero no
+    // existe para quien no ve las imágenes.
+    return Semantics(
+      label: medio.esVideo
+          ? 'Vídeo ${i + 1} de ${medios.length}'
+          : 'Foto ${i + 1} de ${medios.length}',
+      image: !medio.esVideo,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppShape.radioL),
+        child: Container(
+          width: 200,
+          decoration: BoxDecoration(
+            color: AppColors.superficieCalida,
+            borderRadius: BorderRadius.circular(AppShape.radioL),
+            border: Border.all(color: AppColors.tinta, width: AppShape.borde),
+          ),
+          child: medio.esVideo
+              ? _Video(ruta: medio.ruta)
+              // La miniatura recorta para llenar la tarjeta, así que
+              // de una foto apaisada se pierden los lados. Tocarla la
+              // abre entera: hasta ahora el recorte era lo único que
+              // se llegaba a ver de una foto propia.
+              : GestureDetector(
+                  onTap: () => _verEntera(context, medios, i),
+                  child: Image.file(
+                    File(medio.ruta),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => const _MedioRoto(),
+                  ),
                 ),
-                child: medio.esVideo
-                    ? _Video(ruta: medio.ruta)
-                    // La miniatura recorta para llenar la tarjeta, así que
-                    // de una foto apaisada se pierden los lados. Tocarla la
-                    // abre entera: hasta ahora el recorte era lo único que
-                    // se llegaba a ver de una foto propia.
-                    : GestureDetector(
-                        onTap: () => _verEntera(context, medios, i),
-                        child: Image.file(
-                          File(medio.ruta),
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const _MedioRoto(),
-                        ),
-                      ),
-              ),
-            ),
-          );
-        },
+        ),
       ),
     );
   }
@@ -74,8 +101,7 @@ class CarruselMedios extends StatelessWidget {
 
 /// Abre las fotos a pantalla completa, empezando por la que se ha tocado.
 void _verEntera(BuildContext context, List<Medio> medios, int desde) {
-  final List<Medio> fotos =
-      medios.where((Medio m) => !m.esVideo).toList();
+  final List<Medio> fotos = medios.where((Medio m) => !m.esVideo).toList();
   if (fotos.isEmpty) return;
 
   // El índice viene de la lista entera, que puede llevar vídeos por medio.
@@ -109,8 +135,9 @@ class _Visor extends StatefulWidget {
 }
 
 class _VisorState extends State<_Visor> {
-  late final PageController _paginas =
-      PageController(initialPage: widget.inicio);
+  late final PageController _paginas = PageController(
+    initialPage: widget.inicio,
+  );
   late int _actual = widget.inicio;
 
   @override
@@ -266,8 +293,9 @@ class _VideoState extends State<_Video> {
 
   Future<void> _preparar() async {
     try {
-      final VideoPlayerController control =
-          VideoPlayerController.file(File(widget.ruta));
+      final VideoPlayerController control = VideoPlayerController.file(
+        File(widget.ruta),
+      );
       await control.initialize();
       await control.setLooping(true);
       if (!mounted) {
@@ -306,7 +334,9 @@ class _VideoState extends State<_Video> {
     return Semantics(
       button: true,
       toggled: control.value.isPlaying,
-      label: control.value.isPlaying ? 'Pausar el vídeo' : 'Reproducir el vídeo',
+      label: control.value.isPlaying
+          ? 'Pausar el vídeo'
+          : 'Reproducir el vídeo',
       excludeSemantics: true,
       child: GestureDetector(
         onTap: () {

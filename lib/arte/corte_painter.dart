@@ -51,7 +51,13 @@ class ElCorte extends StatefulWidget {
 
   final double? ancho;
 
-  static const double proporcion = 140 / 116;
+  /// El lienzo es más alto que la croqueta a propósito: el vapor sube unas
+  /// 66 unidades por encima de ella y necesita sitio donde caber.
+  ///
+  /// Antes era 140/116, la caja justa de la croqueta, y el vapor se dibujaba
+  /// fuera del widget: se cortaba por arriba y en la ficha de una cata se
+  /// pisaba con el título.
+  static const double proporcion = 140 / 160;
 
   @override
   State<ElCorte> createState() => _ElCorteState();
@@ -140,10 +146,14 @@ class _CortePainter extends CustomPainter {
   // Lienzo lógico. Todo se dibuja en estas unidades y luego se escala, así
   // que los grosores de línea se mantienen proporcionales a cualquier tamaño.
   static const double _ancho = 140;
+  static const double _alto = 160;
   static const double _cx = 70;
-  static const double _cy = 66;
+
+  /// La croqueta va abajo del todo, dejando 12 unidades para su sombra. Lo
+  /// que queda por encima es el sitio del vapor.
   static const double _rx = 50;
   static const double _ry = 38;
+  static const double _cy = _alto - 12 - _ry;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -177,7 +187,10 @@ class _CortePainter extends CustomPainter {
         // Nace tenue, se ve en medio y se disuelve arriba.
         final double desvanecido = math.sin(ciclo * math.pi);
 
-        final Path onda = Path()..moveTo(ox, 26 - subida);
+        // Nace justo encima de la croqueta. Atado a `_cy` y no a un número
+        // fijo: si algún día se mueve el dibujo, el vapor la sigue.
+        final double pie = _cy - _ry - 2;
+        final Path onda = Path()..moveTo(ox, pie - subida);
         onda.relativeCubicTo(w, -h, -w, -h, 0, -h * 2);
         onda.relativeCubicTo(w, -h, -w, -h, 0, -h * 2);
 

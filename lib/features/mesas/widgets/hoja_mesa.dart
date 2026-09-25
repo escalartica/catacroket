@@ -130,7 +130,7 @@ class _HojaMesaState extends ConsumerState<_HojaMesa> {
               Campo(
                 etiqueta: 'De qué va',
                 valor: _descripcion,
-                pista: 'Los domingos, sin método y sin remordimiento.',
+                pista: 'De qué va esta mesa: quiénes sois, cuándo quedáis',
                 lineas: 2,
                 onCambio: (String v) => setState(() => _descripcion = v),
               ),

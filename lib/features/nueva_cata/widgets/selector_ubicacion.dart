@@ -367,7 +367,7 @@ class _HojaBuscarState extends State<_HojaBuscar> {
               onSubmitted: _lanzar,
               style: AppTypography.cuerpo,
               decoration: InputDecoration(
-                hintText: 'Bar Manoli, Sevilla',
+                hintText: 'Busca el bar por su nombre',
                 filled: true,
                 fillColor: AppColors.superficie,
                 suffixIcon: IconButton(
