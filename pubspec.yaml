@@ -44,6 +44,9 @@ dependencies:
 
   # Utilidades
   uuid: ^4.3.3
+  firebase_core: ^4.15.0
+  firebase_auth: ^6.7.0
+  cloud_firestore: ^6.10.0
 
 dev_dependencies:
   # Sólo para los tests: un almacenamiento falso que rechaza escribir, para

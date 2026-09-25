@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "309754906133",
+    "project_id": "catacroket-2b047",
+    "storage_bucket": "catacroket-2b047.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:309754906133:android:7edca45cc10efb5257f01c",
+        "android_client_info": {
+          "package_name": "com.escalartica.catacroket"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCNcUWVvG-AMPc2ZDOC6M6eiX9JREiv14g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

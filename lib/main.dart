@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'app/router.dart';
 import 'core/bitacora.dart';
 import 'core/errores.dart';
 import 'core/theme/app_theme.dart';
+import 'firebase_options.dart';
 
 void main() {
   // Todo el arranque va dentro de la zona vigilada, no sólo el runApp: el
@@ -16,6 +18,23 @@ void main() {
 Future<void> _arrancar() async {
   WidgetsFlutterBinding.ensureInitialized();
   Errores.instalar();
+
+  // Firebase arranca en un try, y no es pereza: la cuenta es OPCIONAL.
+  //
+  // Apuntar tus catas no necesita servidor ni conexión, así que si Firebase
+  // no levanta —sin red, configuración mal puesta, el servicio caído— la app
+  // tiene que seguir funcionando entera en local. Lo único que se pierde es
+  // compartir con tu mesa, y eso ya se avisa donde toca.
+  //
+  // Dejarlo sin try significaría que un fallo del servidor de Google impide
+  // apuntar una croqueta en un bar sin cobertura. Eso no.
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e, pila) {
+    Errores.registrar(e, pila, origen: 'arranque de Firebase');
+  }
 
   // La app está pensada en vertical: el formulario de cata y el mapa con la
   // hoja de resultados no tienen sentido apaisados en un móvil.
