@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -9,6 +10,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../arte/croqui.dart';
 import '../../core/data/rangos.dart';
+import '../../core/providers/cuenta_provider.dart';
+import '../../core/services/cuenta_service.dart';
+import '../cuenta/hoja_cuenta.dart';
 import '../../core/models/persona.dart';
 import '../../core/bitacora.dart';
 import '../../core/copia.dart';
@@ -275,6 +279,16 @@ class PerfilPage extends ConsumerWidget {
                 onTap: () => _invitar(context),
               ),
               const SizedBox(height: AppSpacing.xl),
+
+              // La cuenta, a la vista y no dentro de un diálogo.
+              //
+              // Estaba metida entre los botones de Ajustes y allí eran seis
+              // apilados: «Restablecer» dejaba de alcanzarse. Además la App
+              // Store exige que borrar la cuenta se encuentre desde dentro de
+              // la app, y enterrarla en un diálogo es justo lo contrario.
+              const _PanelCuenta(),
+
+              const SizedBox(height: AppSpacing.xl),
               const _OtraApp(),
               const SizedBox(height: AppSpacing.xl),
               const _Firma(),
@@ -440,8 +454,8 @@ class PerfilPage extends ConsumerWidget {
       builder: (BuildContext context) => AlertDialog(
         title: const Text('Ajustes'),
         content: Text(
-          'Todavía no hay cuenta ni nube: las catas viven en este móvil. '
-          'Guarda una copia de vez en cuando y no dependerás de él.\n\n'
+          'Tus catas viven en este móvil. Guarda una copia de vez en cuando '
+          'y no dependerás de él.\n\n'
           '«Ver las explicaciones» vuelve a enseñar los carteles de cada '
           'apartado. «Restablecer» borra todas tus catas y tus mesas: '
           '${Siembra.conEjemplos ? 'en esta versión de pruebas vuelven los '
@@ -769,3 +783,103 @@ class _ComoComo extends StatelessWidget {
 /// Un enum y no un bool porque hay tres salidas, no dos: borrar, no borrar, y
 /// «guardar una copia primero», que es la que de verdad importa que exista.
 enum _QueHacer { borrar, nada, guardarCopia }
+
+/// Entrar, o ver y borrar tu cuenta.
+///
+/// Se enseña siempre, con o sin sesión: sin ella explica para qué sirve —y
+/// que no hace falta para apuntar catas—, y con ella deja salir y borrarla.
+class _PanelCuenta extends ConsumerWidget {
+  const _PanelCuenta();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final User? quien = ref.watch(cuentaProvider).maybeWhen(
+          data: (User? u) => u,
+          orElse: () => null,
+        );
+
+    return Pegatina(
+      discontinuo: quien == null,
+      color: quien == null ? Colors.transparent : AppColors.superficieCalida,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          EtiquetaPanel(texto: quien == null ? 'Tu cuenta' : 'Has entrado'),
+          const SizedBox(height: AppSpacing.m),
+          Text(
+            quien == null
+                ? 'Para compartir mesas con tu gente hace falta una cuenta: '
+                    'sus móviles tienen que saber quién eres. Apuntar tus '
+                    'catas no la necesita y nunca la va a necesitar.'
+                : '${quien.email}\n\nTus catas siguen guardándose en este '
+                    'móvil. La cuenta sólo sirve para las mesas compartidas.',
+            style: AppTypography.cuerpoS,
+          ),
+          const SizedBox(height: AppSpacing.l),
+          if (quien == null)
+            BotonPegatina(
+              texto: 'Entrar o crear una cuenta',
+              pequeno: true,
+              icono: Icons.person_add_rounded,
+              onTap: () => hojaCuenta(context),
+            )
+          else ...<Widget>[
+            BotonPegatina.fantasma(
+              texto: 'Salir',
+              pequeno: true,
+              icono: Icons.logout_rounded,
+              onTap: () => CuentaService.salir(),
+            ),
+            const SizedBox(height: AppSpacing.s),
+            BotonPegatina.fantasma(
+              texto: 'Borrar la cuenta',
+              pequeno: true,
+              icono: Icons.delete_forever_rounded,
+              onTap: () => _confirmarBorrado(context),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _confirmarBorrado(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('¿Borrar la cuenta?'),
+        content: const Text(
+          'No se puede deshacer. Perderás el acceso a las mesas '
+          'compartidas.\n\nLas catas de este móvil se quedan como están.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final NavigatorState nav = Navigator.of(context);
+              final ScaffoldMessengerState barra =
+                  ScaffoldMessenger.of(context);
+              nav.pop();
+              try {
+                await CuentaService.borrarCuenta();
+                barra
+                  ..clearSnackBars()
+                  ..showSnackBar(
+                    const SnackBar(content: Text('Cuenta borrada.')),
+                  );
+              } on FalloCuenta catch (e) {
+                barra
+                  ..clearSnackBars()
+                  ..showSnackBar(SnackBar(content: Text(e.mensaje)));
+              }
+            },
+            child: const Text('Sí, borrarla'),
+          ),
+        ],
+      ),
+    );
+  }
+}
