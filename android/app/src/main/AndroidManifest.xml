@@ -1,4 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- El mapa se baja sus teselas de la red, asi que sin esto la Ruta sale
+         en blanco.
+
+         Tiene que estar AQUI y no vale con que funcione al probarlo: Flutter
+         mete este mismo permiso en los manifests de depuracion y de perfil
+         para sus propias herramientas, asi que en el movil de desarrollo todo
+         se ve bien. El que se publica es este, y sin la linea el APK de
+         release sale sin acceso a red. Comprobado con `aapt2 dump
+         permissions` sobre el APK: no estaba. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <!-- Para poner el punto de la cata estando en el bar. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
