@@ -18,6 +18,7 @@ class Campo extends StatefulWidget {
     this.lineas = 1,
     this.teclado,
     this.autofoco = false,
+    this.oculto = false,
   });
 
   final String etiqueta;
@@ -27,6 +28,9 @@ class Campo extends StatefulWidget {
   final int lineas;
   final TextInputType? teclado;
   final bool autofoco;
+
+  /// Para las contraseñas: los puntitos en vez de las letras.
+  final bool oculto;
 
   @override
   State<Campo> createState() => _CampoState();
@@ -106,6 +110,11 @@ class _CampoState extends State<Campo> {
               maxLines: widget.lineas,
               minLines: widget.lineas,
               keyboardType: widget.teclado,
+              obscureText: widget.oculto,
+              // Sin esto, el teclado de iOS ofrece autocorrección y mayúscula
+              // inicial dentro de una contraseña.
+              autocorrect: !widget.oculto,
+              enableSuggestions: !widget.oculto,
               textCapitalization: TextCapitalization.sentences,
               style: AppTypography.cuerpo,
               cursorColor: AppColors.tinta,
