@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../arte/corte_painter.dart';
 import '../../../core/data/rellenos.dart';
 import '../../../core/models/cata.dart';
+import '../../../core/models/medio.dart';
 import '../../../core/models/dieta.dart';
 import '../../../core/providers/evitar_provider.dart';
 import '../../../core/providers/mi_dieta_provider.dart';
@@ -184,6 +187,8 @@ class _Plato extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Medio? foto = cata.fotos.isEmpty ? null : cata.fotos.first;
+
     return Container(
       width: 86,
       height: 86,
@@ -193,23 +198,86 @@ class _Plato extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppShape.radioM),
         border: Border.all(color: AppColors.tinta, width: AppShape.bordeFino),
       ),
-      child: Stack(
-        alignment: Alignment.center,
-        children: <Widget>[
-          Positioned.fill(
-            child: CustomPaint(painter: const _PuntosPlato()),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(6),
-            child: ElCorte(
-              corte: cata.corte,
-              rellenoId: cata.rellenoId,
-              semilla: cata.id,
-              vapor: false,
+      child: foto == null
+          ? Stack(
+              alignment: Alignment.center,
+              children: <Widget>[
+                Positioned.fill(
+                  child: CustomPaint(painter: const _PuntosPlato()),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: ElCorte(
+                    corte: cata.corte,
+                    rellenoId: cata.rellenoId,
+                    semilla: cata.id,
+                    vapor: false,
+                  ),
+                ),
+              ],
+            )
+          // Con foto manda la foto, y el dibujo se queda de sello en la
+          // esquina.
+          //
+          // Antes una foto tuya se reducía a una pastillita que ponía «📷
+          // Foto» y el plato enseñaba el dibujo igualmente: quien se molesta
+          // en fotografiar su croqueta no volvía a verla en el feed.
+          //
+          // El dibujo no se quita: es lo que hace que todas las tarjetas se
+          // lean igual y lo que no tiene ninguna otra app. Pero sobre una
+          // foto propia no tiene por qué mandar él.
+          : Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                Image.file(
+                  File(foto.ruta),
+                  fit: BoxFit.cover,
+                  // Si el fichero ya no está —la foto la borró el sistema al
+                  // liberar espacio— se vuelve al dibujo, que nunca falta.
+                  errorBuilder: (_, _, _) => Stack(
+                    alignment: Alignment.center,
+                    children: <Widget>[
+                      Positioned.fill(
+                        child: CustomPaint(painter: const _PuntosPlato()),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: ElCorte(
+                          corte: cata.corte,
+                          rellenoId: cata.rellenoId,
+                          semilla: cata.id,
+                          vapor: false,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  right: 2,
+                  bottom: 2,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(AppShape.radioS),
+                      border: Border.all(
+                        color: AppColors.tinta,
+                        width: AppShape.bordeFino,
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: 30,
+                      child: ElCorte(
+                        corte: cata.corte,
+                        rellenoId: cata.rellenoId,
+                        semilla: cata.id,
+                        vapor: false,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
     );
   }
 }
