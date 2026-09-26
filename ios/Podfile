@@ -1,5 +1,8 @@
 # Uncomment this line to define a global platform for your project
-# platform :ios, '13.0'
+# Firebase manda aquí: `cloud_firestore` no compila por debajo de iOS 15.
+# Sube el mínimo del iPhone 6s (2015) en adelante, que es prácticamente
+# todo lo que sigue encendido.
+platform :ios, '15.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -40,11 +43,14 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
 
-    # Algunos plugins todavía declaran iOS 11 y Xcode ya sólo admite de 12
-    # para arriba. Hoy es un aviso; en la siguiente versión de Xcode sería un
-    # error. Se les sube a 13.0, que es el mínimo de la app.
+    # Se le pone a todos los pods el mínimo de la app.
+    #
+    # Esto se escribió para SUBIR plugins que declaraban iOS 11, y con
+    # Firebase pasó a hacer lo contrario: dejaba clavado en 13.0 lo que el
+    # Podfile ya pedía a 15, y `FirebaseAuth` no compilaba porque usa una API
+    # de iOS 13.5. El número tiene que ir a la par del `platform` de arriba.
     target.build_configurations.each do |config|
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
     end
   end
 end

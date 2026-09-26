@@ -6,6 +6,7 @@ import 'package:catacroket/core/providers/catas_provider.dart';
 import 'package:catacroket/core/data/siembra.dart';
 import 'package:catacroket/features/detalle/detalle_page.dart';
 import 'package:catacroket/features/libre/barra_libre_page.dart';
+import 'package:catacroket/features/cuenta/hoja_cuenta.dart';
 import 'package:catacroket/features/mesas/mesas_page.dart';
 import 'package:catacroket/features/nueva_cata/pasos/paso_corte.dart';
 import 'package:catacroket/features/nueva_cata/pasos/paso_detalles.dart';
@@ -133,6 +134,28 @@ void main() {
 
       testWidgets('el perfil también', (WidgetTester tester) async {
         await montar(tester, const PerfilPage(), escala: escala);
+
+        expect(tester.takeException(), isNull);
+      });
+
+      testWidgets('la hoja de entrar', (WidgetTester tester) async {
+        // Es una hoja modal, así que hay que abrirla desde algo. Importa
+        // tanto como el resto: quien lleva el texto grande también tiene que
+        // poder crearse una cuenta.
+        await montar(
+          tester,
+          Builder(
+            builder: (BuildContext context) => TextButton(
+              onPressed: () => hojaCuenta(context),
+              child: const Text('abrir'),
+            ),
+          ),
+          escala: escala,
+        );
+
+        await tester.tap(find.text('abrir'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
 
         expect(tester.takeException(), isNull);
       });
