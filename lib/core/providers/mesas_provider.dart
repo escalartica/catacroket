@@ -74,6 +74,7 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
     required String nombre,
     required String descripcion,
     required int colorHex,
+    String? foto,
   }) async {
     final Mesa mesa = Mesa(
       id: const Uuid().v4(),
@@ -82,6 +83,7 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
       colorHex: colorHex,
       miembros: const <String>[DatosDemo.yo],
       codigo: Mesa.nuevoCodigo(),
+      foto: foto,
     );
     state = <Mesa>[...state, mesa];
     await _guardar();
@@ -93,6 +95,8 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
     String? nombre,
     String? descripcion,
     int? colorHex,
+    String? foto,
+    bool quitarFoto = false,
   }) async {
     state = <Mesa>[
       for (final Mesa m in state)
@@ -101,6 +105,8 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
             nombre: nombre?.trim(),
             descripcion: descripcion?.trim(),
             colorHex: colorHex,
+            foto: foto,
+            quitarFoto: quitarFoto,
           )
         else
           m,

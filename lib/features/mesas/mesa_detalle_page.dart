@@ -8,6 +8,7 @@ import '../../arte/croqui.dart';
 import '../../core/data/rellenos.dart';
 import '../../core/models/cata.dart';
 import '../../core/models/mesa.dart';
+import '../../core/models/recuento.dart';
 import '../../core/models/persona.dart';
 import '../../core/providers/catas_provider.dart';
 import '../../core/providers/mesas_provider.dart';
@@ -180,6 +181,15 @@ class MesaDetallePage extends ConsumerWidget {
               ],
 
               // El código, en su propio panel y no colgando del ranking: una
+              // Cuántas de cada clase lleváis.
+              //
+              // Cuenta croquetas y no catas: un surtido de seis es una cata
+              // pero son seis croquetas, y de seis clases distintas.
+              if (catas.isNotEmpty) ...<Widget>[
+                const SizedBox(height: AppSpacing.l),
+                _RecuentoPorClase(catas: catas),
+              ],
+
               // mesa recién creada todavía no tiene ranking que enseñar, y es
               // justo cuando más falta hace pasar el código.
               if (!mesa.esLibreta) ...<Widget>[
@@ -643,6 +653,85 @@ class _Cifra extends StatelessWidget {
             textAlign: TextAlign.center,
             style: AppTypography.etiqueta.copyWith(fontSize: 11.5),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Cuántas croquetas de cada clase lleva la mesa.
+///
+/// Sólo las seis primeras: una mesa con veinte años de catas tendría cuarenta
+/// filas y nadie las lee. Lo que interesa es qué mandáis pidiendo.
+class _RecuentoPorClase extends StatelessWidget {
+  const _RecuentoPorClase({required this.catas});
+
+  final List<Cata> catas;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Recuento> todas = Recuento.de(catas);
+    if (todas.isEmpty) return const SizedBox.shrink();
+
+    final List<Recuento> arriba = todas.take(6).toList();
+    final int resto = todas.length - arriba.length;
+    final int mayor = arriba.first.cuantas;
+
+    return Pegatina(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const EtiquetaPanel(texto: 'Qué pedís'),
+          const SizedBox(height: AppSpacing.m),
+          for (final Recuento r in arriba) ...<Widget>[
+            Row(
+              children: <Widget>[
+                Text(r.emoji, style: const TextStyle(fontSize: 15)),
+                const SizedBox(width: 8),
+                // Flexible: los nombres de relleno pueden ser largos y el
+                // usuario escribe los suyos.
+                Flexible(
+                  child: Text(
+                    r.nombre,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.cuerpoS,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s),
+                // La barra es proporcional a la más pedida, no al total: con
+                // veinte clases distintas todas las barras saldrían mínimas y
+                // no se compararía nada.
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: r.cuantas / mayor,
+                      minHeight: 6,
+                      backgroundColor: AppColors.superficieCalida,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        AppColors.uva,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s),
+                Text(
+                  '${r.cuantas}',
+                  style: AppTypography.tituloS.copyWith(fontSize: 14),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.s),
+          ],
+          if (resto > 0)
+            Text(
+              resto == 1 ? 'y una clase más' : 'y $resto clases más',
+              style: AppTypography.cuerpoS.copyWith(
+                fontSize: 12.5,
+                color: AppColors.tintaSuave,
+              ),
+            ),
         ],
       ),
     );

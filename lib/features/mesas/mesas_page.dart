@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -148,6 +149,23 @@ class _TarjetaMesa extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
+              // La foto de la mesa, si la tiene. Si no, la tarjeta se queda
+              // con su color y sus lunares, que ya la distinguen.
+              if (mesa.tieneFoto) ...<Widget>[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppShape.radioS),
+                  child: Image.file(
+                    File(mesa.foto!),
+                    width: 42,
+                    height: 42,
+                    fit: BoxFit.cover,
+                    // Si el fichero ya no está, no se deja un hueco roto:
+                    // simplemente no hay foto.
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.s),
+              ],
               // A una línea: un nombre de mesa lo escribe el usuario y no
               // tiene límite, y sin esto «Los que quedamos los jueves para
               // probar croquetas por Triana» estiraba la tarjeta a tres

@@ -100,6 +100,31 @@ class MediosService {
     }
   }
 
+  /// La foto de una mesa.
+  ///
+  /// Aparte de `foto()` porque no es un medio de una cata: no entra en el
+  /// carrusel, no se comparte en la estampa y no cuenta como «esta cata tiene
+  /// foto». Es la cara del grupo y vive con la mesa.
+  ///
+  /// Devuelve la ruta ya copiada a la carpeta de la app, o `null` si se
+  /// canceló.
+  static Future<String?> fotoDeMesa({required bool camara}) async {
+    try {
+      final XFile? elegida = await _selector.pickImage(
+        source: camara ? ImageSource.camera : ImageSource.gallery,
+        // Se ve pequeña en la tarjeta de la mesa; 800 va sobrado y deja
+        // sitio por si un día se enseña más grande.
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 88,
+      );
+      if (elegida == null) return null;
+      return _copiar(elegida, 'mesa');
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<String> _copiar(XFile origen, String prefijo) async {
     final Directory carpeta = await getApplicationDocumentsDirectory();
     final Directory medios = Directory('${carpeta.path}/medios');

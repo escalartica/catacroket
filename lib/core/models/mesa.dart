@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 
 /// Un grupo de catas. Puede ser privada (la libreta de uno) o compartida.
@@ -13,6 +14,7 @@ class Mesa {
     required this.colorHex,
     required this.miembros,
     this.codigo,
+    this.foto,
   });
 
   /// Identificador fijo de la libreta privada. Existe siempre y no se puede
@@ -28,6 +30,15 @@ class Mesa {
   /// Nulo en la libreta privada.
   final String? codigo;
 
+  /// Ruta de la foto de la mesa dentro de la carpeta de la app, o nulo.
+  ///
+  /// Se copia a la carpeta de la app y no se guarda la ruta que devuelve el
+  /// carrete: ésa vive en una caché temporal que el sistema borra cuando
+  /// quiere, y guardarla es garantizar una foto rota en unas semanas.
+  final String? foto;
+
+  bool get tieneFoto => foto != null && File(foto!).existsSync();
+
   bool get esPrivada => codigo == null;
 
   bool get esLibreta => id == libretaId;
@@ -37,6 +48,8 @@ class Mesa {
     String? descripcion,
     int? colorHex,
     List<String>? miembros,
+    String? foto,
+    bool quitarFoto = false,
   }) {
     return Mesa(
       id: id,
@@ -45,6 +58,7 @@ class Mesa {
       colorHex: colorHex ?? this.colorHex,
       miembros: miembros ?? this.miembros,
       codigo: codigo,
+      foto: quitarFoto ? null : (foto ?? this.foto),
     );
   }
 
@@ -69,6 +83,7 @@ class Mesa {
         'colorHex': colorHex,
         'miembros': miembros,
         'codigo': codigo,
+        'foto': foto,
       };
 
   factory Mesa.fromJson(Map<String, dynamic> json) => Mesa(
@@ -80,6 +95,7 @@ class Mesa {
             .map((dynamic e) => e.toString())
             .toList(),
         codigo: json['codigo'] as String?,
+        foto: json['foto'] as String?,
       );
 }
 

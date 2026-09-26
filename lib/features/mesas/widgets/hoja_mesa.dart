@@ -1,7 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/mesa.dart';
+import '../../../core/services/medios_service.dart';
 import '../../../core/providers/mesas_provider.dart';
 import '../../../core/theme/components/boton.dart';
 import '../../../core/theme/components/campo.dart';
@@ -61,7 +63,13 @@ class _HojaMesaState extends ConsumerState<_HojaMesa> {
   late String _nombre = widget.mesa?.nombre ?? '';
   late String _descripcion = widget.mesa?.descripcion ?? '';
   late int _color = widget.mesa?.colorHex ?? AppColors.tomate.toARGB32();
+  late String? _foto = widget.mesa?.foto;
   bool _guardando = false;
+
+  Future<void> _elegirFoto() async {
+    final String? ruta = await MediosService.fotoDeMesa(camara: false);
+    if (ruta != null && mounted) setState(() => _foto = ruta);
+  }
 
   bool get _esNueva => widget.mesa == null;
 
@@ -77,6 +85,7 @@ class _HojaMesaState extends ConsumerState<_HojaMesa> {
         nombre: _nombre,
         descripcion: _descripcion,
         colorHex: _color,
+        foto: _foto,
       );
     } else {
       await mesas.editar(
@@ -84,6 +93,8 @@ class _HojaMesaState extends ConsumerState<_HojaMesa> {
         nombre: _nombre,
         descripcion: _descripcion,
         colorHex: _color,
+        foto: _foto,
+        quitarFoto: _foto == null,
       );
       resultado = ref.read(mesaProvider(widget.mesa!.id)) ?? widget.mesa!;
     }
@@ -117,6 +128,13 @@ class _HojaMesaState extends ConsumerState<_HojaMesa> {
               Text(
                 _esNueva ? 'Una mesa nueva' : 'Cambiar la mesa',
                 style: AppTypography.tituloM,
+              ),
+              const SizedBox(height: AppSpacing.l),
+              _FotoDeMesa(
+                foto: _foto,
+                color: Color(_color),
+                onElegir: _elegirFoto,
+                onQuitar: () => setState(() => _foto = null),
               ),
               const SizedBox(height: AppSpacing.l),
               Campo(
@@ -220,6 +238,100 @@ class _Tinte extends StatelessWidget {
               : null,
         ),
       ),
+    );
+  }
+}
+
+/// La cara de la mesa.
+///
+/// Opcional a propósito: una mesa sin foto tiene su color y sus lunares, que
+/// ya la distinguen de un vistazo. Pedir una foto para crear un grupo es un
+/// paso más entre la idea y tenerlo hecho.
+class _FotoDeMesa extends StatelessWidget {
+  const _FotoDeMesa({
+    required this.foto,
+    required this.color,
+    required this.onElegir,
+    required this.onQuitar,
+  });
+
+  final String? foto;
+  final Color color;
+  final VoidCallback onElegir;
+  final VoidCallback onQuitar;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hay = foto != null && File(foto!).existsSync();
+
+    return Row(
+      children: <Widget>[
+        GestureDetector(
+          onTap: onElegir,
+          child: Container(
+            width: 72,
+            height: 72,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(AppShape.radioM),
+              border: Border.all(
+                color: AppColors.tinta,
+                width: AppShape.borde,
+              ),
+            ),
+            child: hay
+                ? Image.file(
+                    File(foto!),
+                    fit: BoxFit.cover,
+                    // Si el fichero desapareció, se vuelve al icono en vez
+                    // de dejar un hueco roto.
+                    errorBuilder: (_, _, _) => const Icon(
+                      Icons.add_a_photo_rounded,
+                      color: AppColors.tinta,
+                    ),
+                  )
+                : const Icon(Icons.add_a_photo_rounded, color: AppColors.tinta),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.m),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                hay ? 'La foto de la mesa' : 'Ponle una foto (opcional)',
+                style: AppTypography.tituloS.copyWith(fontSize: 15),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                hay
+                    ? 'Tócala para cambiarla.'
+                    : 'La cara del grupo. Sin ella se queda con su color.',
+                style: AppTypography.cuerpoS.copyWith(
+                  fontSize: 12.5,
+                  color: AppColors.tintaSuave,
+                ),
+              ),
+              if (hay) ...<Widget>[
+                const SizedBox(height: 4),
+                GestureDetector(
+                  onTap: onQuitar,
+                  child: Text(
+                    'Quitar la foto',
+                    style: AppTypography.cuerpoS.copyWith(
+                      fontSize: 12.5,
+                      color: AppColors.tomate,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
