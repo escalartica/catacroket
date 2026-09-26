@@ -20,6 +20,7 @@ import '../../core/theme/tokens/app_spacing.dart';
 import '../../core/theme/tokens/app_typography.dart';
 import '../../core/services/compartir_service.dart';
 import '../../core/utils/formato.dart';
+import 'widgets/hoja_codigo.dart';
 import 'widgets/hoja_mesa.dart';
 
 /// MESAS — tu libreta y tu gente.
@@ -29,6 +30,11 @@ class MesasPage extends ConsumerWidget {
   Future<void> _crear(BuildContext context) async {
     final Mesa? nueva = await hojaMesa(context);
     if (nueva != null && context.mounted) context.push('/mesa/${nueva.id}');
+  }
+
+  Future<void> _entrarConCodigo(BuildContext context) async {
+    final Mesa? mesa = await hojaCodigo(context);
+    if (mesa != null && context.mounted) context.push('/mesa/${mesa.id}');
   }
 
   Future<void> _invitar(BuildContext context) async {
@@ -102,6 +108,14 @@ class MesasPage extends ConsumerWidget {
                       pequeno: true,
                       icono: Icons.add_rounded,
                       onTap: () => _crear(context),
+                    ),
+                    const SizedBox(height: AppSpacing.s),
+                    BotonPegatina(
+                      texto: 'Entrar con un código',
+                      pequeno: true,
+                      icono: Icons.login_rounded,
+                      color: AppColors.menta,
+                      onTap: () => _entrarConCodigo(context),
                     ),
                     const SizedBox(height: AppSpacing.s),
                     BotonPegatina.fantasma(

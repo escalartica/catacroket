@@ -8,6 +8,7 @@ import '../data/datos_demo.dart';
 import '../data/siembra.dart';
 import '../models/cata.dart';
 import '../models/mesa.dart';
+import '../services/nube_service.dart';
 import '../errores.dart';
 import 'catas_provider.dart';
 
@@ -112,6 +113,44 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
           m,
     ];
     await _guardar();
+  }
+
+  /// Sube una mesa para que su gente pueda verla.
+  ///
+  /// Si el servidor falla, la mesa NO se marca como compartida: quedarse con
+  /// la marca puesta haría creer que la gente la ve cuando no está subida, y
+  /// las catas se apuntarían pensando que llegan a alguien.
+  Future<void> compartir(String id) async {
+    final Mesa? mesa = state.where((Mesa m) => m.id == id).firstOrNull;
+    if (mesa == null || mesa.esLibreta || mesa.enLaNube) return;
+
+    await NubeService.compartir(mesa);
+
+    state = <Mesa>[
+      for (final Mesa m in state)
+        if (m.id == id) m.copyWith(enLaNube: true) else m,
+    ];
+    await _guardar();
+  }
+
+  /// Entra en la mesa de otro con su código.
+  ///
+  /// Devuelve la mesa recién añadida. Si ya estabas dentro no la duplica:
+  /// dar dos veces al mismo código es lo más fácil del mundo cuando el
+  /// primero pareció no responder.
+  Future<Mesa> entrarCon(String codigo) async {
+    final Mesa mesa = await NubeService.entrarCon(codigo);
+
+    final bool yaEstaba = state.any((Mesa m) => m.id == mesa.id);
+    state = yaEstaba
+        ? <Mesa>[
+            for (final Mesa m in state)
+              if (m.id == mesa.id) mesa.copyWith(enLaNube: true) else m,
+          ]
+        : <Mesa>[...state, mesa.copyWith(enLaNube: true)];
+
+    await _guardar();
+    return mesa;
   }
 
   /// Borra una mesa y devuelve sus catas a la libreta.

@@ -15,6 +15,7 @@ class Mesa {
     required this.miembros,
     this.codigo,
     this.foto,
+    this.enLaNube = false,
   });
 
   /// Identificador fijo de la libreta privada. Existe siempre y no se puede
@@ -39,6 +40,15 @@ class Mesa {
 
   bool get tieneFoto => foto != null && File(foto!).existsSync();
 
+  /// Si esta mesa está subida y su gente puede verla.
+  ///
+  /// No es lo mismo que tener código: TODAS las mesas nacen con uno, porque
+  /// generarlo al compartir obligaría a cambiarlo si algún día se comparte y
+  /// se deja de compartir. Esto dice si además está en el servidor.
+  ///
+  /// Mientras sea `false`, esa mesa y sus catas no han salido del móvil.
+  final bool enLaNube;
+
   bool get esPrivada => codigo == null;
 
   bool get esLibreta => id == libretaId;
@@ -50,6 +60,7 @@ class Mesa {
     List<String>? miembros,
     String? foto,
     bool quitarFoto = false,
+    bool? enLaNube,
   }) {
     return Mesa(
       id: id,
@@ -59,6 +70,7 @@ class Mesa {
       miembros: miembros ?? this.miembros,
       codigo: codigo,
       foto: quitarFoto ? null : (foto ?? this.foto),
+      enLaNube: enLaNube ?? this.enLaNube,
     );
   }
 
@@ -84,6 +96,7 @@ class Mesa {
         'miembros': miembros,
         'codigo': codigo,
         'foto': foto,
+        'enLaNube': enLaNube,
       };
 
   factory Mesa.fromJson(Map<String, dynamic> json) => Mesa(
@@ -96,6 +109,7 @@ class Mesa {
             .toList(),
         codigo: json['codigo'] as String?,
         foto: json['foto'] as String?,
+        enLaNube: json['enLaNube'] as bool? ?? false,
       );
 }
 

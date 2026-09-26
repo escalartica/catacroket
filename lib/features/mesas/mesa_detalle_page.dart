@@ -9,6 +9,9 @@ import '../../core/data/rellenos.dart';
 import '../../core/models/cata.dart';
 import '../../core/models/mesa.dart';
 import '../../core/models/recuento.dart';
+import '../cuenta/hoja_cuenta.dart';
+import '../../core/services/nube_service.dart';
+import '../../core/providers/cuenta_provider.dart';
 import '../../core/models/persona.dart';
 import '../../core/providers/catas_provider.dart';
 import '../../core/providers/mesas_provider.dart';
@@ -220,11 +223,32 @@ class MesaDetallePage extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(height: AppSpacing.l),
+
+                      // Mientras no esté subida, el código no sirve de nada:
+                      // quien lo teclee no encontrará la mesa. Así que
+                      // primero se comparte y después se reparte.
+                      if (!mesa.enLaNube) ...<Widget>[
+                        Text(
+                          'Esta mesa todavía está sólo en tu móvil. '
+                          'Compártela y el código empezará a funcionar.',
+                          style: AppTypography.cuerpoS.copyWith(
+                            fontSize: 12.5,
+                            height: 1.3,
+                            color: AppColors.tinta,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.s),
+                        _BotonCompartir(mesa: mesa),
+                        const SizedBox(height: AppSpacing.s),
+                      ],
+
                       BotonPegatina(
                         texto: 'Mandarlo por WhatsApp',
                         pequeno: true,
                         icono: Icons.chat_bubble_rounded,
-                        onTap: () => _invitarAMesa(context, mesa),
+                        onTap: mesa.enLaNube
+                            ? () => _invitarAMesa(context, mesa)
+                            : null,
                       ),
                       const SizedBox(height: AppSpacing.s),
                       BotonPegatina.fantasma(
@@ -734,6 +758,64 @@ class _RecuentoPorClase extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Sube la mesa para que su gente pueda verla.
+///
+/// Pide cuenta si no la hay, porque el servidor necesita saber a quién está
+/// metiendo en la mesa. Se ofrece entrar ahí mismo en vez de mandar a nadie
+/// a buscarlo al perfil.
+class _BotonCompartir extends ConsumerStatefulWidget {
+  const _BotonCompartir({required this.mesa});
+
+  final Mesa mesa;
+
+  @override
+  ConsumerState<_BotonCompartir> createState() => _BotonCompartirState();
+}
+
+class _BotonCompartirState extends ConsumerState<_BotonCompartir> {
+  bool _subiendo = false;
+
+  Future<void> _compartir() async {
+    if (!ref.read(haySesionProvider)) {
+      final bool entro = await hojaCuenta(context);
+      if (!entro) return;
+    }
+
+    // Se coge la barra ANTES de cualquier await que pueda seguir: tras la
+    // hoja de cuenta el contexto puede haber dejado de ser válido.
+    if (!mounted) return;
+    final ScaffoldMessengerState barra = ScaffoldMessenger.of(context);
+    setState(() => _subiendo = true);
+
+    try {
+      await ref.read(mesasProvider.notifier).compartir(widget.mesa.id);
+      barra
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Mesa compartida. Ya puedes pasar el código.'),
+          ),
+        );
+    } on FalloNube catch (e) {
+      barra
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(e.mensaje)));
+    } finally {
+      if (mounted) setState(() => _subiendo = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BotonPegatina(
+      texto: _subiendo ? 'Subiendo…' : 'Compartir esta mesa',
+      pequeno: true,
+      icono: Icons.cloud_upload_rounded,
+      onTap: _subiendo ? null : _compartir,
     );
   }
 }
