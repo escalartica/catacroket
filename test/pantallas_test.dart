@@ -95,7 +95,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: <Override>[
-            catasProvider.overrideWith((Ref ref) => _CatasVacias()),
+            catasProvider.overrideWith((Ref ref) => _CatasVacias(ref)),
           ],
           child: const MaterialApp(
             home: Scaffold(body: VitrinaPage()),
@@ -327,7 +327,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: <Override>[
-            catasProvider.overrideWith((Ref ref) => _UnaSinCiudad()),
+            catasProvider.overrideWith((Ref ref) => _UnaSinCiudad(ref)),
           ],
           child: const MaterialApp(
             home: Scaffold(body: DetallePage(cataId: 'sin-ciudad')),
@@ -356,14 +356,14 @@ void main() {
 
 /// Una app recién instalada: ni una cata.
 class _CatasVacias extends CatasNotifier {
-  _CatasVacias() {
+  _CatasVacias(super.ref) {
     state = const <Cata>[];
   }
 }
 
 /// Una cata en la que no se rellenó la ciudad.
 class _UnaSinCiudad extends CatasNotifier {
-  _UnaSinCiudad() {
+  _UnaSinCiudad(super.ref) {
     state = <Cata>[
       Cata(
         id: 'sin-ciudad',

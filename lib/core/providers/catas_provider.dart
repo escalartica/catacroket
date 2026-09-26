@@ -7,6 +7,10 @@ import '../data/datos_demo.dart';
 import '../data/siembra.dart';
 import '../errores.dart';
 import '../models/cata.dart';
+import 'mesas_provider.dart';
+import 'nube_provider.dart';
+import '../services/nube_service.dart';
+import 'dart:async';
 import '../models/dieta.dart';
 import '../models/medio.dart';
 import '../models/mesa.dart';
@@ -24,8 +28,38 @@ import 'yo_provider.dart';
 /// mordisco, borrar) es el mismo que tendrá cuando detrás haya Firestore, así
 /// que las pantallas no se tocarán al migrar.
 class CatasNotifier extends StateNotifier<List<Cata>> {
-  CatasNotifier() : super(Siembra.catas()) {
+  CatasNotifier(this._ref) : super(Siembra.catas()) {
     _cargar();
+  }
+
+  final Ref _ref;
+
+  /// Manda la cata a su mesa si esa mesa está compartida.
+  ///
+  /// Nunca espera a que termine ni deja que un fallo se note: guardar una
+  /// cata tiene que funcionar en un bar sin cobertura, y que el servidor no
+  /// conteste no puede impedir apuntar una croqueta. La cata ya está en el
+  /// móvil; subirla es un extra que llega cuando llega.
+  void _subirSiToca(Cata cata) {
+    try {
+      final Mesa? mesa = _ref
+          .read(mesasProvider)
+          .where((Mesa m) => m.id == cata.mesaId)
+          .firstOrNull;
+      if (mesa == null || !mesa.enLaNube) return;
+      unawaited(NubeService.subirCata(cata).catchError((Object _) {}));
+    } catch (_) {}
+  }
+
+  void _borrarDeLaNubeSiToca(Cata cata) {
+    try {
+      final Mesa? mesa = _ref
+          .read(mesasProvider)
+          .where((Mesa m) => m.id == cata.mesaId)
+          .firstOrNull;
+      if (mesa == null || !mesa.enLaNube) return;
+      unawaited(NubeService.borrarCata(cata).catchError((Object _) {}));
+    } catch (_) {}
   }
 
   static const String _clave = 'catacroket.catas.v1';
@@ -125,7 +159,9 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
   /// una celebración por delante.
   Future<bool> anadir(Cata cata) async {
     state = <Cata>[cata, ...state];
-    return _guardar();
+    final bool guardada = await _guardar();
+    if (guardada) _subirSiToca(cata);
+    return guardada;
   }
 
   /// Guarda una cata corregida en el sitio que ya ocupaba.
@@ -141,6 +177,7 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
         if (c.id == cata.id) cata else c,
     ];
     final bool guardada = await _guardar();
+    if (guardada) _subirSiToca(cata);
 
     // Las fotos que se quitaron al editar ya no las referencia nadie. Sólo si
     // el cambio ha llegado al disco: si no, la cata sigue siendo la de antes y
@@ -189,6 +226,7 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
     final bool guardado = await _guardar();
 
     if (fuera != null && guardado) {
+      _borrarDeLaNubeSiToca(fuera);
       await _limpiarMedios(fuera, const <Medio>[]);
     }
     return guardado;
@@ -230,15 +268,25 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
 }
 
 final catasProvider = StateNotifierProvider<CatasNotifier, List<Cata>>(
-  (ref) => CatasNotifier(),
+  (ref) => CatasNotifier(ref),
 );
 
 /// Catas de la más reciente a la más antigua. Es el orden del feed y el de
 /// todas las listas de la app; nunca se ordena a mano en una pantalla.
 final catasRecientesProvider = Provider<List<Cata>>((ref) {
-  final List<Cata> catas = <Cata>[...ref.watch(catasProvider)];
-  catas.sort((Cata a, Cata b) => b.fecha.compareTo(a.fecha));
-  return catas;
+  final List<Cata> mias = ref.watch(catasProvider);
+
+  // Las de tu gente, si las hay. Mientras el servidor no haya contestado
+  // —o no haya sesión, o no haya mesas compartidas— esto es una lista vacía
+  // y el feed enseña lo tuyo, igual que antes de que existiera la nube. Que
+  // el feed espere a una respuesta de internet para pintar sería romper la
+  // app para quien no comparte nada.
+  final List<Cata> deOtros = ref.watch(catasDeOtrosProvider).maybeWhen(
+        data: (List<Cata> c) => c,
+        orElse: () => const <Cata>[],
+      );
+
+  return juntarCatas(mias, deOtros);
 });
 
 final cataProvider = Provider.family<Cata?, String>((ref, String id) {

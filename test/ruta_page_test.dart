@@ -45,7 +45,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: <Override>[
-            catasProvider.overrideWith((Ref ref) => _CatasVacias()),
+            catasProvider.overrideWith((Ref ref) => _CatasVacias(ref)),
           ],
           child: const ProviderScope(
             child: MaterialApp(home: Scaffold(body: RutaPage())),
@@ -144,7 +144,7 @@ void main() {
 
 /// Una app recién instalada: ni una cata, y por tanto ningún punto.
 class _CatasVacias extends CatasNotifier {
-  _CatasVacias() {
+  _CatasVacias(super.ref) {
     state = const <Cata>[];
   }
 }
