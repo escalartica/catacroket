@@ -115,4 +115,62 @@ void main() {
       );
     });
   });
+
+  group('quién hay en la mesa', () {
+    test('apunta a quien entra, que antes no se enteraba nunca', () async {
+      final String id = unaMesa();
+      await mesas().apuntarMiembros(id, <String>['tu', 'eme']);
+
+      final Mesa m = contenedor
+          .read(mesasProvider)
+          .firstWhere((Mesa m) => m.id == id);
+      expect(m.miembros, containsAll(<String>['tu', 'eme']));
+    });
+
+    test('no toca el nombre ni el color de la mesa', () async {
+      final String id = unaMesa();
+      final Mesa antes = contenedor
+          .read(mesasProvider)
+          .firstWhere((Mesa m) => m.id == id);
+
+      await mesas().apuntarMiembros(id, <String>['tu', 'eme']);
+
+      final Mesa ahora = contenedor
+          .read(mesasProvider)
+          .firstWhere((Mesa m) => m.id == id);
+      expect(ahora.nombre, antes.nombre);
+      expect(ahora.colorHex, antes.colorHex);
+    });
+
+    test('una mesa que no existe no revienta', () async {
+      await mesas().apuntarMiembros('no-existe', <String>['eme']);
+    });
+  });
+
+  group('recuperar mesas del servidor', () {
+    // Sin Firebase levantado, el servidor no contesta y devuelve cero. Lo que
+    // se comprueba aquí es lo peligroso: que un servidor que no contesta no
+    // te deje sin las mesas que ya tienes en el móvil.
+    test('un servidor mudo no borra tus mesas', () async {
+      final List<Mesa> antes = contenedor.read(mesasProvider);
+      expect(antes, isNotEmpty);
+
+      final int nuevas = await mesas().recuperarDeLaNube();
+
+      expect(nuevas, 0);
+      expect(contenedor.read(mesasProvider).length, antes.length);
+      expect(
+        contenedor.read(mesasProvider).map((Mesa m) => m.id),
+        containsAll(antes.map((Mesa m) => m.id)),
+      );
+    });
+
+    test('la libreta sigue estando después de recuperar', () async {
+      await mesas().recuperarDeLaNube();
+      expect(
+        contenedor.read(mesasProvider).any((Mesa m) => m.esLibreta),
+        isTrue,
+      );
+    });
+  });
 }

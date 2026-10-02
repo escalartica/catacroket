@@ -61,6 +61,7 @@ class Mesa {
     String? foto,
     bool quitarFoto = false,
     bool? enLaNube,
+    String? codigo,
   }) {
     return Mesa(
       id: id,
@@ -68,20 +69,33 @@ class Mesa {
       descripcion: descripcion ?? this.descripcion,
       colorHex: colorHex ?? this.colorHex,
       miembros: miembros ?? this.miembros,
-      codigo: codigo,
+      codigo: codigo ?? this.codigo,
       foto: quitarFoto ? null : (foto ?? this.foto),
       enLaNube: enLaNube ?? this.enLaNube,
     );
   }
 
-  /// Genera un código de seis letras.
+  /// Las letras con las que se hacen los códigos.
   ///
   /// Fuera el alfabeto conflictivo: sin I ni L ni O, sin 0 ni 1. Este código
   /// se dicta en voz alta en una barra de bar con ruido, y una I que alguien
   /// oye como L es una mesa a la que no entras.
+  ///
+  /// Vive aquí y no dentro de [nuevoCodigo] porque quien teclea un código
+  /// necesita el mismo alfabeto para avisar antes de ir al servidor.
+  static const String alfabetoCodigo = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+  /// Genera un código de seis letras.
+  ///
+  /// Por defecto usa `Random.secure()`, no el `Random()` normal: este código
+  /// es la llave de una mesa, y el generador corriente es predecible si
+  /// alguien conoce la semilla. No cuesta nada y cierra la puerta.
+  ///
+  /// Los tests le pasan su propio [azar] con semilla fija, que es para lo
+  /// que está el parámetro.
   static String nuevoCodigo([Random? azar]) {
-    const String alfabeto = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-    final Random r = azar ?? Random();
+    const String alfabeto = alfabetoCodigo;
+    final Random r = azar ?? Random.secure();
     return List<String>.generate(
       6,
       (_) => alfabeto[r.nextInt(alfabeto.length)],

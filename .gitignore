@@ -11,3 +11,15 @@ ios/Flutter/Flutter.framework
 ios/Flutter/Flutter.podspec
 android/.gradle/
 android/local.properties
+
+# Firma de release de Android. Esto NO se sube al repositorio nunca.
+#
+# El almacén de claves es IRREEMPLAZABLE: si se pierde, Google Play no deja
+# volver a publicar la app con ese identificador. Copia de seguridad fuera del
+# ordenador, y las contraseñas donde no se pierdan.
+android/key.properties
+*.jks
+*.keystore
+
+# Configuración del mapa: lleva la clave de CARTO.
+mapa.env

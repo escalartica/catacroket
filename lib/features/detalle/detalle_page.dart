@@ -141,20 +141,43 @@ class DetallePage extends ConsumerWidget {
                 style: AppTypography.tituloL,
               ),
               const SizedBox(height: AppSpacing.m),
-              Vuelo(
-                id: cata.id,
-                child: ElCorte(
-                  corte: cata.corte,
-                  rellenoId: cata.rellenoId,
-                  semilla: cata.id,
-                  animado: true,
-                  ancho: 250,
+
+              // Sin foto, el dibujo es la imagen de la cata y va a lo grande.
+              if (!cata.tieneMedios) ...<Widget>[
+                Vuelo(
+                  id: cata.id,
+                  child: ElCorte(
+                    corte: cata.corte,
+                    rellenoId: cata.rellenoId,
+                    semilla: cata.id,
+                    animado: true,
+                    ancho: 250,
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.m),
+                const SizedBox(height: AppSpacing.m),
+              ],
+
+              // Con foto, el dibujo se mete en la fila de la nota. Suelto y
+              // centrado entre dos huecos parecía un despiste, y encima decía
+              // dos veces lo mismo que la foto de arriba. Aquí acompaña a la
+              // nota, que es lo que se viene a mirar.
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
+                  if (cata.tieneMedios) ...<Widget>[
+                    Vuelo(
+                      id: cata.id,
+                      child: ElCorte(
+                        corte: cata.corte,
+                        rellenoId: cata.rellenoId,
+                        semilla: cata.id,
+                        animado: true,
+                        vapor: false,
+                        ancho: 72,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
                   Nota(valor: cata.puntuacion, grande: true, conSufijo: true),
                   const SizedBox(width: 14),
                   // Flexible: con el texto grande de accesibilidad estas dos
@@ -747,10 +770,18 @@ class _FilaBandeja extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.s),
-          ChipCata(
-            texto: sabor.veredicto.nombre,
-            emoji: sabor.veredicto.emoji,
-            color: _colorDe(sabor.veredicto),
+          // Todos del mismo ancho: con el suyo natural, «Meh» quedaba mucho
+          // más corto que «Muy buenas» y la columna de veredictos salía en
+          // zigzag, con cada emoji empezando en un sitio distinto. El mínimo
+          // no es un ancho fijo: si el texto de accesibilidad crece, el chip
+          // crece con él en vez de recortarse.
+          ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 138),
+            child: ChipCata(
+              texto: sabor.veredicto.nombre,
+              emoji: sabor.veredicto.emoji,
+              color: _colorDe(sabor.veredicto),
+            ),
           ),
         ],
       ),
@@ -857,13 +888,17 @@ class _ComoEstaHecha extends StatelessWidget {
               texto: receta.rebozadoConGluten
                   ? 'Rebozado de trigo'
                   : 'Rebozado sin gluten',
-              emoji: receta.rebozadoConGluten ? '🌾' : '✅',
+              // El mismo emoji que en el formulario: aquí es una etiqueta de
+              // lectura y no se puede marcar, pero que la misma cosa se
+              // dibuje igual en los dos sitios es la mitad de lo que hace
+              // que una app se entienda sin explicarla.
+              emoji: receta.rebozadoConGluten ? '🌾' : '🚫',
               color: AppColors.superficieCalida,
               compacto: true,
             ),
             ChipCata(
               texto: receta.rebozadoConHuevo ? 'Con huevo' : 'Sin huevo',
-              emoji: receta.rebozadoConHuevo ? '🥚' : '✅',
+              emoji: receta.rebozadoConHuevo ? '🥚' : '🚫',
               color: AppColors.superficieCalida,
               compacto: true,
             ),

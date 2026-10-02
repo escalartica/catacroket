@@ -1,11 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../arte/corte_painter.dart';
 import '../../../core/data/rellenos.dart';
 import '../../../core/models/cata.dart';
+import '../../../core/theme/components/foto_medio.dart';
 import '../../../core/models/medio.dart';
 import '../../../core/models/dieta.dart';
 import '../../../core/providers/evitar_provider.dart';
@@ -216,25 +215,32 @@ class _Plato extends StatelessWidget {
                 ),
               ],
             )
-          // Con foto manda la foto, y el dibujo se queda de sello en la
-          // esquina.
+          // Con foto manda la foto, y sólo la foto.
           //
           // Antes una foto tuya se reducía a una pastillita que ponía «📷
           // Foto» y el plato enseñaba el dibujo igualmente: quien se molesta
-          // en fotografiar su croqueta no volvía a verla en el feed.
+          // en fotografiar su croqueta no volvía a verla en el feed. Eso se
+          // arregló poniendo la foto.
           //
-          // El dibujo no se quita: es lo que hace que todas las tarjetas se
-          // lean igual y lo que no tiene ninguna otra app. Pero sobre una
-          // foto propia no tiene por qué mandar él.
+          // Lo que había encima, un sello con el dibujo en la esquina, se ha
+          // quitado. La idea era que todas las tarjetas se leyeran igual,
+          // pero medía 30 px: a ese tamaño El Corte no se distingue, la
+          // esquina redondeada de la miniatura le comía un trozo y lo que
+          // quedaba parecía un fallo de pintado encima de la foto. El dibujo
+          // sigue mandando en todas las catas sin foto y en la ficha
+          // completa, que es donde se ve de verdad.
           : Stack(
               fit: StackFit.expand,
               children: <Widget>[
-                Image.file(
-                  File(foto.ruta),
+                // Por [FotoMedio] y no por Image.file: la foto puede estar
+                // en este móvil, en la nube, o en ninguno de los dos. La de
+                // tu gente sólo está en la nube, y la tuya también después de
+                // reinstalar la app.
+                FotoMedio(
+                  medio: foto,
                   fit: BoxFit.cover,
-                  // Si el fichero ya no está —la foto la borró el sistema al
-                  // liberar espacio— se vuelve al dibujo, que nunca falta.
-                  errorBuilder: (_, _, _) => Stack(
+                  // Sin foto que valga, el dibujo, que nunca falta.
+                  siFalla: () => Stack(
                     alignment: Alignment.center,
                     children: <Widget>[
                       Positioned.fill(
@@ -250,30 +256,6 @@ class _Plato extends StatelessWidget {
                         ),
                       ),
                     ],
-                  ),
-                ),
-                Positioned(
-                  right: 2,
-                  bottom: 2,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.92),
-                      borderRadius: BorderRadius.circular(AppShape.radioS),
-                      border: Border.all(
-                        color: AppColors.tinta,
-                        width: AppShape.bordeFino,
-                      ),
-                    ),
-                    child: SizedBox(
-                      width: 30,
-                      child: ElCorte(
-                        corte: cata.corte,
-                        rellenoId: cata.rellenoId,
-                        semilla: cata.id,
-                        vapor: false,
-                      ),
-                    ),
                   ),
                 ),
               ],

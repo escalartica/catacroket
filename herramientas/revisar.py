@@ -113,10 +113,15 @@ def solo_codigo(texto):
 #
 # La causa: `widgets.dart` reexporta foundation con `show Brightness,
 # UniqueKey` y nada más. Lo demás de foundation hay que pedirlo a mano.
+# La lista NO se escribe de memoria: sale de leer los `export ... show` del
+# propio SDK. `visibleForTesting`, `immutable`, `protected` y `debugPrint` sí
+# llegan con material (los reexporta src/widgets/framework.dart), y meterlos
+# aquí daba falsos positivos. Para rehacerla si cambia el SDK:
+# herramientas/simbolos_foundation.py
 DE_FOUNDATION = (
     'kReleaseMode', 'kDebugMode', 'kProfileMode', 'kIsWeb',
-    'debugPrint', 'compute', 'listEquals', 'mapEquals', 'setEquals',
-    'visibleForTesting', 'describeIdentity', 'objectRuntimeType',
+    'compute', 'listEquals', 'mapEquals', 'setEquals',
+    'describeIdentity', 'objectRuntimeType',
 )
 
 # Imports que sí traen esos símbolos.

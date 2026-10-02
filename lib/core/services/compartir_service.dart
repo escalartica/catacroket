@@ -70,7 +70,15 @@ class CompartirService {
       '${Enlaces.dondeEsta}';
 
   /// "Vente a mi mesa."
+  /// La invitación entera, lista para pegar en cualquier sitio.
+  ///
+  /// Lleva el código Y qué hacer con él. Mandar seis letras sueltas a alguien
+  /// que no conoce la app es mandarle un acertijo: no sabe qué es, ni de qué
+  /// aplicación, ni dónde se meten.
   static String invitacionMesa(Mesa mesa) =>
-      'Te abro sitio en «${mesa.nombre}», mi mesa de Catacroket. '
-      'El código es ${mesa.codigo}. 🥔\n${Enlaces.dondeEsta}';
+      '🥔 Te abro sitio en «${mesa.nombre}», mi mesa de Catacroket, '
+      'la app para apuntar las croquetas que nos comemos.\n\n'
+      'El código es: ${mesa.codigo}\n\n'
+      'Ábrela, vete a Mesas, dale a «Entrar con un código» y pégalo.\n'
+      '${Enlaces.dondeEsta}';
 }

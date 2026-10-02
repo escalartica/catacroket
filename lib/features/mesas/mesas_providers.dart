@@ -35,8 +35,13 @@ List<Puesto> rankingDe(
   Map<String, Persona> personas,
 ) {
   final List<Puesto> ranking = mesa.miembros.map((String id) {
-    final List<Cata> suyas =
-        catas.where((Cata c) => c.autorId == id).toList();
+    // Los miembros de una mesa compartida se guardan por su identificador de
+    // cuenta, y las catas viajan firmadas con ése. En la libreta, en cambio,
+    // no hay cuentas y la firma es el identificador local. Se miran los dos,
+    // porque una misma mesa puede tener catas de antes de que hubiera cuenta.
+    final List<Cata> suyas = catas
+        .where((Cata c) => c.autorUid == id || (c.autorUid == null && c.autorId == id))
+        .toList();
     return Puesto(
       persona: personas[id] ?? Persona.desconocida,
       catas: suyas.length,

@@ -219,4 +219,16 @@ void main() {
       expect(catas().where((Cata c) => c.id == 'sin-fichero'), isEmpty);
     });
   });
+
+  group('catas que no consiguieron subir', () {
+    test('sin nada pendiente no hace nada y no revienta', () async {
+      expect(await notifier().reintentarPendientes(), 0);
+    });
+
+    test('reintentar no toca las catas del móvil', () async {
+      final List<Cata> antes = catas();
+      await notifier().reintentarPendientes();
+      expect(catas().length, antes.length);
+    });
+  });
 }

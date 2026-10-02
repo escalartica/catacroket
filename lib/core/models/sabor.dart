@@ -107,11 +107,25 @@ class Sabor {
       ];
 
   /// "Jamón ibérico", "Jamón ibérico y boletus", "Jamón, boletus y calabaza".
+  ///
+  /// La primera letra va en mayúscula aunque quien lo escribió pusiera
+  /// minúscula: los rellenos de la lista ya vienen capitalizados, así que
+  /// una «cecina» escrita a mano cantaba al lado de un «Jamón ibérico». Sólo
+  /// la primera: dentro de la frase los demás van en minúscula, como toca en
+  /// castellano («Jamón ibérico y cecina»).
   String get nombre {
     final List<String> partes = nombres;
     if (partes.isEmpty) return Rellenos.de(rellenoId).nombre;
-    if (partes.length == 1) return partes.first;
-    return '${partes.sublist(0, partes.length - 1).join(', ')} y ${partes.last}';
+    if (partes.length == 1) return _conMayuscula(partes.first);
+    return _conMayuscula(
+      '${partes.sublist(0, partes.length - 1).join(', ')} y ${partes.last}',
+    );
+  }
+
+  static String _conMayuscula(String texto) {
+    if (texto.isEmpty) return texto;
+    final String primera = texto.substring(0, 1).toUpperCase();
+    return '$primera${texto.substring(1)}';
   }
 
   Sabor copyWith({

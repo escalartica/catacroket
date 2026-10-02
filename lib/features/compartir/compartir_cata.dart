@@ -16,6 +16,7 @@ import '../../core/models/persona.dart';
 import '../../core/models/sabor.dart';
 import '../../core/services/compartir_service.dart';
 import '../../core/theme/components/boton.dart';
+import '../../core/theme/components/foto_medio.dart';
 import '../../core/theme/components/chip.dart';
 import '../../core/theme/components/nota.dart';
 import '../../core/theme/components/pegatina.dart';
@@ -314,12 +315,51 @@ class _Estampa extends StatelessWidget {
                     clipBehavior: Clip.none,
                     alignment: Alignment.center,
                     children: <Widget>[
-                      ElCorte(
-                        corte: cata.corte,
-                        rellenoId: cata.rellenoId,
-                        semilla: cata.id,
-                        ancho: 176,
-                      ),
+                      // La foto de verdad manda: es la croqueta que te
+                      // comiste, y es lo que hace que a alguien le entren
+                      // ganas al verla en un grupo. El dibujo se queda para
+                      // las catas sin foto, que también hay que poder
+                      // compartir.
+                      if (cata.primeraFoto?.sePuedeVer ?? false)
+                        ClipRRect(
+                          borderRadius:
+                              BorderRadius.circular(AppShape.radioM),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.circular(AppShape.radioM),
+                              border: Border.all(
+                                color: AppColors.tinta,
+                                width: AppShape.borde,
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius:
+                                  BorderRadius.circular(AppShape.radioM - 2),
+                              child: FotoMedio(
+                                medio: cata.primeraFoto!,
+                                ancho: 176,
+                                alto: 176,
+                                fit: BoxFit.cover,
+                                // Sin foto que valga, el dibujo: mejor que
+                                // un hueco roto en algo que se comparte.
+                                siFalla: () => ElCorte(
+                                  corte: cata.corte,
+                                  rellenoId: cata.rellenoId,
+                                  semilla: cata.id,
+                                  ancho: 176,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        ElCorte(
+                          corte: cata.corte,
+                          rellenoId: cata.rellenoId,
+                          semilla: cata.id,
+                          ancho: 176,
+                        ),
                       Positioned(
                         right: -6,
                         bottom: 2,

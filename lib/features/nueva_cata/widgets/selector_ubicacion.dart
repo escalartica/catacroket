@@ -150,7 +150,7 @@ class _SinPunto extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           Text(
-            'Sin punto en el mapa esta cata no sale en la Ruta croquetera.',
+            'Sin punto en el mapa, esta cata no sale en la Ruta croquetera.',
             style: AppTypography.cuerpoS.copyWith(fontSize: 12.5, height: 1.3),
           ),
           const SizedBox(height: AppSpacing.m),

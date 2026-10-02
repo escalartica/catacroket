@@ -1,0 +1,21 @@
+# Plantilla. El fichero de verdad es `android/key.properties`, está en
+# .gitignore y NO se sube nunca.
+#
+# ¡OJO! Copiar este fichero no basta: hay que rellenar las contraseñas. Si se
+# queda el texto de ejemplo, la compilación falla al final con
+# «keystore password was incorrect».
+#
+# storePassword y keyPassword son LA MISMA contraseña: la que escribiste en
+# «Enter keystore password» al crear el almacén. keytool crea almacenes PKCS12
+# desde Java 9, y ahí no hay una contraseña aparte para la clave —por eso no
+# te la llegó a pedir.
+#
+# Para crear el almacén, una sola vez en la vida del proyecto:
+#
+#   keytool -genkey -v -keystore ~/catacroket-release.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias catacroket
+
+storePassword=AQUI-LA-CONTRASENA-QUE-ESCRIBISTE
+keyPassword=LA-MISMA-DE-ARRIBA
+keyAlias=catacroket
+storeFile=/Users/cehachehache/catacroket-release.jks

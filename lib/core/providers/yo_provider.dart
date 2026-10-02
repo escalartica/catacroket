@@ -18,9 +18,18 @@ import '../errores.dart';
 /// mesa y es de sólo lectura; esto es lo tuyo, se edita y se guarda. Cuando
 /// entre Firebase, esto pasa a ser tu perfil público y lo demás no cambia.
 class Yo {
-  const Yo({this.nombre = 'Tú', this.foto});
+  const Yo({this.nombre = porDefecto, this.foto});
 
   final String nombre;
+
+  /// El nombre de fábrica. En tu propio móvil se lee bien («Tú, 12 catas»),
+  /// pero no es un nombre: publicarlo haría que en una mesa compartida la
+  /// gente viera a varios «Tú».
+  static const String porDefecto = 'Tú';
+
+  /// Si quien usa la app ha elegido su nombre o sigue con el de fábrica.
+  bool get tieneNombrePropio =>
+      nombre.trim().isNotEmpty && nombre.trim() != porDefecto;
 
   /// Ruta de la foto en la carpeta de la app, o nulo si no hay.
   ///

@@ -122,13 +122,18 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
   /// las catas se apuntarían pensando que llegan a alguien.
   Future<void> compartir(String id) async {
     final Mesa? mesa = state.where((Mesa m) => m.id == id).firstOrNull;
-    if (mesa == null || mesa.esLibreta || mesa.enLaNube) return;
+    if (mesa == null || mesa.esLibreta) return;
 
-    await NubeService.compartir(mesa);
+    // Ojo: NO se sale si la mesa ya está marcada como subida. Si la subida
+    // anterior se quedó a medias —la mesa escrita y el código no, que es
+    // exactamente lo que pasó— volver a pulsar tiene que poder arreglarlo.
+    // Subir es idempotente: ni duplica la mesa ni echa a los miembros.
+
+    final String codigo = await NubeService.compartir(mesa);
 
     state = <Mesa>[
       for (final Mesa m in state)
-        if (m.id == id) m.copyWith(enLaNube: true) else m,
+        if (m.id == id) m.copyWith(enLaNube: true, codigo: codigo) else m,
     ];
     await _guardar();
   }
@@ -151,6 +156,47 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
 
     await _guardar();
     return mesa;
+  }
+
+  /// Recupera del servidor las mesas compartidas en las que estás.
+  ///
+  /// Se llama al entrar con la cuenta. Las que ya tienes en el móvil no se
+  /// tocan: lo tuyo manda, porque puedes haberle puesto foto o haberla
+  /// renombrado sin cobertura. Sólo se añaden las que faltan, que son las
+  /// que se perdían al reinstalar o al cambiar de móvil.
+  Future<int> recuperarDeLaNube() async {
+    final List<Mesa> suyas = await NubeService.misMesas();
+    if (suyas.isEmpty) return 0;
+
+    final Set<String> yaEstan = state.map((Mesa m) => m.id).toSet();
+    final List<Mesa> nuevas =
+        suyas.where((Mesa m) => !yaEstan.contains(m.id)).toList();
+    if (nuevas.isEmpty) return 0;
+
+    state = <Mesa>[...state, ...nuevas];
+    await _guardar();
+    return nuevas.length;
+  }
+
+  /// Apunta quién hay en una mesa, según lo que dice el servidor.
+  ///
+  /// No toca nada más de la mesa: el nombre, el color y la foto son de quien
+  /// la creó y viven en el móvil. Si la lista no cambia no se guarda, porque
+  /// esto llega cada vez que el servidor respira y reescribir el disco por
+  /// nada sobra.
+  Future<void> apuntarMiembros(String mesaId, List<String> miembros) async {
+    final Mesa? mesa = state.where((Mesa m) => m.id == mesaId).firstOrNull;
+    if (mesa == null) return;
+
+    final bool igual = mesa.miembros.length == miembros.length &&
+        mesa.miembros.toSet().containsAll(miembros);
+    if (igual) return;
+
+    state = <Mesa>[
+      for (final Mesa m in state)
+        if (m.id == mesaId) m.copyWith(miembros: miembros) else m,
+    ];
+    await _guardar();
   }
 
   /// Borra una mesa y devuelve sus catas a la libreta.

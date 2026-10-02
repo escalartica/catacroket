@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart' show PointerDownEvent;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -121,6 +122,16 @@ class _CampoState extends State<Campo> {
               autocorrect: !widget.oculto,
               enableSuggestions: !widget.oculto,
               textCapitalization: TextCapitalization.sentences,
+              // Tocar fuera del campo cierra el teclado. Sin esto, en una
+              // hoja que ya ocupa media pantalla el teclado se quedaba
+              // puesto tapando los botones y no había forma evidente de
+              // quitarlo: ni «Hecho», ni tocar al lado, nada.
+              onTapOutside: (PointerDownEvent _) => _foco.unfocus(),
+              // En los campos de una línea, la tecla de retorno cierra en vez
+              // de no hacer nada. En los de varias tiene que seguir haciendo
+              // salto de línea, que es para lo que están.
+              textInputAction:
+                  widget.lineas == 1 ? TextInputAction.done : null,
               style: AppTypography.cuerpo,
               cursorColor: AppColors.tinta,
               onChanged: widget.onCambio,

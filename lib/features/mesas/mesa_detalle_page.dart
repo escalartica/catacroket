@@ -15,6 +15,7 @@ import '../../core/providers/cuenta_provider.dart';
 import '../../core/models/persona.dart';
 import '../../core/providers/catas_provider.dart';
 import '../../core/providers/mesas_provider.dart';
+import '../../core/providers/nube_provider.dart';
 import '../../core/theme/components/avatar.dart';
 import '../../core/theme/components/boton.dart';
 import '../../core/theme/components/cabecera.dart';
@@ -29,6 +30,7 @@ import '../../core/utils/formato.dart';
 import 'mesas_providers.dart';
 import 'widgets/hoja_mesa.dart';
 import '../vitrina/widgets/tarjeta_cata.dart';
+import 'widgets/hoja_nombre.dart';
 
 /// Una mesa por dentro: quién manda, qué habéis vivido y todas sus catas.
 class MesaDetallePage extends ConsumerWidget {
@@ -38,6 +40,10 @@ class MesaDetallePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // También aquí: a la ficha se puede llegar recién entrada con el código,
+    // sin haber pasado por la lista.
+    ref.watch(miembrosAlDiaProvider);
+
     final Mesa? mesa = ref.watch(mesaProvider(mesaId));
     if (mesa == null) {
       return Column(
@@ -137,7 +143,7 @@ class MesaDetallePage extends ConsumerWidget {
                   Expanded(
                     child: _Cifra(
                       valor: '${catas.length}',
-                      etiqueta: 'catas',
+                      etiqueta: catas.length == 1 ? 'cata' : 'catas',
                       color: AppColors.chicle,
                     ),
                   ),
@@ -168,6 +174,34 @@ class MesaDetallePage extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
+              const TituloSeccion(texto: 'Todas las catas'),
+              if (catas.isEmpty)
+                Column(
+                  children: <Widget>[
+                    const Croqui(ancho: 150),
+                    const SizedBox(height: AppSpacing.m),
+                    Text(
+                      'La libreta está en blanco.\nLo que catas aquí no lo ve nadie más.',
+                      textAlign: TextAlign.center,
+                      style: AppTypography.cuerpo,
+                    ),
+                  ],
+                )
+              else
+                for (final Cata c in catas) ...<Widget>[
+                  TarjetaCata(
+                    cata: c,
+                    // Por cuenta primero: una cata que llegó de otro
+                    // móvil sólo se puede atribuir así. El identificador
+                    // local vale para las de antes de que hubiera cuentas.
+                    autor: personas[c.autorUid] ??
+                        personas[c.autorId] ??
+                        Persona.desconocida,
+                    onTap: () => context.push('/cata/${c.id}'),
+                  ),
+                  const SizedBox(height: AppSpacing.m),
+                ],
+
               if (mesa.miembros.length > 1) ...<Widget>[
                 const SizedBox(height: AppSpacing.l),
                 Pegatina(
@@ -182,17 +216,28 @@ class MesaDetallePage extends ConsumerWidget {
                   ),
                 ),
               ],
-
-              // El código, en su propio panel y no colgando del ranking: una
               // Cuántas de cada clase lleváis.
               //
               // Cuenta croquetas y no catas: un surtido de seis es una cata
               // pero son seis croquetas, y de seis clases distintas.
-              if (catas.isNotEmpty) ...<Widget>[
+              // Desde tres: con una cata el reparto es una barra al 100 %
+              // que no cuenta nada, y con dos tampoco hay reparto que ver.
+              if (catas.length >= 3) ...<Widget>[
                 const SizedBox(height: AppSpacing.l),
                 _RecuentoPorClase(catas: catas),
               ],
 
+              if (recuerdos.isNotEmpty) ...<Widget>[
+                TituloSeccion(
+                  texto: 'Recuerdos',
+                  pastilla: Text('${recuerdos.length}', style: AppTypography.cifraM),
+                ),
+                for (final Recuerdo r in recuerdos)
+                  _TarjetaRecuerdo(recuerdo: r),
+              ],
+
+
+              // El código, en su propio panel y no colgando del ranking: una
               // mesa recién creada todavía no tiene ranking que enseñar, y es
               // justo cuando más falta hace pasar el código.
               if (!mesa.esLibreta) ...<Widget>[
@@ -224,13 +269,15 @@ class MesaDetallePage extends ConsumerWidget {
                       ),
                       const SizedBox(height: AppSpacing.l),
 
-                      // Mientras no esté subida, el código no sirve de nada:
-                      // quien lo teclee no encontrará la mesa. Así que
-                      // primero se comparte y después se reparte.
+                      // Dos estados, y nunca los dos a la vez. Antes los
+                      // botones de invitar salían siempre, grises mientras la
+                      // mesa no estuviera subida, y un botón gris sin
+                      // explicación sólo genera la pregunta «¿por qué no
+                      // puedo?». Ahora, o se activa o se reparte.
                       if (!mesa.enLaNube) ...<Widget>[
                         Text(
-                          'Esta mesa todavía está sólo en tu móvil. '
-                          'Compártela y el código empezará a funcionar.',
+                          'Este código todavía no funciona: la mesa está sólo '
+                          'en tu móvil. Actívalo y ya podrás repartirlo.',
                           style: AppTypography.cuerpoS.copyWith(
                             fontSize: 12.5,
                             height: 1.3,
@@ -239,60 +286,33 @@ class MesaDetallePage extends ConsumerWidget {
                         ),
                         const SizedBox(height: AppSpacing.s),
                         _BotonCompartir(mesa: mesa),
+                      ] else ...<Widget>[
+                        BotonPegatina(
+                          texto: 'Invitar por WhatsApp',
+                          pequeno: true,
+                          icono: Icons.chat_bubble_rounded,
+                          onTap: () => _invitarAMesa(context, mesa),
+                        ),
                         const SizedBox(height: AppSpacing.s),
+                        BotonPegatina.fantasma(
+                          texto: 'Copiar la invitación',
+                          pequeno: true,
+                          icono: Icons.copy_rounded,
+                          onTap: () => _copiarCodigo(context, mesa),
+                        ),
+                        const SizedBox(height: AppSpacing.s),
+                        BotonPegatina.fantasma(
+                          texto: 'Copiar sólo el código',
+                          pequeno: true,
+                          icono: Icons.tag_rounded,
+                          onTap: () => _copiarSoloCodigo(context, mesa),
+                        ),
                       ],
-
-                      BotonPegatina(
-                        texto: 'Mandarlo por WhatsApp',
-                        pequeno: true,
-                        icono: Icons.chat_bubble_rounded,
-                        onTap: mesa.enLaNube
-                            ? () => _invitarAMesa(context, mesa)
-                            : null,
-                      ),
-                      const SizedBox(height: AppSpacing.s),
-                      BotonPegatina.fantasma(
-                        texto: 'Copiar el código',
-                        pequeno: true,
-                        icono: Icons.copy_rounded,
-                        onTap: () => _copiarCodigo(context, mesa),
-                      ),
                     ],
                   ),
                 ),
               ],
 
-              if (recuerdos.isNotEmpty) ...<Widget>[
-                TituloSeccion(
-                  texto: 'Recuerdos',
-                  pastilla: Text('${recuerdos.length}', style: AppTypography.cifraM),
-                ),
-                for (final Recuerdo r in recuerdos)
-                  _TarjetaRecuerdo(recuerdo: r),
-              ],
-
-              const TituloSeccion(texto: 'Todas las catas'),
-              if (catas.isEmpty)
-                Column(
-                  children: <Widget>[
-                    const Croqui(ancho: 150),
-                    const SizedBox(height: AppSpacing.m),
-                    Text(
-                      'La libreta está en blanco.\nLo que catas aquí no lo ve nadie más.',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.cuerpo,
-                    ),
-                  ],
-                )
-              else
-                for (final Cata c in catas) ...<Widget>[
-                  TarjetaCata(
-                    cata: c,
-                    autor: personas[c.autorId] ?? Persona.desconocida,
-                    onTap: () => context.push('/cata/${c.id}'),
-                  ),
-                  const SizedBox(height: AppSpacing.m),
-                ],
               const SizedBox(height: AppSpacing.huecoBarra),
             ],
           ),
@@ -301,10 +321,25 @@ class MesaDetallePage extends ConsumerWidget {
     );
   }
 
-  /// Copia el código al portapapeles. Sigue teniendo sentido aunque ya se
-  /// pueda mandar por WhatsApp: a veces se pega en un grupo de Telegram, o en
-  /// las notas, o se dicta en la barra mirando la pantalla.
+  /// Copia la invitación entera: el código y qué hacer con él.
+  ///
+  /// Es lo que se pega en un grupo de Telegram o en un correo. Seis letras
+  /// sueltas no le dicen nada a quien las recibe.
   static void _copiarCodigo(BuildContext context, Mesa mesa) {
+    HapticFeedback.mediumImpact();
+    Clipboard.setData(
+      ClipboardData(text: CompartirService.invitacionMesa(mesa)),
+    );
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        const SnackBar(content: Text('Invitación copiada, con el código.')),
+      );
+  }
+
+  /// Sólo las seis letras, para quien ya sabe de qué va y únicamente
+  /// necesita el código.
+  static void _copiarSoloCodigo(BuildContext context, Mesa mesa) {
     HapticFeedback.mediumImpact();
     Clipboard.setData(ClipboardData(text: mesa.codigo ?? ''));
     ScaffoldMessenger.of(context)
@@ -705,7 +740,7 @@ class _RecuentoPorClase extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const EtiquetaPanel(texto: 'Qué pedís'),
+          const EtiquetaPanel(texto: 'Las croquetas que más pedís'),
           const SizedBox(height: AppSpacing.m),
           for (final Recuento r in arriba) ...<Widget>[
             Row(
@@ -793,11 +828,25 @@ class _BotonCompartirState extends ConsumerState<_BotonCompartir> {
 
     try {
       await ref.read(mesasProvider.notifier).compartir(widget.mesa.id);
+
+      // Quien abre la mesa también necesita nombre: si no, su gente le ve
+      // como «Alguien» en su propia mesa.
+      if (mounted) {
+        await hojaNombre(
+          context,
+          ref,
+          motivo: 'Tu mesa ya está activa. Ponte un nombre para que quien '
+              'entre sepa quién la ha abierto.',
+        );
+      }
+
       barra
         ..clearSnackBars()
         ..showSnackBar(
           const SnackBar(
-            content: Text('Mesa compartida. Ya puedes pasar el código.'),
+            content: Text(
+              'Código activado. Ya puedes invitar a tu gente.',
+            ),
           ),
         );
     } on FalloNube catch (e) {
@@ -812,7 +861,7 @@ class _BotonCompartirState extends ConsumerState<_BotonCompartir> {
   @override
   Widget build(BuildContext context) {
     return BotonPegatina(
-      texto: _subiendo ? 'Subiendo…' : 'Compartir esta mesa',
+      texto: _subiendo ? 'Activando…' : 'Activar el código',
       pequeno: true,
       icono: Icons.cloud_upload_rounded,
       onTap: _subiendo ? null : _compartir,

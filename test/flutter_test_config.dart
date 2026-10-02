@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:catacroket/core/theme/components/mapa_mini.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -21,6 +22,13 @@ import 'package:flutter_test/flutter_test.dart';
 /// salía nada.
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  // Un servidor que no existe. En un test ninguna tesela llega igualmente
+  // (no hay red), pero con la URL de OpenStreetMap puesta la librería del
+  // mapa imprime su aviso de política de uso por cada capa que se monta: en
+  // esta suite son quince avisos de nueve líneas cada uno, y un fallo de
+  // verdad se pierde ahí dentro.
+  Mapas.usarOtras('https://teselas.invalido/{z}/{x}/{y}.png');
 
   // Las dos familias del pubspec. Si se añade una tercera, va aquí también:
   // una fuente que falte no rompe nada y por eso no se nota, sólo deja de

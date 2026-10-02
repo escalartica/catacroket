@@ -93,7 +93,13 @@ class SelectorReceta extends ConsumerWidget {
             ),
             OpcionPildora(
               texto: 'Sin gluten',
-              emoji: '✅',
+              // Llevaba un ✅. Desde que la píldora marcada enseña su propia
+              // marca de verificación, esa casilla verde en la opción SIN
+              // marcar decía lo contrario de lo que pasaba: el icono más
+              // parecido a "elegido" estaba en la que no lo estaba. El emoji
+              // de cada opción tiene que hablar de lo que es, no de su
+              // estado; del estado ya se encarga la píldora.
+              emoji: '🚫',
               activa: !r.rebozadoConGluten,
               colorActiva: AppColors.mango,
               onTap: () => n.rebozadoConGluten(false),
@@ -107,7 +113,7 @@ class SelectorReceta extends ConsumerWidget {
             ),
             OpcionPildora(
               texto: 'Sin huevo',
-              emoji: '✅',
+              emoji: '🚫',
               activa: !r.rebozadoConHuevo,
               colorActiva: AppColors.sol,
               onTap: () => n.rebozadoConHuevo(false),

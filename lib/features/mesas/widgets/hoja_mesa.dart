@@ -120,11 +120,23 @@ class _HojaMesaState extends ConsumerState<_HojaMesa> {
           borderRadius: BorderRadius.circular(AppShape.radioXL),
           border: Border.all(color: AppColors.tinta, width: AppShape.borde),
         ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
+        // La altura se acota para que, con el teclado puesto, la hoja no
+        // intente ser más alta que lo que queda de pantalla. Lo que sobra
+        // rueda; los botones NO, que van en el pie fijo de abajo.
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.82 -
+              MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
               Text(
                 _esNueva ? 'Una mesa nueva' : 'Cambiar la mesa',
                 style: AppTypography.tituloM,
@@ -168,24 +180,32 @@ class _HojaMesaState extends ConsumerState<_HojaMesa> {
                     ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.xl),
-              BotonPegatina(
-                texto: _guardando
-                    ? 'Guardando…'
-                    : _esNueva
-                        ? 'Crear la mesa'
-                        : 'Guardar',
-                color: AppColors.tomate,
-                onTap: _nombre.trim().isEmpty || _guardando ? null : _guardar,
+                  ],
+                ),
               ),
-              const SizedBox(height: AppSpacing.s),
-              BotonPegatina.fantasma(
-                texto: 'Cancelar',
-                pequeno: true,
-                onTap: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
+            ),
+
+            // El pie, siempre a la vista. Antes iba dentro de la zona que
+            // rueda: con el teclado abierto los botones quedaban debajo del
+            // borde y no había nada que insinuara que había que arrastrar
+            // para llegar a ellos. La pantalla parecía bloqueada.
+            const SizedBox(height: AppSpacing.l),
+            BotonPegatina(
+              texto: _guardando
+                  ? 'Guardando…'
+                  : _esNueva
+                      ? 'Crear la mesa'
+                      : 'Guardar',
+              color: AppColors.tomate,
+              onTap: _nombre.trim().isEmpty || _guardando ? null : _guardar,
+            ),
+            const SizedBox(height: AppSpacing.s),
+            BotonPegatina.fantasma(
+              texto: 'Cancelar',
+              pequeno: true,
+              onTap: () => Navigator.of(context).pop(),
+            ),
+          ],
         ),
       ),
     );

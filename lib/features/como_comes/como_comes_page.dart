@@ -27,19 +27,36 @@ import '../../core/theme/tokens/app_typography.dart';
 ///
 /// Se pregunta una sola vez y se sale de un toque, porque para quien come de
 /// todo no hay nada que contestar. Todo se cambia luego en Perfil.
-class ComoComesPage extends ConsumerWidget {
+class ComoComesPage extends ConsumerStatefulWidget {
   const ComoComesPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ComoComesPage> createState() => _ComoComesPageState();
+}
+
+class _ComoComesPageState extends ConsumerState<ComoComesPage> {
+  @override
+  void initState() {
+    super.initState();
+
+    // Se da por preguntada en cuanto se enseña, no al pulsar el botón. Antes,
+    // salir con el gesto de atrás o cerrar la app aquí dejaba la marca sin
+    // poner y la pregunta volvía en el siguiente arranque, contradiciendo su
+    // propio subtítulo. Lo que se elija aquí se cambia luego en Perfil, así
+    // que no hay nada que perder por darla por vista.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(vistoProvider.notifier).marcar(Visto.comoComes);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final Set<Dieta> mias = ref.watch(miDietaProvider);
     final Set<String> evitar = ref.watch(evitarProvider);
     final int marcado = mias.length + evitar.length;
 
-    Future<void> seguir() async {
-      await ref.read(vistoProvider.notifier).marcar(Visto.comoComes);
-      if (context.mounted) context.go('/');
-    }
+    // Ya quedó marcada al entrar; aquí sólo se sale.
+    Future<void> seguir() async => context.go('/');
 
     // El fondo y el area segura los pone _SinBarra, en el router. Cuando
     // esta pantalla se lo montaba por su cuenta y se olvidaba una pieza,

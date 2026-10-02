@@ -13,6 +13,7 @@ import '../../../core/theme/tokens/app_shape.dart';
 import '../../../core/theme/tokens/app_spacing.dart';
 import '../../../core/theme/tokens/app_typography.dart';
 import '../../cuenta/hoja_cuenta.dart';
+import 'hoja_nombre.dart';
 
 /// Entrar en la mesa de otro con su código de seis letras.
 Future<Mesa?> hojaCodigo(BuildContext context) {
@@ -37,7 +38,27 @@ class _HojaCodigoState extends ConsumerState<_HojaCodigo> {
   bool _trabajando = false;
   String? _fallo;
 
+  /// La letra imposible que lleve el código, si lleva alguna.
+  ///
+  /// Los códigos no tienen íes ni oes (ver [Mesa.alfabetoCodigo]), así que
+  /// una O tecleada es siempre un código mal oído. Vale más decírselo aquí
+  /// que dejar que el servidor conteste «no existe», que suena a que la mesa
+  /// se ha borrado.
+  String? get _letraImposible {
+    for (final String letra in _codigo.split('')) {
+      if (!Mesa.alfabetoCodigo.contains(letra)) return letra;
+    }
+    return null;
+  }
+
   Future<void> _entrar() async {
+    final String? mala = _letraImposible;
+    if (mala != null) {
+      setState(() => _fallo = 'Los códigos no llevan $mala. Será otra letra: '
+          'pregúntaselo a quien te lo pasó.');
+      return;
+    }
+
     // Sin cuenta no hay a quién dejar entrar: el servidor necesita saber a
     // quién añade a la mesa. Se ofrece entrar ahí mismo en vez de mandar a
     // buscarlo al perfil.
@@ -54,6 +75,19 @@ class _HojaCodigoState extends ConsumerState<_HojaCodigo> {
     try {
       final Mesa mesa =
           await ref.read(mesasProvider.notifier).entrarCon(_codigo);
+
+      // Justo aquí y no antes: ahora es cuando tu nombre deja de ser cosa
+      // tuya y pasa a leerlo la gente de la mesa. Preguntarlo al instalar la
+      // app sería pedir un dato para nada a quien quizá no comparta nunca.
+      if (mounted) {
+        await hojaNombre(
+          context,
+          ref,
+          motivo: 'Ya estás en «${mesa.nombre}». '
+              'Ponte un nombre para que tu gente sepa cuál eres.',
+        );
+      }
+
       if (mounted) Navigator.of(context).pop(mesa);
     } on FalloNube catch (e) {
       if (mounted) setState(() => _fallo = e.mensaje);
@@ -114,13 +148,32 @@ class _HojaCodigoState extends ConsumerState<_HojaCodigo> {
                 ),
                 textAlign: TextAlign.center,
               ),
+              // Quien no ha entrado todavía se encontraba el registro de
+              // golpe, después de teclear las seis letras. Se avisa antes,
+              // y sólo a quien le toca.
+              if (!ref.watch(haySesionProvider)) ...<Widget>[
+                const SizedBox(height: 6),
+                Text(
+                  'Te pediremos un correo: en una mesa compartida hay que '
+                  'saber quién es quién.',
+                  style: AppTypography.cuerpoS.copyWith(
+                    color: AppColors.tintaSuave,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: AppSpacing.l),
               Campo(
                 etiqueta: 'El código',
                 valor: _codigo,
                 pista: 'Seis letras',
                 autofoco: true,
-                onCambio: (String v) => setState(() => _codigo = v),
+                // Al corregir se quita el aviso: dejarlo puesto mientras
+                // tecleas la letra buena parece que sigue mal.
+                onCambio: (String v) => setState(() {
+                  _codigo = v;
+                  _fallo = null;
+                }),
                 // Mayúsculas y sin espacios: el código se dicta en voz alta
                 // en un bar y nadie lo teclea igual que está escrito.
                 formateadores: <TextInputFormatter>[

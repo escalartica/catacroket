@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de privacidad · Catacroket</title>
+<meta name="description" content="Qué guarda Catacroket, dónde, y qué puedes pedir.">
+<style>
+  :root {
+    --fondo: #FFF3DC;
+    --papel: #FFFFFF;
+    --tinta: #2C1B4D;
+    --suave: #70607B;
+    --sol:   #FFC93C;
+    --borde: #2C1B4D;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--tinta);
+    font: 17px/1.65 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    padding: 24px 16px 64px;
+  }
+  main {
+    max-width: 44rem;
+    margin: 0 auto;
+    background: var(--papel);
+    border: 3px solid var(--borde);
+    border-radius: 22px;
+    box-shadow: 0 6px 0 var(--borde);
+    padding: clamp(24px, 5vw, 48px);
+  }
+  header { margin-bottom: 32px; }
+  .marca {
+    display: inline-block;
+    background: var(--sol);
+    border: 3px solid var(--borde);
+    border-radius: 999px;
+    padding: 4px 16px;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  h1 { font-size: clamp(28px, 6vw, 40px); line-height: 1.15; margin: 16px 0 0; }
+  h2 {
+    font-size: 21px;
+    margin: 40px 0 12px;
+    padding-top: 20px;
+    border-top: 2px solid #F0E6D2;
+  }
+  h2:first-of-type { border-top: 0; padding-top: 0; }
+  p, li { color: #3A2A58; }
+  a { color: #7C3AED; }
+  strong { color: var(--tinta); }
+  ul { padding-left: 1.2em; }
+  li { margin: 6px 0; }
+  code {
+    background: var(--fondo);
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: .92em;
+  }
+  footer {
+    max-width: 44rem;
+    margin: 24px auto 0;
+    text-align: center;
+    color: var(--suave);
+    font-size: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --fondo: #1B1230; --papel: #241940; --tinta: #F6EEFF;
+      --suave: #B6A6C9; --borde: #000000;
+    }
+    :root:not([data-theme="light"]) p,
+    :root:not([data-theme="light"]) li { color: #E6DCF5; }
+    :root:not([data-theme="light"]) h2 { border-top-color: #3A2B5C; }
+    :root:not([data-theme="light"]) a { color: #C9A6FF; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="marca">Catacroket</span>
+    <h1>Política de privacidad</h1>
+  </header>
+
+<p>Última actualización: 30 de septiembre de 2026</p>
+<h2>Lo corto</h2>
+<p>Catacroket funciona entera sin cuenta y sin conexión: apuntas tus croquetas y
+se quedan en tu móvil.</p>
+<p>Hay una sola cosa que hace que algo salga de ahí, y es que tú la pidas:
+<strong>compartir una mesa con otras personas</strong>. Para eso hace falta una cuenta con
+tu correo, y las catas de esa mesa se guardan en un servidor para que los
+móviles de los demás puedan verlas. Si nunca compartes una mesa, no se crea
+ninguna cuenta y no se sube nada.</p>
+<p>No hay anuncios, no hay analítica y no hay rastreo, compartas o no.</p>
+<h2>Lo que se queda en el móvil</h2>
+<p>Tus catas —el bar, la ciudad, las notas, la puntuación, lo que escribiste, las
+fotos y el punto del mapa— se guardan en el almacenamiento privado de la
+aplicación, en tu móvil.</p>
+<p>También se quedan ahí, y <strong>no salen nunca</strong> aunque compartas:</p>
+<ul>
+<li>Tu dieta y tus alergias, y la lista de «lo que no quiero encontrarme».</li>
+<li>Tu nombre y tu foto de perfil, mientras no entres en una mesa compartida.</li>
+<li>Las mesas que no has compartido con nadie.</li>
+</ul>
+<p>Si borras la aplicación, todo eso se borra con ella.</p>
+<h2>Si creas una cuenta</h2>
+<p>La cuenta se crea con <strong>correo y contraseña</strong> y sólo sirve para compartir
+mesas. La gestiona Firebase Authentication, de Google. Nosotros vemos tu
+correo; la contraseña no la vemos ni nosotros ni nadie, se guarda cifrada en
+sus servidores.</p>
+<p>En cuanto hay cuenta se guarda también, en la base de datos (Cloud Firestore,
+de Google), <strong>el nombre que hayas puesto en tu perfil</strong>, para que en las mesas
+compartidas tus catas salgan con tu nombre y no con un código.</p>
+<h2>Si compartes una mesa</h2>
+<p>Entonces, y sólo entonces, las catas de esa mesa se copian al servidor para
+que las vean los demás miembros. De cada cata viaja:</p>
+<ul>
+<li>El bar, la ciudad y el país.</li>
+<li><strong>Las coordenadas exactas del sitio</strong>, si las pusiste.</li>
+<li>La fecha, el precio, la puntuación, la receta y lo que escribieras.</li>
+<li><strong>Las fotos</strong>, reducidas de tamaño.</li>
+<li>Quién la apuntó.</li>
+</ul>
+<p>Quién puede verlo: <strong>sólo las personas que están en esa mesa</strong>. El servidor
+tiene reglas que lo comprueban en cada lectura; alguien de fuera no puede
+leerlas aunque lo intente. Un código de mesa es una invitación: quien lo tenga
+puede entrar, así que dáselo sólo a quien quieras dentro.</p>
+<p>Y algo que conviene decir claro: como el proyecto de servidor es nuestro,
+técnicamente <strong>sí podríamos ver esos datos</strong> desde el panel de Google. No lo
+hacemos y no hay nada montado para hacerlo, pero sería mentira decir que no
+tenemos forma. Lo que nunca sale del móvil (el bloque de arriba) no podemos
+verlo de ninguna manera.</p>
+<p>Las catas de tus mesas privadas no se suben. Si sales de una mesa o la borras,
+tus catas siguen en tu móvil.</p>
+<h2>Borrar la cuenta</h2>
+<p>Desde <strong>Perfil → Borrar cuenta</strong>, dentro de la aplicación, sin escribir a
+nadie. Desaparecen la cuenta y el acceso a las mesas compartidas.</p>
+<p>Tus catas del móvil <strong>no se tocan</strong>: son tuyas y siguen ahí. Si además quieres
+que se borre lo que ya subiste a una mesa, bórralo desde la mesa antes de
+borrar la cuenta, o escríbenos al correo de abajo y lo hacemos nosotros.</p>
+<h2>La ubicación</h2>
+<p>Se pide sólo cuando pulsas para poner el punto de una cata en el mapa.</p>
+<p>Para rellenar solos la ciudad y el país, esas coordenadas se le mandan a
+<strong>Nominatim</strong>, el buscador de direcciones de OpenStreetMap, que responde con el
+nombre del sitio. En ese momento un punto aproximado de dónde estás sale del
+móvil hacia sus servidores, junto a tu dirección IP. No pasa por nosotros y no
+guardamos copia. Su política está en
+<a href="https://osmfoundation.org/wiki/Privacy_Policy">https://osmfoundation.org/wiki/Privacy_Policy</a>.</p>
+<p>Puedes no dar la ubicación: el punto se pone a mano y entonces no se consulta
+nada.</p>
+<h2>Las fotos</h2>
+<p>La cámara y el carrete se usan sólo cuando tú eliges una foto para una cata o
+para tu perfil. La copia se guarda en el almacenamiento privado de la
+aplicación. Sólo sale del móvil si esa cata está en una mesa compartida, y
+entonces va reducida de tamaño.</p>
+<h2>El mapa</h2>
+<p>Los mapas los dibuja <strong>CARTO</strong>, sobre datos de <strong>OpenStreetMap</strong>. El móvil les
+pide las imágenes del trozo de mapa que estás mirando, y esa petición —como
+cualquier petición a una web— lleva tu dirección IP y la zona que se ve.</p>
+<p>Ocurre entre tu móvil y sus servidores; nosotros no intervenimos ni recibimos
+copia. Sus políticas están en <a href="https://carto.com/privacy/">https://carto.com/privacy/</a> y
+<a href="https://wiki.osmfoundation.org/wiki/Privacy_Policy">https://wiki.osmfoundation.org/wiki/Privacy_Policy</a>.</p>
+<h2>Compartir una cata como imagen</h2>
+<p>Cuando compartes una cata, la aplicación prepara una imagen y se la pasa al
+selector del sistema o a WhatsApp. A partir de ahí manda la aplicación que
+elijas y su política, no la nuestra.</p>
+<h2>Rastreo y publicidad</h2>
+<p>No hay. Ni anuncios, ni identificadores de publicidad, ni rastreo entre
+aplicaciones, ni perfilado, ni analítica de uso. Nada de lo que hagas en
+Catacroket se cruza con ningún otro sitio ni se vende a nadie.</p>
+<h2>Menores</h2>
+<p>La aplicación no está dirigida a menores de 14 años y no les pide datos. Para
+crear una cuenta hay que tener 14 años o más, que es la edad a partir de la
+cual en España se puede consentir por uno mismo el tratamiento de datos.</p>
+<h2>Tus derechos</h2>
+<p>Si nunca has creado una cuenta, no tenemos ningún dato tuyo y no hay nada que
+pedirnos: todo está en tu móvil.</p>
+<p>Si la has creado, tienes derecho a acceder a tus datos, corregirlos,
+suprimirlos, limitar su tratamiento, oponerte y pedir que te los entreguemos en
+un fichero. La supresión puedes hacerla tú desde la propia aplicación; para lo
+demás, escribe al correo de abajo y se responde en un mes como máximo. Si crees
+que no lo hacemos bien, puedes reclamar ante la Agencia Española de Protección
+de Datos (<a href="https://www.aepd.es">https://www.aepd.es</a>).</p>
+<p>Los datos se guardan mientras tengas la cuenta, y se tratan para lo único que
+existen: que una mesa compartida funcione.</p>
+<h2>Dónde están los datos</h2>
+<p>En servidores de <strong>Google (Firebase)</strong>, que actúa como encargado del
+tratamiento.</p>
+<p>Los datos <strong>se guardan dentro de la Unión Europea</strong>: la base de datos está en
+la región europea de Google. No se transfieren fuera del Espacio Económico
+Europeo.</p>
+<h2>Cambios</h2>
+<p>Si algo de esto cambia, se dice aquí y se avisa dentro de la aplicación antes
+de que pase.</p>
+<h2>Contacto</h2>
+<p>escalartica@gmail.com</p>
+<p>Para cualquier duda sobre esta política o sobre tus datos. Es el correo que hay
+que poner también en la ficha de App Store y en la de Play: las dos tiendas lo
+exigen y comprueban que responda.</p>
+</main>
+<footer>Catacroket · escalartica@gmail.com</footer>
+</body>
+</html>

@@ -42,7 +42,12 @@ enum BebidaVegetal {
 /// hecha con harina de arroz y seguir siendo peligrosa para un celíaco si
 /// comparte aceite con las croquetas de trigo del resto de la carta.
 enum Freidora {
-  aparte('Freidora aparte', '✅'),
+  // El emoji dice de qué va la opción, nunca si está elegida: de eso se
+  // encarga la píldora, que desde hace poco enseña su propia marca al estar
+  // marcada. «Freidora aparte» llevaba un ✅ y, sin elegirla, era la píldora
+  // con la casilla verde más vistosa de la pantalla — justo al revés de lo
+  // que pasaba.
+  aparte('Freidora aparte', '🍳'),
   compartida('Freidora compartida', '⚠️'),
   sinSaber('No lo sé', '🤷');
 

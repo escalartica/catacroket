@@ -104,9 +104,10 @@ CROQUETÓMETRO
 De Aprendiz de panko a Leyenda dorada. Medallas, racha semanal y tu paladar
 en un vistazo.
 
-SIN CUENTA Y SIN NUBE
-Las catas viven en tu móvil. No hay registro, no hay contraseña y no se
-manda nada a ningún servidor.
+TUYA, EN TU MÓVIL
+Las catas viven en tu móvil y la app funciona entera sin cuenta y sin
+conexión. Sólo hace falta cuenta si quieres compartir una mesa con tu gente,
+y entonces viaja únicamente lo de esa mesa. Sin anuncios y sin rastreo.
 
 Gratis, en español y hecha por quien también se pide siempre las de jamón.
 ```
@@ -163,8 +164,8 @@ LA RUTA CROQUETERA
 
 Todos los bares donde has catado, en un mapa, cada uno con su nota. Filtras
 por las tuyas o por las que valen para tu dieta, y meses después ves de un
-vistazo dónde estaba aquella croqueta que no se te olvida. El mapa es de
-OpenStreetMap y no hace falta cuenta de nada.
+vistazo dónde estaba aquella croqueta que no se te olvida. El mapa lo dibuja
+CARTO sobre datos de OpenStreetMap.
 
 TUS MESAS
 
@@ -193,10 +194,16 @@ PARA COMPARTIR
 Cada cata se convierte en una estampa que se manda al grupo tal cual. Es la
 forma bonita de decir «mirad lo que me acabo de comer».
 
-SIN CUENTA, SIN NUBE, SIN ANUNCIOS
+SIN ANUNCIOS Y SIN RASTREO
 
-Las catas viven en tu móvil. No hay registro, no hay contraseña, no hay
-publicidad y no se manda nada a ningún servidor.
+Apuntar croquetas no necesita cuenta ni conexión: todo se guarda en tu móvil
+y ahí se queda. La cuenta sólo entra en juego si decides compartir una mesa,
+porque para eso los móviles de los demás tienen que poder ver esas catas; se
+crea con tu correo y se borra desde el perfil cuando quieras.
+
+Lo que nunca sale del móvil, compartas o no: tu dieta y tus alergias.
+
+No hay publicidad, no hay rastreo y no se vende nada a nadie.
 
 Gratis y en español.
 ```

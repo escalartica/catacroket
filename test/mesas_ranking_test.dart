@@ -11,6 +11,7 @@ Cata cata({
   required String autorId,
   String id = 'x',
   int crujiente = 7,
+  String? autorUid,
 }) =>
     Cata(
       id: id,
@@ -19,6 +20,7 @@ Cata cata({
       corte: Corte(crujiente: crujiente, cremosidad: 7, sabor: 7, relleno: 7),
       sabores: const <Sabor>[Sabor(rellenoId: 'jamon')],
       autorId: autorId,
+      autorUid: autorUid,
       mesaId: 'mesa',
       fecha: DateTime(2026),
     );
@@ -122,6 +124,49 @@ void main() {
       );
 
       expect(ranking.first.persona, Persona.desconocida);
+    });
+  });
+
+  group('mesas compartidas: la gente se conoce por su cuenta', () {
+    // En una mesa compartida los miembros son identificadores de cuenta y
+    // las catas viajan firmadas con ésos. Buscarlas por el identificador
+    // local daba cero catas a todo el mundo y el ranking salía en blanco.
+    test('una cata firmada con la cuenta cuenta para su dueño', () {
+      final Mesa mesa = Mesa(
+        id: 'mesa',
+        nombre: 'Mamarracha',
+        descripcion: '',
+        colorHex: 0xFFFFC93C,
+        miembros: const <String>['uid-eme', 'uid-tu'],
+      );
+
+      final List<Puesto> r = rankingDe(
+        mesa,
+        <Cata>[cata(autorId: 'tu', autorUid: 'uid-eme', id: 'c1')],
+        <String, Persona>{'uid-eme': persona('Eme'), 'uid-tu': persona('Tú')},
+      );
+
+      expect(r.first.persona.nombre, 'Eme');
+      expect(r.first.catas, 1);
+      expect(r.last.catas, 0);
+    });
+
+    test('las catas de antes de las cuentas siguen contando', () {
+      final Mesa mesa = Mesa(
+        id: 'mesa',
+        nombre: 'Libreta',
+        descripcion: '',
+        colorHex: 0xFFFFC93C,
+        miembros: const <String>['tu'],
+      );
+
+      final List<Puesto> r = rankingDe(
+        mesa,
+        <Cata>[cata(autorId: 'tu', id: 'vieja')],
+        <String, Persona>{'tu': persona('Tú')},
+      );
+
+      expect(r.first.catas, 1);
     });
   });
 }

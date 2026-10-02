@@ -87,6 +87,21 @@ class AppColors {
   /// Se decide por contraste medido y no por intuición, que es justo donde se
   /// falla: sobre [chicle] gana la tinta y sobre [uva] gana la crema, y las
   /// dos parecen igual de "de color".
+  /// Un color de la paleta, siempre el mismo para la misma semilla.
+  ///
+  /// Para la gente que llega de una mesa compartida: no tienen color elegido
+  /// y hay que darles uno que no cambie entre una pantalla y la siguiente ni
+  /// al reiniciar. Se saca del identificador, así que no hay que guardarlo.
+  static Color deSemilla(String semilla) {
+    const List<Color> paleta = <Color>[sol, mango, tomate, chicle, uva, menta,
+        cielo, lima];
+    int suma = 0;
+    for (final int c in semilla.codeUnits) {
+      suma = (suma + c) % 100000;
+    }
+    return paleta[suma % paleta.length];
+  }
+
   static Color textoSobre(Color fondo) =>
       _contraste(tinta, fondo) >= _contraste(crema, fondo) ? tinta : crema;
 

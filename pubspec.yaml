@@ -48,6 +48,11 @@ dependencies:
   firebase_auth: ^6.7.0
   cloud_firestore: ^6.10.0
 
+  # Comprimir las fotos antes de que viajen. Van dentro de la propia cata,
+  # en Firestore, y ahí el límite es 1 MB por cata: una foto de móvil sin
+  # tocar son 4 MB y no entra.
+  flutter_image_compress: ^2.3.0
+
 dev_dependencies:
   # Sólo para los tests: un almacenamiento falso que rechaza escribir, para
   # poder probar qué hace la app en un móvil sin espacio. Va declarado aquí y

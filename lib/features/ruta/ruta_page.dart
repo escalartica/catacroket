@@ -169,6 +169,8 @@ class _RutaPageState extends ConsumerState<RutaPage> {
   /// Lo que separa los globos es agruparlos (agrupacion.dart), no alejarse.
   /// Un marcador rozando el borde de la hoja cuesta mucho menos que perder
   /// el mapa entero.
+  /// El margen del encuadre. La parte de abajo descuenta la hoja de
+  /// resultados, que tapa media pantalla: sin eso el globo queda debajo.
   EdgeInsets get _margenEncuadre =>
       EdgeInsets.fromLTRB(56, 76, 56, _alturaHoja + 32);
 
@@ -178,10 +180,50 @@ class _RutaPageState extends ConsumerState<RutaPage> {
   /// `onMapReady` salta en un post-frame de `initState`, antes de que el mapa
   /// se haya medido, y encuadrar contra un tamaño cero deja una cámara
   /// degenerada. `initialCameraFit` existe justo para esto.
+  /// La península, Portugal y Baleares.
+  ///
+  /// Va por encuadre y no por centro y zoom porque la hoja de resultados tapa
+  /// media pantalla: centrando en mitad de España, lo único que se veía era la
+  /// franja de arriba, o sea Francia. El encuadre descuenta la hoja con el
+  /// mismo margen que usa el resto del mapa.
+  CameraFit get _encuadrePeninsula => CameraFit.bounds(
+        bounds: LatLngBounds(
+          const LatLng(35.9, -9.7),
+          const LatLng(43.9, 4.4),
+        ),
+        padding: _margenEncuadre,
+      );
+
+  /// Una caja alrededor de un punto, para poder encuadrar cuando sólo hay
+  /// una cata.
+  ///
+  /// Unos 10 km de lado: lo justo para que se lean el pueblo y las carreteras
+  /// de alrededor y uno sepa dónde está. Más cerca y es un plano de calles
+  /// sin nombres; más lejos y el globo se pierde.
+  CameraFit _encuadreDeUnPunto(LatLng punto) => CameraFit.bounds(
+        bounds: LatLngBounds(
+          LatLng(punto.latitude - 0.045, punto.longitude - 0.06),
+          LatLng(punto.latitude + 0.045, punto.longitude + 0.06),
+        ),
+        padding: _margenEncuadre,
+      );
+
   CameraFit? _encuadreInicial(List<Cata> catas) {
-    // Con menos de dos puntos no hay nada que encuadrar, y un `bounds` de un
-    // solo punto pide un zoom infinito.
-    if (catas.length < 2) return null;
+    // Sin ninguna cata todavía, la península entera: la app se descarga en
+    // toda España y la usa gente de fuera.
+    if (catas.isEmpty) return _encuadrePeninsula;
+
+    // Con un solo punto, un `bounds` degenerado pediría zoom infinito. Pero
+    // devolver null tampoco vale: entonces manda `initialZoom`, que no sabe
+    // nada de la hoja de resultados y deja el globo escondido detrás de
+    // ella, con el mapa tan cerca que no se reconoce el sitio. La salida es
+    // encuadrar una caja ALREDEDOR del punto: así vale el mismo margen que
+    // el resto y el zoom sale de la caja, no de un número a ojo.
+    if (catas.length < 2) {
+      return _encuadreDeUnPunto(
+        LatLng(catas.first.lat!, catas.first.lon!),
+      );
+    }
     return CameraFit.bounds(
       bounds: LatLngBounds.fromPoints(
         catas.map((Cata c) => LatLng(c.lat!, c.lon!)).toList(),
@@ -196,7 +238,9 @@ class _RutaPageState extends ConsumerState<RutaPage> {
     if (!mounted || catas.isEmpty) return;
 
     if (catas.length == 1) {
-      _mapa.move(LatLng(catas.first.lat!, catas.first.lon!), 15);
+      _mapa.fitCamera(
+        _encuadreDeUnPunto(LatLng(catas.first.lat!, catas.first.lon!)),
+      );
       return;
     }
 
@@ -452,8 +496,16 @@ class _CapaMapa extends StatelessWidget {
     required this.onTeselaFallida,
   });
 
-  /// Dónde se abre si no se llega desde ninguna ficha.
-  static const LatLng _sevilla = LatLng(37.3886, -5.9885);
+  /// Dónde se abre cuando todavía no hay ninguna cata con sitio.
+  ///
+  /// La península entera y no una ciudad: la app se descarga en toda España
+  /// y la usa gente de fuera, así que abrir en Sevilla dejaba a cualquiera
+  /// que no sea de aquí mirando un barrio que no conoce. Desde la península
+  /// se ve dónde está uno y adónde puede ir.
+  static const LatLng _peninsula = LatLng(40.2, -3.6);
+
+  /// Con esto entran la península, Portugal y Baleares.
+  static const double _zoomPeninsula = 5.4;
 
   final MapController controlador;
   final Cata? inicial;
@@ -482,15 +534,18 @@ class _CapaMapa extends StatelessWidget {
       mapController: controlador,
       options: MapOptions(
         // Si se llega desde una ficha, el mapa abre en ese bar. Si no,
-        // encuadra el sitio donde más has catado. Sevilla cuando no hay nada.
+        // encuadra el sitio donde más has catado. Y si no has catado en
+        // ninguna parte todavía, la península entera.
         //
         // El encuadre no sobra, aunque lo parezca: el centro del mapa cae
         // detrás de la hoja de resultados, y su margen inferior es lo único
         // que sube los globos hasta la franja que se ve.
         initialCenter: inicial != null
             ? LatLng(inicial!.lat!, inicial!.lon!)
-            : (centroDelGrupo ?? _sevilla),
-        initialZoom: inicial != null ? 15 : 13,
+            : (centroDelGrupo ?? _peninsula),
+        initialZoom: inicial != null
+            ? 15
+            : (centroDelGrupo != null ? 13 : _zoomPeninsula),
         initialCameraFit: inicial == null ? encuadreInicial : null,
         minZoom: 2,
         maxZoom: 18,
@@ -838,8 +893,9 @@ class _Vacio extends StatelessWidget {
       FiltroRuta.mias => 'Ninguna de tus catas tiene sitio todavía.',
       FiltroRuta.libres => 'Ninguna cata apta tiene sitio todavía.',
       FiltroRuta.todas => sinSitio > 0
-          ? 'Hay $sinSitio catas sin sitio. Ábrelas, dale a corregir y '
-              'ponles el punto: aparecen aquí al momento.'
+          ? 'Hay ${Formato.plural(sinSitio, 'cata', 'catas')} sin sitio. '
+              'Ábrelas, dale a corregir y ponles el punto: aparecen aquí al '
+              'momento.'
           : 'Aún no hay catas. La primera que apuntes con sitio sale aquí.',
     };
 

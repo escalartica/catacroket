@@ -18,6 +18,7 @@ import '../../core/theme/components/segmentado.dart';
 import '../../core/theme/tokens/app_colors.dart';
 import '../../core/theme/tokens/app_spacing.dart';
 import '../../core/theme/tokens/app_typography.dart';
+import '../../core/utils/formato.dart';
 import '../libre/barra_libre_page.dart';
 import 'widgets/croqueta_del_dia.dart';
 import 'widgets/tarjeta_cata.dart';
@@ -104,7 +105,7 @@ class VitrinaPage extends ConsumerWidget {
                 TituloSeccion(
                   texto: 'Últimas catas',
                   pastilla: ChipCata(
-                    texto: '${feed.length} catas',
+                    texto: Formato.plural(feed.length, 'cata', 'catas'),
                     color: AppColors.menta,
                   ),
                 ),

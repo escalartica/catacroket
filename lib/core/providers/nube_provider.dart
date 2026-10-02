@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/cata.dart';
 import '../models/mesa.dart';
 import '../services/nube_service.dart';
+import 'catas_provider.dart';
 import 'cuenta_provider.dart';
 import 'mesas_provider.dart';
+import 'yo_provider.dart';
 
 /// Las catas que han apuntado los demás en tus mesas compartidas.
 ///
@@ -63,6 +65,109 @@ final catasDeOtrosProvider = StreamProvider<List<Cata>>((ref) {
   });
 
   return salida.stream;
+});
+
+/// Recupera tus mesas compartidas en cuanto entras con tu cuenta.
+///
+/// Las mesas vivían sólo en el móvil: al reinstalar la app o estrenar
+/// teléfono desaparecían aunque el servidor supiera que seguías dentro, y
+/// había que pedir el código otra vez. Ahora vuelven solas.
+///
+/// Se dispara con cada cuenta distinta, no en cada reconstrucción: la marca
+/// es el uid, y mientras no cambie esto no vuelve a llamar al servidor.
+final recuperarMesasProvider = Provider<void>((ref) {
+  final String? miUid = ref.watch(miUidProvider);
+  if (miUid == null) return;
+
+  // Sin await ni bloqueo: la app arranca con lo que hay en el móvil y las
+  // mesas que falten aparecen cuando el servidor conteste.
+  unawaited(
+    ref.read(mesasProvider.notifier).recuperarDeLaNube().catchError(
+          (Object _) => 0,
+        ),
+  );
+
+  // Y las catas que se quedaron sin subir —sin cobertura, casi siempre—
+  // vuelven a intentarlo. Antes se quedaban en el móvil para siempre.
+  unawaited(
+    ref.read(catasProvider.notifier).reintentarPendientes().catchError(
+          (Object _) => 0,
+        ),
+  );
+});
+
+/// Los nombres de tu gente, por identificador de cuenta.
+///
+/// Los miembros de una mesa se guardan por su identificador de cuenta, que no
+/// dice nada: sin esto salían todos como «Alguien» y con cero catas. Se piden
+/// una vez por tanda de miembros y se quedan cacheados mientras no cambie la
+/// lista.
+final nombresDeLaGenteProvider = FutureProvider<Map<String, String>>((ref) async {
+  final String? miUid = ref.watch(miUidProvider);
+  if (miUid == null) return const <String, String>{};
+
+  final Set<String> uids = <String>{
+    for (final Mesa m in ref.watch(mesasProvider))
+      if (m.enLaNube) ...m.miembros,
+  }..remove(miUid);
+
+  if (uids.isEmpty) return const <String, String>{};
+  return NubeService.nombresDe(uids.toList());
+});
+
+/// Publica tu nombre para que tu gente lo vea, y lo vuelve a publicar si te
+/// lo cambias en el perfil.
+final publicarMiNombreProvider = Provider<void>((ref) {
+  final String? miUid = ref.watch(miUidProvider);
+  if (miUid == null) return;
+
+  // Sólo si es un nombre de verdad. Publicar el de fábrica llenaba la mesa
+  // de «Tú», que es peor que no publicar nada: al menos «Alguien» avisa de
+  // que falta un nombre.
+  final Yo yo = ref.watch(yoProvider);
+  if (!yo.tieneNombrePropio) return;
+
+  unawaited(NubeService.publicarNombre(yo.nombre.trim()));
+});
+
+/// Mantiene al día quién hay en cada mesa compartida.
+///
+/// No devuelve nada: su trabajo es escuchar el servidor y apuntar en el
+/// móvil quién ha entrado. Sin esto, la ficha de una mesa decía «tú sola»
+/// aunque tu gente ya estuviera dentro, porque la mesa se leía una vez y
+/// nunca más.
+///
+/// Hay que mirarlo desde alguna pantalla para que se encienda; lo hace la
+/// lista de mesas, que es por donde se pasa siempre.
+final miembrosAlDiaProvider = Provider<void>((ref) {
+  final String? miUid = ref.watch(miUidProvider);
+  if (miUid == null) return;
+
+  final List<Mesa> compartidas =
+      ref.watch(mesasProvider).where((Mesa m) => m.enLaNube).toList();
+  if (compartidas.isEmpty) return;
+
+  final List<StreamSubscription<List<String>>> escuchas =
+      <StreamSubscription<List<String>>>[];
+
+  for (final Mesa mesa in compartidas) {
+    escuchas.add(
+      NubeService.miembrosDe(mesa.id).listen(
+        (List<String> miembros) {
+          if (miembros.isEmpty) return;
+          ref.read(mesasProvider.notifier).apuntarMiembros(mesa.id, miembros);
+        },
+        // Que una mesa falle no puede dejar sin escuchar a las demás.
+        onError: (Object _) {},
+      ),
+    );
+  }
+
+  ref.onDispose(() {
+    for (final StreamSubscription<List<String>> s in escuchas) {
+      s.cancel();
+    }
+  });
 });
 
 /// Lo tuyo y lo de tu gente, junto y sin repetidos.

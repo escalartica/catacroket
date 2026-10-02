@@ -8,6 +8,7 @@ import '../../core/models/mesa.dart';
 import '../../core/models/persona.dart';
 import '../../core/providers/catas_provider.dart';
 import '../../core/providers/mesas_provider.dart';
+import '../../core/providers/nube_provider.dart';
 import '../../core/providers/visto_provider.dart';
 import '../../core/theme/components/pista.dart';
 import '../../core/theme/components/avatar.dart';
@@ -53,6 +54,18 @@ class MesasPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final List<Mesa> mesas = ref.watch(mesasProvider);
     final Map<String, Persona> personas = ref.watch(personasProvider);
+
+    // Enciende la escucha de quién entra en tus mesas. No pinta nada: se
+    // mira aquí porque por la lista de mesas se pasa siempre, y así la ficha
+    // de una mesa ya está al día cuando la abres.
+    ref.watch(miembrosAlDiaProvider);
+
+    // Y recupera las mesas que el servidor sabe que son tuyas: las que se
+    // perdían al reinstalar o al cambiar de móvil.
+    ref.watch(recuperarMesasProvider);
+
+    // Y publica tu nombre, para que tu gente no te vea como «Alguien».
+    ref.watch(publicarMiNombreProvider);
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -153,9 +166,15 @@ class _TarjetaMesa extends StatelessWidget {
   Widget build(BuildContext context) {
     final double? media = mediaDe(catas);
 
+    // El color de la mesa lo elige el usuario, así que el texto no puede ir
+    // en tinta fija: sobre la uva, una tinta oscura se queda en 2,2:1 y el
+    // nombre de la mesa no se lee. Lo decide [AppColors.textoSobre].
+    final Color fondo = Color(mesa.colorHex);
+    final Color texto = AppColors.textoSobre(fondo);
+
     return Pegatina(
       onTap: onTap,
-      color: Color(mesa.colorHex),
+      color: fondo,
       lunares: true,
       padding: const EdgeInsets.all(AppSpacing.l),
       child: Column(
@@ -191,7 +210,7 @@ class _TarjetaMesa extends StatelessWidget {
               Expanded(
                 child: Text(
                   mesa.nombre,
-                  style: AppTypography.tituloM,
+                  style: AppTypography.tituloM.copyWith(color: texto),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -199,14 +218,14 @@ class _TarjetaMesa extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                 decoration: BoxDecoration(
-                  color: AppColors.tinta,
+                  color: texto,
                   borderRadius: BorderRadius.circular(AppShape.radioS),
                 ),
                 child: Text(
                   mesa.codigo ?? 'PRIVADA',
                   style: AppTypography.antetitulo.copyWith(
                     fontSize: 10.5,
-                    color: AppColors.crema,
+                    color: AppColors.textoSobre(texto),
                   ),
                 ),
               ),
@@ -215,7 +234,7 @@ class _TarjetaMesa extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             mesa.descripcion,
-            style: AppTypography.cuerpoS.copyWith(fontSize: 13),
+            style: AppTypography.cuerpoS.copyWith(fontSize: 13, color: texto),
           ),
           const SizedBox(height: AppSpacing.m),
           Row(
@@ -231,14 +250,20 @@ class _TarjetaMesa extends StatelessWidget {
                   runSpacing: AppSpacing.s,
                   crossAxisAlignment: WrapCrossAlignment.end,
                   children: <Widget>[
-                    _Dato(valor: '${catas.length}', etiqueta: 'catas'),
+                    _Dato(
+                      valor: '${catas.length}',
+                      etiqueta: catas.length == 1 ? 'cata' : 'catas',
+                      color: texto,
+                    ),
                     _Dato(
                       valor: media == null ? '—' : Formato.nota(media),
                       etiqueta: 'media',
+                      color: texto,
                     ),
                     _Dato(
                       valor: '${mesa.miembros.length}',
                       etiqueta: mesa.miembros.length == 1 ? 'tú' : 'personas',
+                      color: texto,
                     ),
                   ],
                 ),
@@ -258,10 +283,17 @@ class _TarjetaMesa extends StatelessWidget {
 }
 
 class _Dato extends StatelessWidget {
-  const _Dato({required this.valor, required this.etiqueta});
+  const _Dato({
+    required this.valor,
+    required this.etiqueta,
+    required this.color,
+  });
 
   final String valor;
   final String etiqueta;
+
+  /// El del texto de la tarjeta, que depende del color de la mesa.
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -269,12 +301,12 @@ class _Dato extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        Text(valor, style: AppTypography.cifraM),
+        Text(valor, style: AppTypography.cifraM.copyWith(color: color)),
         Text(
           etiqueta,
           style: AppTypography.etiqueta.copyWith(
             fontSize: 11.5,
-            color: AppColors.tinta,
+            color: color,
           ),
         ),
       ],

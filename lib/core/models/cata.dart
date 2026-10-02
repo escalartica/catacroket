@@ -32,6 +32,7 @@ class Cata {
     required this.autorId,
     required this.mesaId,
     required this.fecha,
+    this.autorUid,
     this.pais = Paises.porDefecto,
     this.precio,
     this.nota = '',
@@ -61,6 +62,14 @@ class Cata {
   final String autorId;
   final String mesaId;
   final DateTime fecha;
+
+  /// Quién la apuntó, con su identificador de cuenta.
+  ///
+  /// [autorId] es local y sólo vale dentro de un móvil: en el tuyo, tus catas
+  /// y las de tu gente pueden tener el mismo. Para saber de quién es una cata
+  /// que llegó de otro teléfono hace falta esto, que es lo que guardan los
+  /// miembros de una mesa. Nulo en las catas apuntadas sin cuenta.
+  final String? autorUid;
 
   /// Precio por unidad. Nulo cuando no se apuntó.
   final double? precio;
@@ -276,6 +285,46 @@ class Cata {
   /// así la pantalla de la Barra Libre no necesita un caso aparte.
   bool valePara(Set<Dieta> pedidas) => pedidas.every(aptas.contains);
 
+  /// La misma cata con dueño de cuenta.
+  ///
+  /// Aparte de [copyWith] porque esto no es una corrección del usuario: es
+  /// la app apuntando quién la escribió, y conviene que se lea distinto.
+  /// La primera foto de verdad, si la hay.
+  ///
+  /// Vídeos fuera: lo que se quiere aquí es una imagen fija que se pueda
+  /// pintar en una estampa o en una miniatura sin reproducir nada.
+  Medio? get primeraFoto {
+    for (final Medio m in medios) {
+      if (m.tipo == TipoMedio.foto) return m;
+    }
+    return null;
+  }
+
+  Cata conAutorUid(String uid) => Cata(
+        id: id,
+        sitio: sitio,
+        ciudad: ciudad,
+        pais: pais,
+        sabores: sabores,
+        corte: corte,
+        autorId: autorId,
+        autorUid: uid,
+        mesaId: mesaId,
+        fecha: fecha,
+        precio: precio,
+        nota: nota,
+        mordiscos: mordiscos,
+        acompanantes: acompanantes,
+        lat: lat,
+        lon: lon,
+        medios: medios,
+        aptas: aptas,
+        receta: receta,
+        tiro: tiro,
+        formato: formato,
+        unidades: unidades,
+      );
+
   Cata copyWith({
     String? sitio,
     String? ciudad,
@@ -304,6 +353,7 @@ class Cata {
       sabores: sabores ?? this.sabores,
       corte: corte ?? this.corte,
       autorId: autorId,
+      autorUid: autorUid,
       mesaId: mesaId ?? this.mesaId,
       fecha: fecha,
       precio: precio ?? this.precio,
@@ -329,6 +379,7 @@ class Cata {
         'sabores': sabores.map((Sabor s) => s.toJson()).toList(),
         'corte': corte.toJson(),
         'autorId': autorId,
+        'autorUid': autorUid,
         'mesaId': mesaId,
         'fecha': fecha.toIso8601String(),
         'precio': precio,
@@ -351,7 +402,14 @@ class Cata {
         // Las catas guardadas antes de abrir la app al mundo tienen `barrio`
         // y no `ciudad`. Se leen igual y el barrio pasa a ser la ciudad: es
         // más útil que perder el dato, y el usuario puede corregirlo.
-        ciudad: json['ciudad'] as String? ?? json['barrio'] as String? ?? '',
+        // Las catas guardadas antes del arreglo llevan el literal 'Sin
+        // ciudad' escrito en el campo. Al leerlas se limpia: si no, la ficha
+        // sigue diciendo "SIN CIUDAD 🇪🇸 · Bar Manoli" como si hubiera un
+        // pueblo con ese nombre, y esa cata sigue contando como una ciudad
+        // en el Croquetómetro y acercando la medalla de las diez.
+        ciudad: _ciudadLimpia(
+          json['ciudad'] as String? ?? json['barrio'] as String? ?? '',
+        ),
         pais: json['pais'] as String? ?? Paises.porDefecto,
         corte: Corte.fromJson(
           Map<String, dynamic>.from(json['corte'] as Map<dynamic, dynamic>),
@@ -361,6 +419,7 @@ class Cata {
         // corresponde a la nota que ya tenían.
         sabores: _saboresDesdeJson(json),
         autorId: json['autorId'] as String? ?? 'tu',
+        autorUid: json['autorUid'] as String?,
         mesaId: json['mesaId'] as String? ?? 'libreta',
         fecha: DateTime.tryParse(json['fecha'] as String? ?? '') ??
             DateTime.now(),
@@ -418,4 +477,34 @@ class Cata {
       ),
     ];
   }
+
+  /// Quita las repetidas, quedándose con la primera de cada id.
+  ///
+  /// Dos catas con el mismo id no deberían existir, pero pueden: una copia de
+  /// seguridad restaurada dos veces, una sincronización a medias, un guardado
+  /// que se cruzó. Y cuando existen no dan un error claro, sino tres rarezas
+  /// sueltas: el Croquetómetro cuenta de más, una mesa enseña la misma
+  /// croqueta dos veces y —la peor— al tocar una de las dos la app se cierra,
+  /// porque el dibujo que vuela de la lista a la ficha necesita saber cuál de
+  /// las dos despega y no puede.
+  ///
+  /// Se quita al leer y no al guardar: lo guardado ya puede estar así.
+  static List<Cata> sinRepetidas(Iterable<Cata> catas) {
+    final Set<String> vistas = <String>{};
+    return <Cata>[
+      for (final Cata c in catas)
+        if (vistas.add(c.id)) c,
+    ];
+  }
+}
+
+
+/// Quita los literales que alguna versión vieja escribía en el campo ciudad.
+///
+/// Vacío es la respuesta correcta para "no lo dijo": `Cata.lugar` ya sabe
+/// enseñar el país en ese caso.
+String _ciudadLimpia(String ciudad) {
+  const Set<String> inventados = <String>{'sin ciudad', 'sin sitio', '-', '—'};
+  final String limpia = ciudad.trim();
+  return inventados.contains(limpia.toLowerCase()) ? '' : limpia;
 }

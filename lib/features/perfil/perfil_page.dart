@@ -153,8 +153,8 @@ class PerfilPage extends ConsumerWidget {
                     child: _Cifra(
                       valor: '${perfil.catas}',
                       etiqueta: perfil.comidas > perfil.catas
-                          ? 'subidas'
-                          : 'catas',
+                          ? (perfil.catas == 1 ? 'subida' : 'subidas')
+                          : (perfil.catas == 1 ? 'cata' : 'catas'),
                       color: AppColors.chicle,
                     ),
                   ),

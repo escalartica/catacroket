@@ -67,9 +67,15 @@ class CroquetaDelDia extends StatelessWidget {
                     Nota(valor: cata.puntuacion),
                     const SizedBox(width: 8),
                     const Flexible(
+                      // Blanco y no chicle. El rosa sobre el tomate de la
+                      // tarjeta da 1,09:1 de contraste: el borde lo salva de
+                      // ser invisible, pero las dos tintas están tan igualadas
+                      // que vibran y cuesta enfocar la etiqueta. En blanco son
+                      // 3,05:1 y se lee de un vistazo, que es de lo que va una
+                      // etiqueta que presume de récord.
                       child: ChipCata(
                         texto: 'Récord de tu mesa',
-                        color: AppColors.chicle,
+                        color: AppColors.superficie,
                         compacto: true,
                       ),
                     ),

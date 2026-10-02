@@ -5,6 +5,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../../core/models/medio.dart';
 import '../../../core/theme/tokens/app_colors.dart';
+import '../../../core/theme/components/foto_medio.dart';
 import '../../../core/theme/tokens/app_shape.dart';
 import '../../../core/theme/tokens/app_spacing.dart';
 import '../../../core/theme/tokens/app_typography.dart';
@@ -87,10 +88,10 @@ class CarruselMedios extends StatelessWidget {
               // se llegaba a ver de una foto propia.
               : GestureDetector(
                   onTap: () => _verEntera(context, medios, i),
-                  child: Image.file(
-                    File(medio.ruta),
+                  child: FotoMedio(
+                    medio: medio,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const _MedioRoto(),
+                    siFalla: () => const _MedioRoto(),
                   ),
                 ),
         ),
@@ -171,10 +172,10 @@ class _VisorState extends State<_Visor> {
                     minScale: 1,
                     maxScale: 4,
                     child: Center(
-                      child: Image.file(
-                        File(widget.fotos[i].ruta),
+                      child: FotoMedio(
+                        medio: widget.fotos[i],
                         fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) => const _MedioRoto(),
+                        siFalla: () => const _MedioRoto(),
                       ),
                     ),
                   ),
