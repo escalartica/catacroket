@@ -16,8 +16,16 @@ service cloud.firestore {
     // ── Tu ficha ────────────────────────────────────────────────────────
     // La leen los demás miembros de tus mesas para poner tu nombre en las
     // catas; escribirla, sólo tú.
+    //
+    // `get` sí y `list` NO. Con `read` a secas —que es `get` MÁS `list`—
+    // cualquiera con una cuenta podía pedir la colección entera y bajarse el
+    // nombre de todos los usuarios de Catacroket. El comentario decía «la
+    // leen los miembros de tus mesas», pero la regla no comprobaba ninguna
+    // mesa. Ahora sólo se puede preguntar por un identificador que ya
+    // conoces, y los únicos que conoces son los de tu propia gente.
     match /usuarios/{uid} {
-      allow read: if conSesion();
+      allow get: if conSesion();
+      allow list: if false;
       allow write: if conSesion() && request.auth.uid == uid;
     }
 
@@ -50,27 +58,49 @@ service cloud.firestore {
                     && request.resource.data.creadoPor == request.auth.uid
                     && request.auth.uid in request.resource.data.miembros;
 
-      // Dos formas de modificar una mesa:
+      function laCreo() {
+        return conSesion() && resource.data.creadoPor == request.auth.uid;
+      }
+
+      function tocadas() {
+        return request.resource.data.diff(resource.data).affectedKeys();
+      }
+
+      // Tres formas de modificar una mesa:
       //
-      // 1. Ya eres miembro: puedes tocarla.
-      // 2. No lo eres y estás entrando con el código. Entonces lo ÚNICO que
-      //    se te permite es añadirte a ti mismo a la lista, y nada más: ni
-      //    cambiar el nombre, ni meter a otro, ni sacar a nadie. Sin esa
-      //    restricción, quien tuviera un código podría vaciar la mesa de
-      //    miembros o renombrarla.
-      allow update: if esMiembro()
+      // 1. Eres miembro: puedes tocar el nombre, la descripción, el color y
+      //    el código. NO la lista de gente ni quién la creó. Antes esto era
+      //    `esMiembro()` a secas, sin restringir un solo campo, y el agujero
+      //    era de los gordos: cualquiera a quien le reenviaran el código
+      //    podía escribir `miembros: [suUid], creadoPor: suUid`, dejarte
+      //    fuera de tu propia mesa —y sin acceso a tus catas, porque la
+      //    lectura también mira esa lista— y acto seguido borrarla entera.
+      // 2. La creaste tú: además puedes cambiar la lista de gente, que es
+      //    lo que hace falta para invitar o echar a alguien.
+      // 3. Estás entrando con el código. Lo ÚNICO permitido es añadirte a ti
+      //    mismo al final de la lista, y nada más.
+      // 4. Te sales tú: quitarte de la lista y nada más. Faltaba, y sin ella
+      //    nadie podía abandonar una mesa: la borrabas de tu móvil y volvía
+      //    sola al siguiente arranque, porque el servidor te seguía teniendo
+      //    dentro y «las mesas donde estoy» te la devolvía.
+      allow update: if
+                    (esMiembro() && !tocadas().hasAny(['miembros', 'creadoPor', 'creada']))
+                    || (laCreo() && tocadas().hasOnly(['miembros']))
+                    || (
+                      esMiembro()
+                      && tocadas().hasOnly(['miembros'])
+                      && !(request.auth.uid in request.resource.data.miembros)
+                    )
                     || (
                       conSesion()
-                      && request.resource.data.diff(resource.data)
-                           .affectedKeys().hasOnly(['miembros'])
+                      && tocadas().hasOnly(['miembros'])
                       && request.resource.data.miembros
                            == resource.data.miembros.concat([request.auth.uid])
                     );
 
       // Borrar la mesa entera, sólo quien la creó. Que un invitado pueda
       // borrarle la libreta a los demás no tiene ningún sentido.
-      allow delete: if esMiembro()
-                    && resource.data.creadoPor == request.auth.uid;
+      allow delete: if laCreo();
 
       // ── Las catas de esa mesa ─────────────────────────────────────────
       match /catas/{cataId} {
@@ -90,8 +120,15 @@ service cloud.firestore {
         allow create: if miembroDeLaMesa()
                       && request.resource.data.autorUid == request.auth.uid;
 
-        allow update, delete: if miembroDeLaMesa()
-                             && resource.data.autorUid == request.auth.uid;
+        // Y al corregirla no se puede cambiar de autor: sin esto, quien
+        // edita su propia cata podría ponerle el uid de otro y dejarla
+        // fuera de su alcance para siempre.
+        allow update: if miembroDeLaMesa()
+                      && resource.data.autorUid == request.auth.uid
+                      && request.resource.data.autorUid == request.auth.uid;
+
+        allow delete: if miembroDeLaMesa()
+                      && resource.data.autorUid == request.auth.uid;
       }
     }
   }

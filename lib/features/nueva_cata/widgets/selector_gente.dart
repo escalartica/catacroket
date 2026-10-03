@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/models/persona.dart';
 import '../../../core/providers/borrador_provider.dart';
 import '../../../core/theme/components/avatar.dart';
-import '../../../core/theme/components/campo.dart';
 import '../../../core/theme/tokens/app_colors.dart';
 import '../../../core/theme/tokens/app_shape.dart';
 import '../../../core/theme/tokens/app_spacing.dart';
@@ -123,8 +122,8 @@ class _SelectorGenteState extends ConsumerState<SelectorGente> {
   }
 }
 
-/// El campo, con el mismo aspecto que [Campo] pero con su propio controlador:
-/// aquí hace falta vaciarlo al añadir y devolverle el foco.
+/// El campo, con el mismo aspecto que el `Campo` normal pero con su propio
+/// controlador: aquí hace falta vaciarlo al añadir y devolverle el foco.
 class _CampoNombre extends StatelessWidget {
   const _CampoNombre({
     required this.control,
@@ -183,6 +182,7 @@ class _Ficha extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Quitar a $nombre',
+      onTap: onQuitar,
       child: ExcludeSemantics(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,

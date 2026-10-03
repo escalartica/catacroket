@@ -128,7 +128,7 @@ class _PublicadaPageState extends ConsumerState<PublicadaPage>
                 numero == 1
                     ? 'Tu primera cata. Ya tienes libreta.'
                     : nota >= 8.5
-                        ? 'Menuda joya. Ya está en lo más alto de tu libreta.'
+                        ? 'Menuda joya. Ya está en lo más alto de tu diario.'
                         : nota >= 7
                             ? 'Buena cata. Tu media sube un poquito.'
                             : 'Anotada. No todas pueden ser leyenda.',

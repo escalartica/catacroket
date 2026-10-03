@@ -15,7 +15,7 @@ Cata cata({required String id, required String mesaId}) => Cata(
       corte: const Corte(crujiente: 7, cremosidad: 7, sabor: 7, relleno: 7),
       sabores: const <Sabor>[Sabor(rellenoId: 'jamon')],
       autorId: 'tu',
-      mesaId: mesaId,
+      mesas: <String>[mesaId],
       fecha: DateTime(2026),
     );
 
@@ -56,13 +56,15 @@ void main() {
       final Cata superviviente =
           lasCatas().firstWhere((Cata c) => c.id == 'la-de-la-mesa');
       // ...y ahora vive en la libreta.
-      expect(superviviente.mesaId, Mesa.libretaId);
+      // La cata se queda en tu diario y sin ninguna mesa: borrar una mesa
+      // quita quién la ve, no la cata.
+      expect(superviviente.mesas, isEmpty);
     });
 
     test('devuelve cuántas catas ha reasignado', () async {
       final String mesaId = unaMesa();
       final int suyasAntes =
-          lasCatas().where((Cata c) => c.mesaId == mesaId).length;
+          lasCatas().where((Cata c) => c.estaEn(mesaId)).length;
       await catas().anadir(cata(id: 'una', mesaId: mesaId));
       await catas().anadir(cata(id: 'otra', mesaId: mesaId));
 
@@ -110,8 +112,8 @@ void main() {
       await mesas().borrar(todas[0].id);
 
       expect(
-        lasCatas().firstWhere((Cata c) => c.id == 'de-la-que-se-queda').mesaId,
-        todas[1].id,
+        lasCatas().firstWhere((Cata c) => c.id == 'de-la-que-se-queda').mesas,
+        <String>[todas[1].id],
       );
     });
   });

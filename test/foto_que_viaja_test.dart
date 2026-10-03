@@ -16,13 +16,30 @@ void main() {
       expect(m.sePuedeVer, isTrue);
     });
 
-    test('la miniatura sobrevive al viaje de ida y vuelta', () {
+    test('la miniatura NO se guarda en el móvil', () {
+      // En este teléfono está el fichero entero, así que la copia pequeña
+      // aquí sólo estorba: pesa hasta 440 KB, hay dos por cata, y el guardado
+      // de TODAS las catas se reescribe entero en cada mordisco. Cuarenta
+      // catas compartidas eran ~35 MB volcándose a disco por un mordisco.
       const Medio m = Medio(
         tipo: TipoMedio.foto,
         ruta: '/tmp/croqueta.jpg',
         mini: 'eyJ1bmEiOiAiZm90byJ9',
       );
       final Medio vuelta = Medio.fromJson(m.toJson());
+      expect(vuelta.ruta, '/tmp/croqueta.jpg');
+      expect(vuelta.mini, isNull);
+    });
+
+    test('la miniatura sí sobrevive al viaje a la nube', () {
+      // Allí es justo lo único que sirve: la ruta de este móvil no abre nada
+      // en el de tu gente.
+      const Medio m = Medio(
+        tipo: TipoMedio.foto,
+        ruta: '/tmp/croqueta.jpg',
+        mini: 'eyJ1bmEiOiAiZm90byJ9',
+      );
+      final Medio vuelta = Medio.fromJson(m.paraViajar.toJsonParaLaNube());
       expect(vuelta.mini, 'eyJ1bmEiOiAiZm90byJ9');
       expect(vuelta.viaja, isTrue);
     });

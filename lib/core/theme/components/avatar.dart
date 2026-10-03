@@ -61,7 +61,15 @@ class Avatar extends StatelessWidget {
         alignment: Alignment.center,
         child: Text(
           persona.inicial,
-          style: AppTypography.etiqueta.copyWith(fontSize: tamano * 0.42),
+          // El color lo decide el fondo, no la tipografía. `etiqueta` trae
+          // tinta por defecto, y sobre la uva de la paleta de personas eso
+          // se queda en 2,69:1 —uno de cada siete nombres cae ahí, «Marta»
+          // entre ellos—: la inicial es lo único que distingue de quién es
+          // una cata en el feed, así que no puede desaparecer.
+          style: AppTypography.etiqueta.copyWith(
+            fontSize: tamano * 0.42,
+            color: AppColors.textoSobre(persona.color),
+          ),
         ),
       );
 }

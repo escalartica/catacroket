@@ -116,6 +116,7 @@ class _PistaState extends ConsumerState<Pista> {
                 button: true,
                 label: 'Entendido, no volver a enseñar esto',
                 excludeSemantics: true,
+                onTap: _cerrar,
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: _cerrar,

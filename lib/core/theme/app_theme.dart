@@ -28,7 +28,10 @@ class AppTheme {
       surface: AppColors.superficie,
       onSurface: AppColors.tinta,
       error: AppColors.tomate,
-      onError: Colors.white,
+      // Tinta y no blanco: blanco sobre tomate son 3,05:1. Hoy casi no se
+      // ve porque `Campo` pinta su propio error, pero cualquier control
+      // estándar de Material que aparezca mañana saldría ilegible.
+      onError: AppColors.tinta,
     );
 
     return ThemeData(

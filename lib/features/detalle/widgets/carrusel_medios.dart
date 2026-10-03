@@ -71,6 +71,8 @@ class CarruselMedios extends StatelessWidget {
           ? 'Vídeo ${i + 1} de ${medios.length}'
           : 'Foto ${i + 1} de ${medios.length}',
       image: !medio.esVideo,
+      button: !medio.esVideo,
+      onTap: medio.esVideo ? null : () => _verEntera(context, medios, i),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppShape.radioL),
         child: Container(
@@ -220,6 +222,7 @@ class _VisorState extends State<_Visor> {
                 button: true,
                 label: 'Cerrar la foto',
                 excludeSemantics: true,
+                onTap: () => Navigator.of(context).pop(),
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => Navigator.of(context).pop(),
@@ -339,6 +342,11 @@ class _VideoState extends State<_Video> {
           ? 'Pausar el vídeo'
           : 'Reproducir el vídeo',
       excludeSemantics: true,
+      onTap: () {
+        setState(() {
+          control.value.isPlaying ? control.pause() : control.play();
+        });
+      },
       child: GestureDetector(
         onTap: () {
           setState(() {

@@ -5,13 +5,20 @@ import '../../../core/models/mesa.dart';
 import '../../../core/providers/borrador_provider.dart';
 import '../../../core/providers/mesas_provider.dart';
 import '../../../core/theme/components/campo.dart';
+import '../../../core/theme/components/quien_la_ve.dart';
+import '../../mesas/widgets/hoja_mesa.dart';
 import '../widgets/selector_gente.dart';
 import '../widgets/selector_receta.dart';
 import '../../../core/theme/tokens/app_spacing.dart';
-import '../../../core/theme/tokens/app_typography.dart';
 
-/// Paso 4: lo que rodea a la cata. Todo es opcional a propósito; lo
-/// imprescindible ya se pidió en los tres pasos anteriores.
+/// Paso 4: quién la ve, y lo que rodea a la cata.
+///
+/// «Quién la ve» va DELANTE de todo lo demás. Estaba enterrado a media
+/// pantalla, entre el precio y la nota, con el título «GUARDAR EN» en letra
+/// pequeña: la única decisión de este paso que cambia algo para otra persona
+/// parecía un campo opcional más, y la gente apuntaba su croqueta sin
+/// enterarse de que su mesa no la iba a ver. El resto de este paso sí es
+/// opcional de verdad.
 class PasoDetalles extends ConsumerWidget {
   const PasoDetalles({super.key});
 
@@ -24,6 +31,21 @@ class PasoDetalles extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        QuienLaVe(
+          mesas: mesas,
+          elegidas: borrador.mesas,
+          onAlternar: notifier.alternarMesa,
+          onSoloYo: notifier.soloParaMi,
+          // Crear la mesa desde aquí, sin abandonar la croqueta a medias:
+          // en este formulario la barra de pestañas está escondida, así que
+          // «créala en Mesas» mandaba a un sitio al que no se podía ir.
+          onCrearMesa: () async {
+            final Mesa? nueva = await hojaMesa(context);
+            if (nueva != null) notifier.alternarMesa(nueva.id);
+          },
+        ),
+        const SizedBox(height: AppSpacing.xl),
+
         const SelectorReceta(),
         const SizedBox(height: AppSpacing.xl),
 
@@ -33,23 +55,6 @@ class PasoDetalles extends ConsumerWidget {
           pista: 'Lo que cuesta una croqueta',
           teclado: const TextInputType.numberWithOptions(decimal: true),
           onCambio: notifier.precio,
-        ),
-        const SizedBox(height: AppSpacing.l),
-
-        Text('GUARDAR EN', style: AppTypography.antetitulo),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: <Widget>[
-            for (final Mesa m in mesas)
-              OpcionPildora(
-                texto: m.nombre,
-                color: Color(m.colorHex),
-                activa: borrador.mesaId == m.id,
-                onTap: () => notifier.mesa(m.id),
-              ),
-          ],
         ),
         const SizedBox(height: AppSpacing.l),
 

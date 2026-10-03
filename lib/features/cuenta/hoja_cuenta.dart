@@ -68,10 +68,19 @@ class _HojaCuentaState extends ConsumerState<_HojaCuenta> {
   }
 
   Future<void> _olvidada() async {
+    // El mismo cerrojo que `_adelante`, que aquí faltaba: el botón sólo se
+    // apagaba mirando `_trabajando`, que esta función nunca encendía, así
+    // que dos toques mandaban dos correos de restablecimiento.
+    if (_trabajando) return;
     if (!_correo.trim().contains('@')) {
       setState(() => _fallo = 'Escribe tu correo y te mandamos el enlace.');
       return;
     }
+    setState(() {
+      _trabajando = true;
+      _fallo = null;
+      _aviso = null;
+    });
     try {
       await CuentaService.recordarClave(_correo);
       if (mounted) {
@@ -82,6 +91,8 @@ class _HojaCuentaState extends ConsumerState<_HojaCuenta> {
       }
     } on FalloCuenta catch (e) {
       if (mounted) setState(() => _fallo = e.mensaje);
+    } finally {
+      if (mounted) setState(() => _trabajando = false);
     }
   }
 
@@ -215,7 +226,13 @@ class _Aviso extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    // liveRegion: aparece con un setState después de pulsar «Entrar», y sin
+    // esto un lector de pantalla no lo anuncia. Quien usa VoiceOver pulsaba,
+    // no oía nada y no tenía forma de saber que el correo o la contraseña no
+    // cuadraban.
+    return Semantics(
+      liveRegion: true,
+      child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.9),
@@ -231,6 +248,7 @@ class _Aviso extends StatelessWidget {
           color: AppColors.textoSobre(color),
           height: 1.3,
         ),
+      ),
       ),
     );
   }

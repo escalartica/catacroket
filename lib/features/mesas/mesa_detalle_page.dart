@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../arte/corte_painter.dart';
 import '../../arte/croqui.dart';
 import '../../core/data/rellenos.dart';
+import '../../core/errores.dart';
 import '../../core/models/cata.dart';
 import '../../core/models/mesa.dart';
 import '../../core/models/recuento.dart';
@@ -16,12 +17,17 @@ import '../../core/models/persona.dart';
 import '../../core/providers/catas_provider.dart';
 import '../../core/providers/mesas_provider.dart';
 import '../../core/providers/nube_provider.dart';
+import '../../core/providers/yo_provider.dart';
 import '../../core/theme/components/avatar.dart';
+import '../../core/theme/components/entrada.dart';
+import '../../core/theme/components/cifra.dart';
+import '../../core/providers/borrador_provider.dart';
 import '../../core/theme/components/boton.dart';
 import '../../core/theme/components/cabecera.dart';
 import '../../core/theme/components/nota.dart';
 import '../../core/theme/components/pegatina.dart';
 import '../../core/theme/tokens/app_colors.dart';
+import '../../core/theme/tokens/app_motion.dart';
 import '../../core/theme/tokens/app_shape.dart';
 import '../../core/theme/tokens/app_spacing.dart';
 import '../../core/theme/tokens/app_typography.dart';
@@ -118,7 +124,16 @@ class MesaDetallePage extends ConsumerWidget {
           child: Column(
             children: <Widget>[
               Text(
-                mesa.esPrivada ? 'MESA PRIVADA' : 'MESA COMPARTIDA · ${mesa.codigo}',
+                // Por `enLaNube` y no por `esPrivada`. `esPrivada` sólo mira
+                // si hay código, y toda mesa nace con uno puesto en el móvil,
+                // así que una mesa recién creada se titulaba «MESA COMPARTIDA
+                // · ABCDEF» mientras el panel de abajo, en esta misma
+                // pantalla, decía que ese código todavía no funcionaba.
+                mesa.esPrivada
+                    ? 'MESA PRIVADA'
+                    : mesa.enLaNube
+                        ? 'MESA COMPARTIDA · ${mesa.codigo}'
+                        : 'MESA SIN ACTIVAR',
                 style: AppTypography.antetitulo.copyWith(
                   color: AppColors.tintaSuave,
                 ),
@@ -138,36 +153,68 @@ class MesaDetallePage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.l),
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: _Cifra(
-                      valor: '${catas.length}',
-                      etiqueta: catas.length == 1 ? 'cata' : 'catas',
-                      color: AppColors.chicle,
-                    ),
+              // En una fila que se parte en dos con la letra grande: ver
+              // `FilaDeCifras`.
+              FilaDeCifras(
+                cifras: <Cifra>[
+                  Cifra(
+                    valor: '${catas.length}',
+                    numero: catas.length.toDouble(),
+                    etiqueta: catas.length == 1 ? 'cata' : 'catas',
+                    color: AppColors.chicle,
                   ),
-                  const SizedBox(width: AppSpacing.s),
-                  Expanded(
-                    child: _Cifra(
-                      valor: media == null ? '—' : Formato.nota(media),
-                      etiqueta: 'nota media',
-                      color: AppColors.cielo,
-                    ),
+                  Cifra(
+                    valor: '—',
+                    numero: media,
+                    decimales: 1,
+                    etiqueta: 'nota media',
+                    color: AppColors.cielo,
                   ),
-                  const SizedBox(width: AppSpacing.s),
-                  Expanded(
-                    child: _Cifra(
-                      valor: '${mesa.miembros.length}',
-                      etiqueta: mesa.miembros.length == 1 ? 'tú sola' : 'en la mesa',
-                      color: AppColors.lima,
-                    ),
+                  Cifra(
+                    valor: '${mesa.miembros.length}',
+                    numero: mesa.miembros.length.toDouble(),
+                    // «tú sola» daba por hecho el sexo de quien lo lee, y
+                    // la lista de mesas resolvía lo mismo con otras
+                    // palabras. Una sola forma, y sin género.
+                    etiqueta:
+                        mesa.miembros.length == 1 ? 'sólo tú' : 'en la mesa',
+                    color: AppColors.lima,
                   ),
                 ],
               ),
             ],
           ),
         ),
+
+        // Apuntar una croqueta DESDE la mesa en la que estás.
+        //
+        // El botón rojo de la barra abre la cata nueva sin destino, así que
+        // estando dentro de una mesa había que acordarse de volver a
+        // elegirla en el último paso. Nadie lo hacía: la croqueta se
+        // apuntaba, se quedaba en el diario y la mesa seguía a cero. Desde
+        // aquí la mesa viene ya puesta.
+        //
+        // A lo ancho y debajo de las cifras, no metido en la cabecera: ahí
+        // arriba, entre los dos botones redondos, no cabía y el texto salía
+        // partido en dos líneas.
+        if (!mesa.esLibreta)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.pantalla,
+              AppSpacing.l,
+              AppSpacing.pantalla,
+              0,
+            ),
+            child: BotonPegatina(
+              texto: 'Apuntar una croqueta aquí',
+              icono: Icons.add_rounded,
+              color: AppColors.tomate,
+              onTap: () {
+                ref.read(borradorProvider.notifier).empezarEnMesa(mesa.id);
+                context.push('/nueva');
+              },
+            ),
+          ),
 
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.pantalla),
@@ -181,23 +228,37 @@ class MesaDetallePage extends ConsumerWidget {
                     const Croqui(ancho: 150),
                     const SizedBox(height: AppSpacing.m),
                     Text(
-                      'La libreta está en blanco.\nLo que catas aquí no lo ve nadie más.',
+                      // Tres mesas vacías distintas, tres frases distintas.
+                      // La de siempre («no lo ve nadie más») prometía
+                      // intimidad en una mesa con gente dentro, que es
+                      // justo lo contrario de lo que pasa.
+                      mesa.esLibreta
+                          ? 'Tu diario está en blanco.\nApunta tu primera croqueta con el botón rojo.'
+                          : mesa.esPrivada
+                          ? 'La libreta está en blanco.\nLo que catas aquí no lo ve nadie más.'
+                          : mesa.miembros.length > 1
+                              ? 'Aún no hay ninguna croqueta.\nLa primera que apuntes la ve toda la mesa.'
+                              : 'La mesa está puesta y vacía.\nApunta una croqueta o pasa el código.',
                       textAlign: TextAlign.center,
                       style: AppTypography.cuerpo,
                     ),
                   ],
                 )
               else
-                for (final Cata c in catas) ...<Widget>[
-                  TarjetaCata(
-                    cata: c,
-                    // Por cuenta primero: una cata que llegó de otro
-                    // móvil sólo se puede atribuir así. El identificador
-                    // local vale para las de antes de que hubiera cuentas.
-                    autor: personas[c.autorUid] ??
-                        personas[c.autorId] ??
-                        Persona.desconocida,
-                    onTap: () => context.push('/cata/${c.id}'),
+                for (int i = 0; i < catas.length; i++) ...<Widget>[
+                  Entrada(
+                    key: ValueKey<String>(catas[i].id),
+                    indice: i,
+                    child: TarjetaCata(
+                      cata: catas[i],
+                      // Por cuenta primero: una cata que llegó de otro
+                      // móvil sólo se puede atribuir así. El identificador
+                      // local vale para las de antes de que hubiera cuentas.
+                      autor: personas[catas[i].autorUid] ??
+                          personas[catas[i].autorId] ??
+                          Persona.desconocida,
+                      onTap: () => context.push('/cata/${catas[i].id}'),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.m),
                 ],
@@ -210,8 +271,36 @@ class MesaDetallePage extends ConsumerWidget {
                     children: <Widget>[
                       const EtiquetaPanel(texto: 'Quién manda en la mesa'),
                       const SizedBox(height: AppSpacing.m),
-                      for (int i = 0; i < ranking.length; i++)
-                        _FilaRanking(puesto: i + 1, datos: ranking[i]),
+                      // Con fundido al reordenarse. Cuando llega la cata de
+                      // alguien de la mesa, los puestos cambian solos; sin
+                      // esto el cambio ocurre entre dos fotogramas y, si no
+                      // estabas mirando ese rincón, parece que siempre
+                      // estuvieron así. El ranking es la mitad de la gracia
+                      // de compartir mesa: que se vea moverse es el premio.
+                      AnimatedSwitcher(
+                        duration: AppMotion.normal,
+                        switchInCurve: AppMotion.entrada,
+                        child: Column(
+                          key: ValueKey<String>(
+                            ranking
+                                .map((Puesto p) =>
+                                    '${p.persona.id}:${p.catas}')
+                                .join('|'),
+                          ),
+                          children: <Widget>[
+                            for (int i = 0; i < ranking.length; i++)
+                              _FilaRanking(puesto: i + 1, datos: ranking[i]),
+                          ],
+                        ),
+                      ),
+
+                      // Cómo te ven los demás, y cómo cambiarlo, aquí
+                      // mismo. Sale siempre: sin nombre para avisar de que
+                      // apareces como «Alguien», y con nombre para poder
+                      // cambiarlo sin ir a buscarlo al perfil, que es donde
+                      // nadie lo busca estando en la mesa.
+                      const SizedBox(height: AppSpacing.m),
+                      _ComoTeVen(mesa: mesa),
                     ],
                   ),
                 ),
@@ -475,7 +564,27 @@ class MesaDetallePage extends ConsumerWidget {
     // su contexto ya no sirve para pedirlo.
     final ScaffoldMessengerState mensajero = ScaffoldMessenger.of(context);
 
-    final int movidas = await ref.read(mesasProvider.notifier).borrar(mesa.id);
+    final int movidas;
+    try {
+      movidas = await ref.read(mesasProvider.notifier).borrar(mesa.id);
+    } on FalloNube catch (e) {
+      // Borrar una mesa compartida exige avisar al servidor. Si no se puede,
+      // la mesa se queda: dejarla desaparecer del móvil sabiendo que volverá
+      // sola mañana es lo que había antes y es peor que no borrarla.
+      mensajero
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text('${e.mensaje} No se ha borrado.')));
+      return;
+    } catch (error, pila) {
+      Errores.registrar(error, pila, origen: 'mesa.borrar');
+      mensajero
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(content: Text('No se ha podido borrar la mesa.')),
+        );
+      return;
+    }
+
     await HapticFeedback.heavyImpact();
     if (!context.mounted) return;
     context.go('/mesas');
@@ -493,7 +602,7 @@ class MesaDetallePage extends ConsumerWidget {
                 ? '«${mesa.nombre}» borrada.'
                 : '«${mesa.nombre}» borrada. '
                     '${Formato.plural(movidas, 'cata', 'catas')} '
-                    '${movidas == 1 ? 'está' : 'están'} en tu libreta.',
+                    '${movidas == 1 ? 'sigue' : 'siguen'} en tu diario.',
           ),
         ),
       );
@@ -663,6 +772,7 @@ class _MiniCorte extends ConsumerWidget {
       button: true,
       label: '${cata.sitio}, nota ${Formato.nota(cata.puntuacion)}',
       excludeSemantics: true,
+      onTap: () => context.push('/cata/${cata.id}'),
       child: GestureDetector(
         onTap: () => context.push('/cata/${cata.id}'),
         child: Container(
@@ -688,35 +798,6 @@ class _MiniCorte extends ConsumerWidget {
   }
 }
 
-class _Cifra extends StatelessWidget {
-  const _Cifra({required this.valor, required this.etiqueta, required this.color});
-
-  final String valor;
-  final String etiqueta;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Pegatina(
-      color: color,
-      radio: AppShape.radioM,
-      sombra: AppShape.sombraChica,
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text(valor, style: AppTypography.cifraM.copyWith(fontSize: 28)),
-          const SizedBox(height: 2),
-          Text(
-            etiqueta,
-            textAlign: TextAlign.center,
-            style: AppTypography.etiqueta.copyWith(fontSize: 11.5),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// Cuántas croquetas de cada clase lleva la mesa.
 ///
@@ -865,6 +946,70 @@ class _BotonCompartirState extends ConsumerState<_BotonCompartir> {
       pequeno: true,
       icono: Icons.cloud_upload_rounded,
       onTap: _subiendo ? null : _compartir,
+    );
+  }
+}
+
+/// Cómo te ve tu gente en esta mesa, y cómo cambiarlo.
+///
+/// Sin nombre avisa de que sales como «Alguien»; con nombre lo enseña y deja
+/// cambiarlo. Las dos cosas en el mismo sitio porque la pregunta («¿cómo me
+/// ven?») y el arreglo («cámbialo») son la misma.
+class _ComoTeVen extends ConsumerWidget {
+  const _ComoTeVen({required this.mesa});
+
+  final Mesa mesa;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final Yo yo = ref.watch(yoProvider);
+    final bool tiene = yo.tieneNombrePropio;
+
+    // Pegatina y no un Container con GestureDetector: lleva chevrón, o sea
+    // que promete llevar a algún sitio, y no se hundía al tocarlo, no vibraba
+    // y no se anunciaba como botón. El tema apaga las ondas de Material a
+    // propósito, así que tocarlo no producía absolutamente nada hasta que
+    // aparecía la hoja. Y es el único sitio donde cambiar cómo te ve tu gente
+    // está a mano estando en la mesa.
+    return Pegatina(
+      onTap: () => hojaNombre(
+        context,
+        ref,
+        forzar: true,
+        motivo: tiene
+            ? 'Así es como te ve tu gente de «${mesa.nombre}».'
+            : 'Ahora mismo tu gente de «${mesa.nombre}» te ve como '
+                '«Alguien». Ponte un nombre y lo verán al momento.',
+      ),
+      etiqueta: tiene
+          ? 'Tu gente te ve como ${yo.nombre}. Tócalo para cambiarlo'
+          : 'Tu gente te ve como Alguien. Tócalo para ponerte un nombre',
+      color: tiene ? AppColors.superficie : AppColors.superficieCalida,
+      radio: AppShape.radioM,
+      sombra: Offset.zero,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.m,
+        vertical: 10,
+      ),
+      child: Row(
+          children: <Widget>[
+            Text(tiene ? '🙂' : '👋', style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                tiene
+                    ? 'Tu gente te ve como «${yo.nombre}». Tócalo para cambiarlo.'
+                    : 'Tu gente te ve como «Alguien». Ponte un nombre.',
+                style: AppTypography.cuerpoS.copyWith(
+                  fontSize: 13,
+                  height: 1.25,
+                  color: AppColors.tinta,
+                ),
+              ),
+            ),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.tinta),
+        ],
+      ),
     );
   }
 }

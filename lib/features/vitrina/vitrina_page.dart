@@ -13,6 +13,7 @@ import '../../core/theme/components/cabecera.dart';
 import '../../core/theme/components/chip.dart';
 import '../../core/providers/visto_provider.dart';
 import '../../core/theme/components/entrada.dart';
+import '../../core/theme/components/esqueleto.dart';
 import '../../core/theme/components/pista.dart';
 import '../../core/theme/components/segmentado.dart';
 import '../../core/theme/tokens/app_colors.dart';
@@ -39,7 +40,12 @@ class VitrinaPage extends ConsumerWidget {
     //   única frase que dice qué hacer se iba por debajo del pliegue.
     // - Con catas pero ninguna en este filtro: ahí el filtro es justo lo que
     //   hay que dejar a mano, porque cambiarlo es la salida.
-    final bool primerDia = ref.watch(catasProvider).isEmpty;
+    // Y una cuarta: todavía no se sabe. El notifier arranca vacío y lee el
+    // disco después, así que sin esto el primer fotograma le decía a alguien
+    // con cuarenta catas que no tenía ninguna, y la pantalla daba un salto
+    // en cuanto llegaban. Vacío de verdad y «aún no lo sé» se veían igual.
+    final bool leyendo = !ref.watch(catasCargadasProvider);
+    final bool primerDia = !leyendo && ref.watch(catasProvider).isEmpty;
     final Cata? mejor = ref.watch(croquetaDelDiaProvider);
     final Map<String, Persona> personas = ref.watch(personasProvider);
     final FiltroVitrina filtro = ref.watch(filtroVitrinaProvider);
@@ -104,6 +110,9 @@ class VitrinaPage extends ConsumerWidget {
                 ),
                 TituloSeccion(
                   texto: 'Últimas catas',
+                  // El número cuenta en vez de saltar: cuando llega la cata
+                  // de alguien de tu mesa, esta pastilla es lo único de la
+                  // pantalla que avisa de que ha entrado algo nuevo.
                   pastilla: ChipCata(
                     texto: Formato.plural(feed.length, 'cata', 'catas'),
                     color: AppColors.menta,
@@ -113,7 +122,12 @@ class VitrinaPage extends ConsumerWidget {
             ]),
           ),
         ),
-        if (feed.isEmpty)
+        if (leyendo)
+          const SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.pantalla),
+            sliver: SliverToBoxAdapter(child: ListaEsqueleto()),
+          )
+        else if (feed.isEmpty)
           SliverToBoxAdapter(
             child: _VitrinaVacia(
               primerDia: primerDia,
@@ -133,7 +147,12 @@ class VitrinaPage extends ConsumerWidget {
                   indice: i,
                   child: TarjetaCata(
                     cata: cata,
-                    autor: personas[cata.autorId] ?? Persona.desconocida,
+                    // Por cuenta primero: `autorId` vale 'tu' en todos los
+                    // móviles, así que la cata de tu gente salía en el feed
+                    // con tu cara y tu nombre.
+                    autor: personas[cata.autorUid] ??
+                        personas[cata.autorId] ??
+                        Persona.desconocida,
                     onTap: () => context.push('/cata/${cata.id}'),
                   ),
                 );

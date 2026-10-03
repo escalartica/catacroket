@@ -139,7 +139,7 @@ class _ComoComesPageState extends ConsumerState<ComoComesPage> {
                     Expanded(
                       child: Text(
                         'La app cuenta lo que apuntó quien fue antes '
-                        'que ti, no lo que hay hoy en la cocina. Si hay '
+                        'que tú, no lo que hay hoy en la cocina. Si hay '
                         'alergia de por medio, en el bar pregunta igual.',
                         style: AppTypography.cuerpoS.copyWith(
                           fontSize: 12.5,

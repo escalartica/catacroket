@@ -27,8 +27,12 @@ Future<void> hojaNombre(
   BuildContext context,
   WidgetRef ref, {
   required String motivo,
+  bool forzar = false,
 }) async {
-  if (ref.read(yoProvider).tieneNombrePropio) return;
+  // Sin [forzar] sólo se pregunta a quien no tiene nombre: al entrar en una
+  // mesa no se le planta un formulario delante a quien ya se puso uno. Con
+  // [forzar] se abre siempre, que es cuando lo pide el usuario a mano.
+  if (!forzar && ref.read(yoProvider).tieneNombrePropio) return;
 
   await showModalBottomSheet<void>(
     context: context,
@@ -54,7 +58,11 @@ class _HojaNombre extends ConsumerStatefulWidget {
 }
 
 class _HojaNombreState extends ConsumerState<_HojaNombre> {
-  String _nombre = '';
+  /// Arranca con el nombre de ahora, si es uno de verdad: cambiarlo suele ser
+  /// corregir una letra, no escribirlo entero otra vez.
+  late String _nombre = ref.read(yoProvider).tieneNombrePropio
+      ? ref.read(yoProvider).nombre
+      : '';
   bool _guardando = false;
 
   Future<void> _guardar() async {
@@ -90,7 +98,12 @@ class _HojaNombreState extends ConsumerState<_HojaNombre> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text('¿Cómo te llamamos?', style: AppTypography.tituloM),
+            Text(
+              ref.read(yoProvider).tieneNombrePropio
+                  ? 'Tu nombre'
+                  : '¿Cómo te llamamos?',
+              style: AppTypography.tituloM,
+            ),
             const SizedBox(height: 6),
             Text(
               widget.motivo,

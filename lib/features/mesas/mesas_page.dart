@@ -10,6 +10,7 @@ import '../../core/providers/catas_provider.dart';
 import '../../core/providers/mesas_provider.dart';
 import '../../core/providers/nube_provider.dart';
 import '../../core/providers/visto_provider.dart';
+import '../../core/theme/components/entrada.dart';
 import '../../core/theme/components/pista.dart';
 import '../../core/theme/components/avatar.dart';
 import '../../core/theme/components/boton.dart';
@@ -24,7 +25,7 @@ import '../../core/utils/formato.dart';
 import 'widgets/hoja_codigo.dart';
 import 'widgets/hoja_mesa.dart';
 
-/// MESAS — tu libreta y tu gente.
+/// MESAS — tu diario y tu gente.
 class MesasPage extends ConsumerWidget {
   const MesasPage({super.key});
 
@@ -72,7 +73,7 @@ class MesasPage extends ConsumerWidget {
       children: <Widget>[
         Cabecera(
           titulo: 'Mesas',
-          subtitulo: 'Tu libreta y tu gente',
+          subtitulo: 'Tu diario y tu gente',
           accion: BotonRedondo(
             icono: Icons.add_rounded,
             etiqueta: 'Crear una mesa',
@@ -90,12 +91,16 @@ class MesasPage extends ConsumerWidget {
                     'las catas, hay ranking y se entra con un código. Crea una '
                     'con el + de arriba.',
               ),
-              for (final Mesa m in mesas) ...<Widget>[
-                _TarjetaMesa(
-                  mesa: m,
-                  catas: ref.watch(catasDeMesaProvider(m.id)),
-                  personas: personas,
-                  onTap: () => context.push('/mesa/${m.id}'),
+              for (int i = 0; i < mesas.length; i++) ...<Widget>[
+                Entrada(
+                  key: ValueKey<String>(mesas[i].id),
+                  indice: i,
+                  child: _TarjetaMesa(
+                    mesa: mesas[i],
+                    catas: ref.watch(catasDeMesaProvider(mesas[i].id)),
+                    personas: personas,
+                    onTap: () => context.push('/mesa/${mesas[i].id}'),
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.m),
               ],
@@ -109,10 +114,10 @@ class MesasPage extends ConsumerWidget {
                     const EtiquetaPanel(texto: 'Añadir gente'),
                     const SizedBox(height: AppSpacing.m),
                     Text(
-                      'Cada mesa nace con su código de seis letras. Por ahora '
-                      'las mesas son tuyas y guardan tus catas ordenadas; '
-                      'que tu gente entre con el código llega en la próxima '
-                      'versión, la que lleva cuentas.',
+                      'Cada mesa nace con su código de seis letras. Para que '
+                      'funcione hay que activarlo desde la ficha de la mesa: '
+                      'desde ese momento, quien lo teclee entra y veis las '
+                      'catas de todos.',
                       style: AppTypography.cuerpoS,
                     ),
                     const SizedBox(height: AppSpacing.l),
@@ -222,7 +227,14 @@ class _TarjetaMesa extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppShape.radioS),
                 ),
                 child: Text(
-                  mesa.codigo ?? 'PRIVADA',
+                  // Sólo si está activada. Enseñar el código de una mesa que
+                  // vive sólo en este móvil invitaba a dictarlo en un bar, y
+                  // al otro lado salía «ese código no existe» —peor aún,
+                  // activar la mesa puede devolver un código distinto si el
+                  // que llevaba ya estaba cogido—.
+                  !mesa.enLaNube
+                      ? (mesa.esPrivada ? 'PRIVADA' : 'SIN ACTIVAR')
+                      : (mesa.codigo ?? 'PRIVADA'),
                   style: AppTypography.antetitulo.copyWith(
                     fontSize: 10.5,
                     color: AppColors.textoSobre(texto),
@@ -262,7 +274,7 @@ class _TarjetaMesa extends StatelessWidget {
                     ),
                     _Dato(
                       valor: '${mesa.miembros.length}',
-                      etiqueta: mesa.miembros.length == 1 ? 'tú' : 'personas',
+                      etiqueta: mesa.miembros.length == 1 ? 'sólo tú' : 'en la mesa',
                       color: texto,
                     ),
                   ],

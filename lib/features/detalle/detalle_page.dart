@@ -15,7 +15,9 @@ import '../../core/models/mesa.dart';
 import '../../core/models/persona.dart';
 import '../../core/models/sabor.dart';
 import '../../core/providers/catas_provider.dart';
+import '../../core/providers/cuenta_provider.dart';
 import '../../core/providers/mesas_provider.dart';
+import 'widgets/hoja_quien_la_ve.dart';
 import '../../core/providers/mi_dieta_provider.dart';
 import '../../core/theme/components/avatar.dart';
 import '../../core/theme/components/barra_eje.dart';
@@ -32,6 +34,7 @@ import '../../core/theme/tokens/app_shape.dart';
 import '../../core/theme/tokens/app_spacing.dart';
 import '../../core/theme/tokens/app_typography.dart';
 import '../../core/utils/formato.dart';
+import '../../core/utils/texto.dart';
 import '../compartir/compartir_cata.dart';
 import 'widgets/carrusel_medios.dart';
 
@@ -72,10 +75,22 @@ class DetallePage extends ConsumerWidget {
     }
 
     final Relleno relleno = Rellenos.de(cata.rellenoId);
-    final Persona autor =
-        ref.watch(personasProvider)[cata.autorId] ?? Persona.desconocida;
-    final Mesa? mesa = ref.watch(mesaProvider(cata.mesaId));
-    final bool esMia = cata.autorId == 'tu';
+    // Por cuenta primero y por identificador local después, igual que en la
+    // ficha de la mesa. Mirando sólo `autorId`, la cata de otra persona
+    // llevaba TU cara y TU nombre, porque `autorId` vale 'tu' en todos los
+    // móviles y el mapa de personas lo traduce a quien lo está mirando.
+    final Map<String, Persona> personas = ref.watch(personasProvider);
+    final Persona autor = personas[cata.autorUid] ??
+        personas[cata.autorId] ??
+        Persona.desconocida;
+    final List<Mesa> susMesas = <Mesa>[
+      for (final Mesa m in ref.watch(mesasProvider))
+        if (cata.estaEn(m.id)) m,
+    ];
+    // Por uid. Con `autorId == 'tu'` salían los botones de editar y borrar
+    // encima de las catas de tu gente, que es lo peor que puede hacer una
+    // pantalla de detalle: ofrecer una acción que no te corresponde.
+    final bool esMia = cata.esMia(ref.watch(miUidProvider));
     final Encaje encaje = cata.encajeCon(ref.watch(miDietaProvider));
 
     return ListView(
@@ -204,6 +219,24 @@ class DetallePage extends ConsumerWidget {
             ],
           ),
         ),
+
+        // ── Quién la ve ───────────────────────────────────────────────────
+        //
+        // Arriba y con su propio bloque, no como una fila más de la lista de
+        // datos que hay al final de la pantalla. Es la única cosa de esta
+        // ficha que cambia algo para otra persona, y estando abajo del todo
+        // no la encontraba nadie: la cata se quedaba sin enseñar y la mesa
+        // sin enterarse.
+        if (esMia)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.pantalla,
+              AppSpacing.l,
+              AppSpacing.pantalla,
+              0,
+            ),
+            child: _QuienLaVePanel(cata: cata, suyas: susMesas),
+          ),
 
         Padding(
           padding: const EdgeInsets.all(AppSpacing.pantalla),
@@ -496,13 +529,22 @@ class DetallePage extends ConsumerWidget {
                             : '${cata.racion}: ${Formato.precio(cata.precioTotal!)}',
                         valor: Formato.precio(cata.precio!),
                       ),
-                    if (mesa != null)
+                    // Quién la ve, y cómo cambiarlo desde aquí mismo.
+                    //
+                    // Antes decía «Guardada en» y nombraba una sola mesa,
+                    // porque una cata vivía en un sitio y sólo uno. Y no se
+                    // podía cambiar sin abrir la corrección entera y pasar
+                    // por los cuatro pasos, que es justo lo que nadie hace:
+                    // la croqueta se apunta en el bar y lo de enseñarla se
+                    // decide después.
+                    // Para las tuyas esto ya está arriba, en su panel.
+                    if (!esMia && susMesas.isNotEmpty)
                       _Fila(
                         icono: '🍽️',
-                        titulo: 'Guardada en',
-                        subtitulo: mesa.descripcion,
-                        valor: mesa.nombre,
-                        onTap: () => context.push('/mesa/${mesa.id}'),
+                        titulo: 'La catasteis en',
+                        subtitulo: susMesas.first.descripcion,
+                        valor: susMesas.first.nombre,
+                        onTap: () => context.push('/mesa/${susMesas.first.id}'),
                       ),
                   ],
                 ),
@@ -517,6 +559,7 @@ class DetallePage extends ConsumerWidget {
                   button: true,
                   label: 'Ver ${cata.sitio} en la ruta croquetera',
                   excludeSemantics: true,
+                  onTap: () => context.push('/ruta?cata=${cata.id}'),
                   child: Pegatina(
                     padding: const EdgeInsets.all(AppSpacing.s),
                     onTap: () => context.push('/ruta?cata=${cata.id}'),
@@ -615,6 +658,10 @@ class _BotonMordisco extends ConsumerWidget {
     return Semantics(
       button: true,
       label: 'Dar un mordisco. Lleva ${cata.mordiscos}',
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        ref.read(catasProvider.notifier).darMordisco(cata.id);
+      },
       child: ExcludeSemantics(
         child: Pegatina(
           color: AppColors.chicle,
@@ -660,10 +707,20 @@ class _Fila extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    // Pegatina y no InkWell. El tema apaga las ondas de Material a propósito
+    // —la respuesta al dedo la da el hundimiento de la pegatina—, así que
+    // este InkWell, el único de toda la app, se quedaba sin las dos cosas:
+    // tocar «📍 Bar Manolo → Ver» no producía absolutamente nada hasta que
+    // aparecía la pantalla siguiente.
+    return Pegatina(
       onTap: onTap,
+      color: Colors.transparent,
+      conBorde: false,
+      sombra: Offset.zero,
+      radio: AppShape.radioM,
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: EdgeInsets.zero,
         child: Row(
           children: <Widget>[
             Container(
@@ -703,6 +760,17 @@ class _Fila extends StatelessWidget {
                 color: AppColors.tintaSuave,
               ),
             ),
+            // La flechita sólo cuando se puede ir a algún sitio: sin ella,
+            // «Lo que pediste» y «Precio por croqueta», que no navegan, se
+            // pintaban exactamente igual que las filas que sí lo hacen.
+            if (onTap != null) ...<Widget>[
+              const SizedBox(width: 2),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: AppColors.tintaSuave,
+              ),
+            ],
           ],
         ),
       ),
@@ -986,6 +1054,97 @@ class _Linea extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Quién ve esta cata, y el botón para cambiarlo.
+///
+/// Va con color y a lo ancho a propósito. La forma anterior —una fila de
+/// texto entre «Precio por croqueta» y el mapa— era correcta y no la veía
+/// nadie: compartir una croqueta con tu gente es la mitad de lo que hace esta
+/// app, y estaba escondida como un dato de ficha técnica.
+class _QuienLaVePanel extends ConsumerWidget {
+  const _QuienLaVePanel({required this.cata, required this.suyas});
+
+  final Cata cata;
+  final List<Mesa> suyas;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool soloYo = suyas.isEmpty;
+    // Una mesa sin activar no la ve nadie: existe sólo en este móvil hasta
+    // que se le da a «Activar el código». Decir «la ve tu gente» de una de
+    // ésas es mentir en la pantalla donde el usuario lo comprueba.
+    final List<String> despiertas = <String>[
+      for (final Mesa m in suyas)
+        if (m.enLaNube) m.nombre,
+    ];
+    final List<String> dormidas = <String>[
+      for (final Mesa m in suyas)
+        if (!m.enLaNube) m.nombre,
+    ];
+    final bool avisa = dormidas.isNotEmpty;
+
+    final String titulo = soloYo
+        ? 'Sólo la ves tú'
+        : despiertas.isEmpty
+            ? 'Todavía no la ve nadie'
+            : 'La ve tu gente';
+    final String debajo = soloYo
+        ? 'Tócalo para enseñársela a una mesa'
+        : despiertas.isEmpty
+            ? '${Texto.enumerar(dormidas)} sin activar'
+            : avisa
+                ? '${despiertas.join(' · ')} · '
+                    '${Texto.enumerar(dormidas)} sin activar'
+                : despiertas.join(' · ');
+
+    return Pegatina(
+      color: avisa
+          ? AppColors.sol
+          : soloYo
+              ? AppColors.superficieCalida
+              : AppColors.menta,
+      onTap: () => hojaQuienLaVe(context, ref, cata),
+      etiqueta: '$titulo. $debajo. Toca para cambiarlo',
+      child: Row(
+        children: <Widget>[
+          Text(
+            avisa
+                ? '⚠️'
+                : soloYo
+                    ? '🔒'
+                    : '👀',
+            style: const TextStyle(fontSize: 26),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  titulo,
+                  style: AppTypography.tituloS.copyWith(fontSize: 16),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  debajo,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.cuerpoS.copyWith(
+                    fontSize: 13,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.s),
+          const Icon(Icons.chevron_right_rounded, color: AppColors.tinta),
+        ],
+      ),
     );
   }
 }

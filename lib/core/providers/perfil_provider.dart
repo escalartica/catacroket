@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/datos_demo.dart';
 import '../data/rangos.dart';
 import '../models/cata.dart';
 import '../models/corte.dart';
 import '../models/semanas.dart';
 import '../utils/texto.dart';
 import 'catas_provider.dart';
+import 'cuenta_provider.dart';
 import 'yo_provider.dart';
 
 /// Resumen del Croquetómetro. Todo se calcula a partir de las catas: no hay
@@ -91,8 +91,8 @@ class Perfil {
 
 final perfilProvider = Provider<Perfil>((ref) {
   final List<Cata> todas = ref.watch(catasRecientesProvider);
-  final List<Cata> mias =
-      todas.where((Cata c) => c.autorId == DatosDemo.yo).toList();
+  final String? miUid = ref.watch(miUidProvider);
+  final List<Cata> mias = todas.where((Cata c) => c.esMia(miUid)).toList();
 
   // Las que te has comido: las tuyas más aquellas donde alguien te nombró
   // como acompañante. En un grupo apunta uno por todos, así que quien no
@@ -102,7 +102,7 @@ final perfilProvider = Provider<Perfil>((ref) {
   // persona a mano: «Cehache», «cehache» y «Ceháche» son el mismo.
   final String tuNombre = Texto.normalizar(ref.watch(yoProvider).nombre);
   final int comidas = todas.where((Cata c) {
-    if (c.autorId == DatosDemo.yo) return true;
+    if (c.esMia(miUid)) return true;
     return c.acompanantes.any((String a) => Texto.normalizar(a) == tuNombre);
   }).length;
 

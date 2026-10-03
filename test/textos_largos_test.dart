@@ -56,7 +56,7 @@ void main() {
         corte: const Corte(crujiente: 9, cremosidad: 8, sabor: 9, relleno: 7),
         sabores: const <Sabor>[Sabor(rellenoId: 'jamon')],
         autorId: 'tu',
-        mesaId: 'libreta',
+        mesas: const <String>[],
         fecha: DateTime(2026, 3, 14),
         nota: nota,
         acompanantes: acompanantes,
@@ -182,7 +182,7 @@ void main() {
           Sabor(rellenoId: 'otro', propio: rellenoLargo),
         ],
         autorId: 'tu',
-        mesaId: 'libreta',
+        mesas: const <String>[],
         fecha: DateTime(2026, 3, 14),
       );
 
@@ -271,7 +271,7 @@ void main() {
                   const Corte(crujiente: 9, cremosidad: 8, sabor: 9, relleno: 7),
               sabores: const <Sabor>[Sabor(rellenoId: 'boletus')],
               autorId: 'tu',
-              mesaId: 'libreta',
+              mesas: const <String>[],
               fecha: DateTime(2026, 3, 14),
               nota: notaLarga,
             ),

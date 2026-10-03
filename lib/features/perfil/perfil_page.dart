@@ -30,6 +30,7 @@ import '../../core/theme/components/pildoras_dieta.dart';
 import '../../core/theme/components/pildoras_evitar.dart';
 import '../../core/providers/perfil_provider.dart';
 import '../../core/theme/components/barra_eje.dart';
+import '../../core/theme/components/cifra.dart';
 import '../../core/theme/components/boton.dart';
 import '../../core/theme/components/cabecera.dart';
 import '../../core/theme/components/entrada.dart';
@@ -139,8 +140,13 @@ class PerfilPage extends ConsumerWidget {
               const SizedBox(height: AppSpacing.m),
 
               // ── Cifras ───────────────────────────────────────────────────
-              Row(
-                children: <Widget>[
+              //
+              // En una fila que se parte en dos cuando la letra del sistema
+              // crece: con cinco celdas y el texto al doble, cada una se
+              // queda en ~45 puntos y el FittedBox encoge «nota media» hasta
+              // ser más pequeña que al 100%.
+              FilaDeCifras(
+                cifras: <Cifra>[
                   // Subidas y comidas no son lo mismo en cuanto catáis en
                   // grupo: apunta uno por todos, así que quien no teclea
                   // saldría con cero aunque se las haya comido todas.
@@ -149,48 +155,39 @@ class PerfilPage extends ConsumerWidget {
                   // son idénticos y poner «6 subidas, 6 comidas» es decir lo
                   // mismo dos veces y ocupar sitio para nada. Se desdobla
                   // sólo cuando de verdad difieren.
-                  Expanded(
-                    child: _Cifra(
-                      valor: '${perfil.catas}',
-                      etiqueta: perfil.comidas > perfil.catas
-                          ? (perfil.catas == 1 ? 'subida' : 'subidas')
-                          : (perfil.catas == 1 ? 'cata' : 'catas'),
-                      color: AppColors.chicle,
-                    ),
+                  Cifra(
+                    valor: '${perfil.catas}',
+                    numero: perfil.catas.toDouble(),
+                    etiqueta: perfil.comidas > perfil.catas
+                        ? (perfil.catas == 1 ? 'subida' : 'subidas')
+                        : (perfil.catas == 1 ? 'cata' : 'catas'),
+                    color: AppColors.chicle,
                   ),
-                  const SizedBox(width: AppSpacing.s),
-                  if (perfil.comidas > perfil.catas) ...<Widget>[
-                    Expanded(
-                      child: _Cifra(
-                        valor: '${perfil.comidas}',
-                        etiqueta: 'comidas',
-                        color: AppColors.uva,
-                      ),
+                  if (perfil.comidas > perfil.catas)
+                    Cifra(
+                      valor: '${perfil.comidas}',
+                      numero: perfil.comidas.toDouble(),
+                      etiqueta: 'comidas',
+                      color: AppColors.uva,
                     ),
-                    const SizedBox(width: AppSpacing.s),
-                  ],
-                  Expanded(
-                    child: _Cifra(
-                      valor: perfil.media == null ? '—' : Formato.nota(perfil.media!),
-                      etiqueta: 'nota media',
-                      color: AppColors.cielo,
-                    ),
+                  Cifra(
+                    valor: '—',
+                    numero: perfil.media,
+                    decimales: 1,
+                    etiqueta: 'nota media',
+                    color: AppColors.cielo,
                   ),
-                  const SizedBox(width: AppSpacing.s),
-                  Expanded(
-                    child: _Cifra(
-                      valor: '${perfil.ciudades}',
-                      etiqueta: perfil.ciudades == 1 ? 'ciudad' : 'ciudades',
-                      color: AppColors.lima,
-                    ),
+                  Cifra(
+                    valor: '${perfil.ciudades}',
+                    numero: perfil.ciudades.toDouble(),
+                    etiqueta: perfil.ciudades == 1 ? 'ciudad' : 'ciudades',
+                    color: AppColors.lima,
                   ),
-                  const SizedBox(width: AppSpacing.s),
-                  Expanded(
-                    child: _Cifra(
-                      valor: '${perfil.paises}',
-                      etiqueta: perfil.paises == 1 ? 'país' : 'países',
-                      color: AppColors.mango,
-                    ),
+                  Cifra(
+                    valor: '${perfil.paises}',
+                    numero: perfil.paises.toDouble(),
+                    etiqueta: perfil.paises == 1 ? 'país' : 'países',
+                    color: AppColors.mango,
                   ),
                 ],
               ),
@@ -508,35 +505,6 @@ class PerfilPage extends ConsumerWidget {
   }
 }
 
-class _Cifra extends StatelessWidget {
-  const _Cifra({required this.valor, required this.etiqueta, required this.color});
-
-  final String valor;
-  final String etiqueta;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Pegatina(
-      color: color,
-      radio: AppShape.radioM,
-      sombra: AppShape.sombraChica,
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text(valor, style: AppTypography.cifraM.copyWith(fontSize: 28)),
-          const SizedBox(height: 2),
-          Text(
-            etiqueta,
-            textAlign: TextAlign.center,
-            style: AppTypography.etiqueta.copyWith(fontSize: 11.5),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _Medalla extends StatelessWidget {
   const _Medalla({required this.medalla, required this.conseguida});
@@ -622,6 +590,7 @@ class _OtraApp extends StatelessWidget {
       button: true,
       label: 'Palito de Sabores, la otra app. Abre la App Store',
       excludeSemantics: true,
+      onTap: _abrir,
       child: Pegatina(
         onTap: _abrir,
         padding: const EdgeInsets.all(AppSpacing.m),
@@ -678,18 +647,20 @@ class _Firma extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 0.55,
-      child: Column(
-        children: <Widget>[
-          const NombreCatacroket(alto: 17),
-          const SizedBox(height: 6),
-          Text(
-            'Hecho con hambre en Sevilla',
-            style: AppTypography.cuerpoS.copyWith(fontSize: 12),
-          ),
-        ],
-      ),
+    // El Opacity envolvía también al texto, y una tinta al 55% sobre el
+    // fondo crema compone un 3,56:1: exactamente el caso que app_colors.dart
+    // prohíbe por escrito, colado por otra puerta. Ahora sólo se apaga la
+    // marca, y el texto usa el token que sí está medido (5,24:1).
+    return Column(
+      children: <Widget>[
+        const Opacity(opacity: 0.55, child: NombreCatacroket(alto: 17)),
+        const SizedBox(height: 6),
+        Text(
+          'Hecho con hambre en Sevilla',
+          style: AppTypography.cuerpoS
+              .copyWith(fontSize: 12, color: AppColors.tintaSuave),
+        ),
+      ],
     );
   }
 }

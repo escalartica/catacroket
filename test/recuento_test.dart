@@ -15,7 +15,7 @@ void main() {
           for (final String r in rellenos) Sabor(rellenoId: r),
         ],
         autorId: 'tu',
-        mesaId: 'libreta',
+        mesas: const <String>[],
         fecha: DateTime(2026, 3, 14),
       );
 

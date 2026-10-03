@@ -8,6 +8,7 @@ import '../../core/models/dieta.dart';
 import '../../core/models/persona.dart';
 import '../../core/providers/catas_provider.dart';
 import '../../core/providers/mi_dieta_provider.dart';
+import '../../core/theme/components/boton.dart';
 import '../../core/theme/components/cabecera.dart';
 import '../../core/theme/components/campo.dart';
 import '../../core/theme/components/chip.dart';
@@ -69,7 +70,10 @@ class _BarraLibrePageState extends ConsumerState<BarraLibrePage> {
         SliverToBoxAdapter(
           child: Cabecera(
             titulo: 'Barra Libre',
-            subtitulo: 'Sin gluten, sin lactosa, sin drama',
+            // Antes ponía «Sin gluten, sin lactosa, sin drama»: una gracia
+            // que no dice qué es esta pantalla. Quien entra la primera vez
+            // tiene que salir sabiendo para qué sirve.
+            subtitulo: 'Qué croquetas puedes comer tú',
             // `pop` y no `go('/')`: a esta pantalla se llega empujándola
             // desde La Vitrina, así que volver es deshacer ese paso.
             volver: () => context.pop(),
@@ -88,11 +92,24 @@ class _BarraLibrePageState extends ConsumerState<BarraLibrePage> {
                     const EtiquetaPanel(texto: 'Qué es esto'),
                     const SizedBox(height: AppSpacing.m),
                     Text(
-                      'Croquetas de las que alguien de tus mesas preguntó de '
-                      'qué estaban hechas. Filtra por lo tuyo y vete sobre '
-                      'seguro… hasta la puerta del bar.',
+                      'Marca abajo lo tuyo —sin gluten, vegana, lo que sea— '
+                      'y te quedas sólo con las croquetas que puedes comer.',
                       style: AppTypography.cuerpo.copyWith(
                         color: AppColors.tinta,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.s),
+                    // De dónde salen. Es la pregunta que nadie respondía: la
+                    // pantalla enseñaba una lista corta o vacía y no había
+                    // forma de saber por qué, ni cómo meter más.
+                    Text(
+                      'Aquí sólo entra una croqueta cuando alguien contesta '
+                      'de qué estaba hecha al apuntarla. Si falta la tuya, '
+                      'apúntala y rellena «La receta».',
+                      style: AppTypography.cuerpoS.copyWith(
+                        color: AppColors.tinta,
+                        fontSize: 12.5,
                         height: 1.35,
                       ),
                     ),
@@ -148,7 +165,13 @@ class _BarraLibrePageState extends ConsumerState<BarraLibrePage> {
                   indice: i,
                   child: TarjetaCata(
                     cata: cata,
-                    autor: personas[cata.autorId] ?? Persona.desconocida,
+                    // Por cuenta primero: `autorId` vale 'tu' en todos los móviles, así
+      // que la cata de tu gente salía aquí con tu cara y tu nombre. Y ésta es
+      // la pantalla donde alguien decide qué se come fiándose de quién lo
+      // apuntó: el peor sitio para equivocarse de persona.
+      autor: personas[cata.autorUid] ??
+          personas[cata.autorId] ??
+          Persona.desconocida,
                     onTap: () => context.push('/cata/${cata.id}'),
                   ),
                 );
@@ -184,11 +207,32 @@ class _Vacia extends StatelessWidget {
             porFiltro
                 ? 'Nadie ha catado todavía una croqueta que cumpla eso.\n'
                     'Si la encuentras, apúntala y la estrenas tú.'
-                : 'Aquí no hay nada todavía.\nContestad en el formulario '
-                    'cómo está hecha una croqueta y aparece sola.',
+                : 'Aquí no hay nada todavía porque nadie ha dicho de qué '
+                    'estaban hechas sus croquetas.',
             textAlign: TextAlign.center,
             style: AppTypography.cuerpo,
           ),
+          if (!porFiltro) ...<Widget>[
+            const SizedBox(height: AppSpacing.m),
+            Text(
+              'Al apuntar una cata, rellena «La receta» —la bechamel, el '
+              'rebozado— y aparecerá aquí sola.',
+              textAlign: TextAlign.center,
+              style: AppTypography.cuerpoS.copyWith(
+                fontSize: 12.5,
+                color: AppColors.tintaSuave,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.l),
+            BotonPegatina(
+              texto: 'Apuntar una croqueta',
+              icono: Icons.add_rounded,
+              color: AppColors.tomate,
+              ancho: 260,
+              onTap: () => context.push('/nueva'),
+            ),
+          ],
         ],
       ),
     );
@@ -214,21 +258,25 @@ class EntradaBarraLibre extends ConsumerWidget {
     // se come.
     final String pie;
     if (total == 0) {
-      pie = 'Veganas, sin gluten, sin lactosa';
+      pie = 'Qué croquetas puedes comer tú';
     } else if (paraMi == null) {
-      pie = '$total con la receta apuntada';
+      pie = 'Cuáles puedes comer tú · $total con receta';
     } else if (paraMi == 0) {
-      pie = 'Ninguna de las $total te vale aún';
+      // «Ninguna de las 1 te vale aún» no es castellano. Y la frase tiene
+      // que decir primero para qué sirve esto, no sólo el recuento.
+      pie = 'De $total con receta, ninguna te vale';
     } else {
-      pie = '$paraMi te valen de $total apuntadas';
+      pie = '$paraMi te valen, de $total con receta';
     }
 
     // El menta pasa del bloque entero a la pastilla del icono: como
     // rectángulo verde a ancho completo era el cuarto de la misma pantalla y
     // le quitaba protagonismo a la croqueta del día.
+    // Sin lunares: son blancos al 28% y aquí el fondo ya es blanco. No se
+    // ven, ensucian y cuestan un repintado. Se quedaron puestos de cuando
+    // este bloque era verde entero.
     return Pegatina(
       color: AppColors.superficie,
-      lunares: true,
       padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
       onTap: () => context.push('/libre'),
       child: Row(
@@ -248,7 +296,13 @@ class EntradaBarraLibre extends ConsumerWidget {
                 width: AppShape.bordeFino,
               ),
             ),
-            child: const Text('🌱', style: TextStyle(fontSize: 22)),
+            // Un icono de tinta y no el brote verde: verde sobre verde no
+            // se distinguía, que es lo primero que se ve de esta sección.
+            child: const Icon(
+              Icons.eco_rounded,
+              size: 24,
+              color: AppColors.tinta,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(

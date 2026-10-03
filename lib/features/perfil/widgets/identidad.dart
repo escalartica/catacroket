@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/yo_provider.dart';
@@ -33,13 +34,26 @@ class Identidad extends ConsumerWidget {
           button: true,
           label: 'Cambiar tu nombre. Ahora es ${yo.nombre}',
           excludeSemantics: true,
+          onTap: () => _editarNombre(context, ref, yo.nombre),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () => _editarNombre(context, ref, yo.nombre),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Text(yo.nombre, style: AppTypography.tituloL),
+                // Flexible y a una línea: esto es un `Row` sin límite con el
+                // texto a 28 px, así que un nombre largo —o uno normal con
+                // la letra del sistema ampliada— se salía por el lado y
+                // dejaba las rayas amarillas y negras de desbordamiento en
+                // la cabecera del Croquetómetro.
+                Flexible(
+                  child: Text(
+                    yo.nombre,
+                    style: AppTypography.tituloL,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 const Icon(
                   Icons.edit_rounded,
@@ -106,6 +120,7 @@ class _Retrato extends ConsumerWidget {
               button: true,
               label: yo.tieneFoto ? 'Cambiar tu foto' : 'Poner tu foto',
               excludeSemantics: true,
+              onTap: () => _hoja(context, ref),
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () => _hoja(context, ref),
@@ -281,7 +296,7 @@ class _HojaFoto extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.m),
             BotonPegatina.fantasma(
-              texto: 'Elegir de la galeria',
+              texto: 'Elegir de la galería',
               icono: Icons.photo_library_rounded,
               onTap: onGaleria,
             ),
@@ -339,6 +354,12 @@ class _DialogoNombreState extends State<_DialogoNombre> {
               etiqueta: 'Tu nombre',
               valor: _texto,
               autofoco: true,
+              // Un tope por arriba: no había ninguno, y el nombre se pinta a
+              // 28 px en el perfil y en el ranking de cada mesa. Veinticuatro
+              // caracteres dan de sobra para cualquier nombre o apodo.
+              formateadores: <TextInputFormatter>[
+                LengthLimitingTextInputFormatter(24),
+              ],
               onCambio: (String v) => setState(() => _texto = v),
             ),
             const SizedBox(height: AppSpacing.l),

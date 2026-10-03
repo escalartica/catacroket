@@ -21,7 +21,7 @@ class FalloCuenta implements Exception {
     }
 
     return FalloCuenta(switch (error.code) {
-      'invalid-email' => 'Ese correo no tiene buena pinta. Reviśalo.',
+      'invalid-email' => 'Ese correo no tiene buena pinta. Revísalo.',
       'user-disabled' => 'Esta cuenta está desactivada.',
       'user-not-found' ||
       'wrong-password' ||

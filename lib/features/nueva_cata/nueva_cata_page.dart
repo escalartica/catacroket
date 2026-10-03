@@ -6,13 +6,17 @@ import 'package:go_router/go_router.dart';
 import 'cata_desde_borrador.dart';
 import '../../core/models/cata.dart';
 import '../../core/providers/borrador_provider.dart';
+import '../../core/models/mesa.dart';
 import '../../core/providers/catas_provider.dart';
+import '../../core/providers/mesas_provider.dart';
 import '../../core/theme/components/boton.dart';
+import '../../core/theme/components/campo.dart';
 import '../../core/theme/tokens/app_colors.dart';
 import '../../core/theme/tokens/app_motion.dart';
 import '../../core/theme/tokens/app_shape.dart';
 import '../../core/theme/tokens/app_spacing.dart';
 import '../../core/theme/tokens/app_typography.dart';
+import '../../core/utils/texto.dart';
 import 'pasos/paso_corte.dart';
 import 'pasos/paso_detalles.dart';
 import 'pasos/paso_sabores.dart';
@@ -120,7 +124,25 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
     if (salir && mounted) _cerrar();
   }
 
+  /// Ya se está guardando. Es el único botón de la app que CREA contenido, se
+  /// pulsa con una mano en un bar y `anadir` es asíncrono: sin esto, dos
+  /// toques seguidos creaban dos catas idénticas con identificadores
+  /// distintos —y en una mesa compartida se subían las dos—, y no había
+  /// forma de saber cuál borrar. El resto de botones largos de la app ya se
+  /// protegían así; éste se había quedado fuera.
+  bool _guardando = false;
+
   Future<void> _guardar() async {
+    if (_guardando) return;
+    setState(() => _guardando = true);
+    try {
+      await _guardarDeVerdad();
+    } finally {
+      if (mounted) setState(() => _guardando = false);
+    }
+  }
+
+  Future<void> _guardarDeVerdad() async {
     final Borrador b = ref.read(borradorProvider);
     final Cata? original = b.editando == null
         ? null
@@ -332,6 +354,15 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
               // Un botón apagado sin explicación es un botón roto: el usuario
               // lo toca, no pasa nada y se queda mirando. Decir qué falta
               // cuesta una línea.
+              // En el último paso, quién la va a ver, justo encima del botón
+              // que la publica. Se decide arriba del todo de este paso, pero
+              // para cuando llegas aquí abajo ya has rellenado precio, gente
+              // y nota: recordarlo en una línea es lo que evita publicar una
+              // croqueta creyendo que la ve tu mesa cuando no la ve nadie.
+              if (ultimo) ...<Widget>[
+                _QuienLaVera(mesas: ref.watch(mesasProvider)),
+                const SizedBox(height: AppSpacing.s),
+              ],
               if (!puede) ...<Widget>[
                 Text(
                   _queFalta(paso),
@@ -346,11 +377,13 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
               BotonPegatina(
             texto: !ultimo
                 ? 'Siguiente'
-                : editando
-                    ? 'Guardar cambios'
-                    : 'Publicar cata',
+                : _guardando
+                    ? 'Guardando…'
+                    : editando
+                        ? 'Guardar cambios'
+                        : 'Publicar cata',
             color: ultimo ? AppColors.tomate : AppColors.sol,
-            onTap: !puede
+            onTap: !puede || _guardando
                 ? null
                 : () {
                     if (ultimo) {
@@ -374,4 +407,118 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
         2 => 'Elige al menos un relleno',
         _ => '',
       };
+}
+
+/// Quién la va a ver, justo encima del botón que la publica.
+///
+/// No es un adorno: la decisión se toma arriba del todo de este paso, y para
+/// cuando bajas hasta aquí ya has rellenado precio, gente y nota. Lo que
+/// pasaba es que la croqueta se publicaba creyendo que la vería la mesa y no
+/// la veía nadie, y no había forma de enterarse hasta que alguien preguntaba
+/// por qué su mesa seguía a cero.
+///
+/// Las mesas están aquí para tocarlas, y se quedan: antes sólo salían
+/// mientras no hubiera ninguna marcada, así que al tocar la primera el bloque
+/// entero desaparecía y para añadir la segunda había que volver a subir media
+/// pantalla, que era exactamente lo que esto venía a evitar.
+class _QuienLaVera extends ConsumerWidget {
+  const _QuienLaVera({required this.mesas});
+
+  final List<Mesa> mesas;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final List<String> elegidas = ref.watch(borradorProvider).mesas;
+    final List<Mesa> compartibles =
+        mesas.where((Mesa m) => !m.esLibreta).toList();
+    if (compartibles.isEmpty) return const SizedBox.shrink();
+
+    final List<Mesa> marcadas =
+        compartibles.where((Mesa m) => elegidas.contains(m.id)).toList();
+    final List<String> despiertas = <String>[
+      for (final Mesa m in marcadas)
+        if (m.enLaNube) m.nombre,
+    ];
+    final List<String> dormidas = <String>[
+      for (final Mesa m in marcadas)
+        if (!m.enLaNube) m.nombre,
+    ];
+
+    final bool soloYo = marcadas.isEmpty;
+    final bool avisa = soloYo || dormidas.isNotEmpty;
+
+    final String texto = soloYo
+        ? 'Nadie más la verá. ¿La enseñas a tu mesa?'
+        : dormidas.isEmpty
+            ? 'La verán en ${Texto.enumerar(despiertas, comillas: false)}'
+            : despiertas.isEmpty
+                ? '${Texto.enumerar(dormidas)} sin activar: nadie la verá '
+                    'hasta que actives su código'
+                : 'La verán en ${Texto.enumerar(despiertas, comillas: false)}. '
+                    '${Texto.enumerar(dormidas)} sin activar';
+
+    return Semantics(
+      liveRegion: true,
+      child: AnimatedSize(
+        duration: AppMotion.rapida,
+        curve: AppMotion.suave,
+        alignment: Alignment.bottomCenter,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: avisa
+                ? AppColors.sol.withValues(alpha: 0.5)
+                : AppColors.menta.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(AppShape.radioM),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Text(
+                    avisa ? '\u26A0\uFE0F' : '\u{1F440}',
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      texto,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.cuerpoS.copyWith(
+                        fontSize: 12.5,
+                        height: 1.25,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  for (final Mesa m in compartibles)
+                    OpcionPildora(
+                      texto: m.enLaNube
+                          ? m.nombre
+                          : '${m.nombre} \u00B7 sin activar',
+                      activa: elegidas.contains(m.id),
+                      enGrupoUnico: false,
+                      colorActiva: Color(m.colorHex),
+                      onTap: () => ref
+                          .read(borradorProvider.notifier)
+                          .alternarMesa(m.id),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

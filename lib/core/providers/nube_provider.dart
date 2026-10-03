@@ -18,12 +18,35 @@ import 'yo_provider.dart';
 ///
 /// Sin sesión o sin mesas compartidas esto es una lista vacía, y el feed
 /// funciona exactamente igual que antes de que existiera la nube.
+/// Los identificadores de tus mesas compartidas, como una cadena.
+///
+/// Esto parece una tontería y no lo es. Los tres providers de abajo abren
+/// conexiones por cada mesa, y observaban `mesasProvider` entero. Pero
+/// `miembrosAlDiaProvider` ESCRIBE en `mesasProvider` cada vez que entra
+/// alguien: observar la lista entera montaba un bucle en el que cada
+/// persona que entraba en una mesa cerraba y volvía a abrir todas las
+/// conexiones de todas las mesas, y con ellas la descarga entera de todas
+/// las catas y sus fotos. Renombrar una mesa hacía lo mismo.
+///
+/// Una cadena y no una lista porque Riverpod compara por identidad: dos
+/// listas con el mismo contenido son dos objetos distintos y volvería a
+/// dispararse igual. Dos cadenas iguales son iguales.
+final idsCompartidosProvider = Provider<String>((ref) {
+  final List<String> ids = <String>[
+    for (final Mesa m in ref.watch(mesasProvider))
+      if (m.enLaNube) m.id,
+  ]..sort();
+  return ids.join(',');
+});
+
+List<String> _trocear(String llave) =>
+    llave.isEmpty ? const <String>[] : llave.split(',');
+
 final catasDeOtrosProvider = StreamProvider<List<Cata>>((ref) {
   final String? miUid = ref.watch(miUidProvider);
   if (miUid == null) return Stream<List<Cata>>.value(const <Cata>[]);
 
-  final List<Mesa> compartidas =
-      ref.watch(mesasProvider).where((Mesa m) => m.enLaNube).toList();
+  final List<String> compartidas = _trocear(ref.watch(idsCompartidosProvider));
   if (compartidas.isEmpty) return Stream<List<Cata>>.value(const <Cata>[]);
 
   // Un mapa por mesa y no una lista suelta: cada mesa llega por su cuenta y
@@ -39,18 +62,22 @@ final catasDeOtrosProvider = StreamProvider<List<Cata>>((ref) {
   final List<StreamSubscription<List<Cata>>> escuchas =
       <StreamSubscription<List<Cata>>>[];
 
-  for (final Mesa mesa in compartidas) {
+  for (final String mesaId in compartidas) {
     escuchas.add(
-      NubeService.catasDe(mesa.id).listen(
+      NubeService.catasDe(mesaId).listen(
         (List<Cata> catas) {
           // Fuera las mías: la copia buena está en el móvil.
-          porMesa[mesa.id] =
-              catas.where((Cata c) => c.autorId != miUid).toList();
+          //
+          // Por uid y no por autorId: autorId vale 'tu' en todos los
+          // teléfonos, así que `c.autorId != miUid` era siempre cierto y
+          // este filtro no filtraba absolutamente nada.
+          porMesa[mesaId] =
+              catas.where((Cata c) => c.autorUid != miUid).toList();
           if (!salida.isClosed) salida.add(todas());
         },
         // Que una mesa falle no puede dejar sin feed a las demás.
         onError: (Object _) {
-          porMesa[mesa.id] = const <Cata>[];
+          porMesa[mesaId] = const <Cata>[];
           if (!salida.isClosed) salida.add(todas());
         },
       ),
@@ -94,6 +121,14 @@ final recuperarMesasProvider = Provider<void>((ref) {
           (Object _) => 0,
         ),
   );
+
+  // Y los borrados que no llegaron, por el mismo motivo: si no, la cata
+  // borrada sin cobertura vuelve al feed en cuanto haya red.
+  unawaited(
+    ref.read(catasProvider.notifier).reintentarBorrados().catchError(
+          (Object _) => 0,
+        ),
+  );
 });
 
 /// Los nombres de tu gente, por identificador de cuenta.
@@ -102,17 +137,30 @@ final recuperarMesasProvider = Provider<void>((ref) {
 /// dice nada: sin esto salían todos como «Alguien» y con cero catas. Se piden
 /// una vez por tanda de miembros y se quedan cacheados mientras no cambie la
 /// lista.
-final nombresDeLaGenteProvider = FutureProvider<Map<String, String>>((ref) async {
-  final String? miUid = ref.watch(miUidProvider);
-  if (miUid == null) return const <String, String>{};
-
+/// Quién hay en tus mesas compartidas, en una cadena estable.
+final genteDeMisMesasProvider = Provider<String>((ref) {
   final Set<String> uids = <String>{
     for (final Mesa m in ref.watch(mesasProvider))
       if (m.enLaNube) ...m.miembros,
-  }..remove(miUid);
+  };
+  final List<String> lista = uids.toList()..sort();
+  return lista.join(',');
+});
 
-  if (uids.isEmpty) return const <String, String>{};
-  return NubeService.nombresDe(uids.toList());
+final nombresDeLaGenteProvider =
+    StreamProvider<Map<String, String>>((ref) {
+  final String? miUid = ref.watch(miUidProvider);
+  if (miUid == null) return Stream<Map<String, String>>.value(const <String, String>{});
+
+  // Por la lista de gente y no por la de mesas: así renombrar una mesa o
+  // cambiarle el color no corta las conexiones de los nombres.
+  final List<String> uids = _trocear(ref.watch(genteDeMisMesasProvider))
+    ..remove(miUid);
+  if (uids.isEmpty) {
+    return Stream<Map<String, String>>.value(const <String, String>{});
+  }
+
+  return NubeService.nombresVivosDe(uids);
 });
 
 /// Publica tu nombre para que tu gente lo vea, y lo vuelve a publicar si te
@@ -124,7 +172,13 @@ final publicarMiNombreProvider = Provider<void>((ref) {
   // Sólo si es un nombre de verdad. Publicar el de fábrica llenaba la mesa
   // de «Tú», que es peor que no publicar nada: al menos «Alguien» avisa de
   // que falta un nombre.
-  final Yo yo = ref.watch(yoProvider);
+  //
+  // Se LEE, no se observa. Observando `yoProvider`, cambiar la foto de
+  // perfil también disparaba una escritura en el servidor con el nombre que
+  // ya estaba puesto, y cambiarse el nombre escribía dos veces, porque
+  // `YoNotifier.ponerNombre` ya publica por su cuenta —que es donde el dato
+  // cambia de verdad—. Esto sólo cubre el caso de entrar con la cuenta.
+  final Yo yo = ref.read(yoProvider);
   if (!yo.tieneNombrePropio) return;
 
   unawaited(NubeService.publicarNombre(yo.nombre.trim()));
@@ -143,19 +197,18 @@ final miembrosAlDiaProvider = Provider<void>((ref) {
   final String? miUid = ref.watch(miUidProvider);
   if (miUid == null) return;
 
-  final List<Mesa> compartidas =
-      ref.watch(mesasProvider).where((Mesa m) => m.enLaNube).toList();
+  final List<String> compartidas = _trocear(ref.watch(idsCompartidosProvider));
   if (compartidas.isEmpty) return;
 
-  final List<StreamSubscription<List<String>>> escuchas =
-      <StreamSubscription<List<String>>>[];
+  final List<StreamSubscription<MesaViva?>> escuchas =
+      <StreamSubscription<MesaViva?>>[];
 
-  for (final Mesa mesa in compartidas) {
+  for (final String mesaId in compartidas) {
     escuchas.add(
-      NubeService.miembrosDe(mesa.id).listen(
-        (List<String> miembros) {
-          if (miembros.isEmpty) return;
-          ref.read(mesasProvider.notifier).apuntarMiembros(mesa.id, miembros);
+      NubeService.miembrosDe(mesaId).listen(
+        (MesaViva? viva) {
+          if (viva == null) return;
+          ref.read(mesasProvider.notifier).apuntarDeLaNube(mesaId, viva);
         },
         // Que una mesa falle no puede dejar sin escuchar a las demás.
         onError: (Object _) {},
@@ -164,7 +217,7 @@ final miembrosAlDiaProvider = Provider<void>((ref) {
   }
 
   ref.onDispose(() {
-    for (final StreamSubscription<List<String>> s in escuchas) {
+    for (final StreamSubscription<MesaViva?> s in escuchas) {
       s.cancel();
     }
   });
@@ -176,10 +229,26 @@ final miembrosAlDiaProvider = Provider<void>((ref) {
 /// cuanto corriges una tuya sin cobertura: la del servidor está vieja y
 /// dejarla ganar borraría la corrección delante de tus ojos.
 List<Cata> juntarCatas(List<Cata> mias, List<Cata> deOtros) {
-  final Map<String, Cata> porId = <String, Cata>{
-    for (final Cata c in deOtros) c.id: c,
-    for (final Cata c in mias) c.id: c,
-  };
+  // Las de fuera primero, juntando las mesas de las copias repetidas.
+  //
+  // Una misma cata de otra persona puede llegar por dos mesas distintas si
+  // estás en las dos, y cada copia dice que está sólo en la suya. Quedándose
+  // con la última, la cata desaparecía de la otra mesa sin motivo aparente.
+  final Map<String, Cata> porId = <String, Cata>{};
+  for (final Cata c in deOtros) {
+    final Cata? ya = porId[c.id];
+    porId[c.id] = ya == null
+        ? c
+        : ya.copyWith(
+            mesas: <String>{...ya.mesas, ...c.mesas}.toList(),
+          );
+  }
+
+  // Y las tuyas por encima: la copia buena de una cata tuya es la del móvil,
+  // con la lista completa de mesas, que el servidor no conoce entera.
+  for (final Cata c in mias) {
+    porId[c.id] = c;
+  }
 
   final List<Cata> todas = porId.values.toList();
   todas.sort((Cata a, Cata b) => b.fecha.compareTo(a.fecha));

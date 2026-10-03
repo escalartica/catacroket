@@ -35,7 +35,7 @@ class Borrador {
     this.surtido = false,
     this.corte = const Corte.media(),
     this.precio = '',
-    this.mesaId = Mesa.libretaId,
+    this.mesas = const <String>[],
     this.nota = '',
     this.acompanantes = const <String>[],
     this.medios = const <Medio>[],
@@ -62,7 +62,9 @@ class Borrador {
   final bool surtido;
   final Corte corte;
   final String precio;
-  final String mesaId;
+
+  /// Las mesas cuya gente verá esta cata. Vacía: sólo tú.
+  final List<String> mesas;
   final String nota;
   final List<String> acompanantes;
 
@@ -128,6 +130,19 @@ class Borrador {
       nota.trim().isNotEmpty ||
       lugar != null;
 
+  static List<String> _mesasDeJson(Map<String, dynamic> json) {
+    final Object? nuevo = json['mesas'];
+    if (nuevo is List<dynamic>) {
+      return <String>[
+        for (final dynamic m in nuevo)
+          if (m.toString().isNotEmpty && m.toString() != Mesa.libretaId)
+            m.toString(),
+      ];
+    }
+    final String viejo = json['mesaId'] as String? ?? Mesa.libretaId;
+    return viejo == Mesa.libretaId ? const <String>[] : <String>[viejo];
+  }
+
   Map<String, dynamic> toJson() => <String, dynamic>{
         'sitio': sitio,
         'ciudad': ciudad,
@@ -136,7 +151,7 @@ class Borrador {
         'surtido': surtido,
         'corte': corte.toJson(),
         'precio': precio,
-        'mesaId': mesaId,
+        'mesas': mesas,
         'nota': nota,
         'acompanantes': acompanantes,
         'medios': medios.map((Medio m) => m.toJson()).toList(),
@@ -172,7 +187,10 @@ class Borrador {
                 ),
               ),
         precio: json['precio'] as String? ?? '',
-        mesaId: json['mesaId'] as String? ?? Mesa.libretaId,
+        // Puente con los borradores guardados antes, cuando sólo había un
+        // destino: la libreta pasa a ser ninguna mesa, y una mesa concreta
+        // pasa a ser esa y nada más.
+        mesas: _mesasDeJson(json),
         nota: json['nota'] as String? ?? '',
         acompanantes: (json['acompanantes'] as List<dynamic>? ?? <dynamic>[])
             .map((dynamic e) => e.toString())
@@ -263,7 +281,7 @@ class Borrador {
     bool? surtido,
     Corte? corte,
     String? precio,
-    String? mesaId,
+    List<String>? mesas,
     String? nota,
     List<String>? acompanantes,
     List<Medio>? medios,
@@ -287,7 +305,7 @@ class Borrador {
       surtido: surtido ?? this.surtido,
       corte: corte ?? this.corte,
       precio: precio ?? this.precio,
-      mesaId: mesaId ?? this.mesaId,
+      mesas: mesas ?? this.mesas,
       nota: nota ?? this.nota,
       acompanantes: acompanantes ?? this.acompanantes,
       medios: medios ?? this.medios,
@@ -442,7 +460,7 @@ class BorradorNotifier extends StateNotifier<Borrador> {
       precio: cata.precio == null
           ? ''
           : cata.precio!.toStringAsFixed(2).replaceAll('.', ','),
-      mesaId: cata.mesaId,
+      mesas: cata.mesas,
       nota: cata.nota,
       acompanantes: cata.acompanantes,
       medios: cata.medios,
@@ -587,7 +605,33 @@ class BorradorNotifier extends StateNotifier<Borrador> {
       );
 
   void precio(String v) => state = state.copyWith(precio: v);
-  void mesa(String v) => state = state.copyWith(mesaId: v);
+  /// Pone o quita una mesa de las que verán esta cata.
+  void alternarMesa(String id) {
+    final List<String> ahora = <String>[...state.mesas];
+    if (!ahora.remove(id)) ahora.add(id);
+    state = state.copyWith(mesas: ahora);
+  }
+
+  /// Quita todas: la cata pasa a ser sólo tuya.
+  void soloParaMi() => state = state.copyWith(mesas: const <String>[]);
+
+  /// Empieza una cata NUEVA con esa mesa ya marcada.
+  ///
+  /// Lo usa el «Apuntar aquí» de la ficha de una mesa: quien entra por ahí ya
+  /// ha dicho dónde quiere la croqueta, y volvérselo a preguntar en el último
+  /// paso es hacerle repetir una decisión que acaba de tomar.
+  ///
+  /// Lo de mirar `esEdicion` primero no es un detalle. Si te habías metido a
+  /// corregir una cata y te saliste sin guardar, el borrador se queda con su
+  /// identificador dentro; entrando aquí sin comprobarlo, lo que parecía una
+  /// cata nueva era en realidad aquella misma cata, y al darle a guardar se
+  /// escribía encima de ella —con sus fotos—. Una croqueta sin apuntar se
+  /// vuelve a apuntar; una cata pisada no se recupera.
+  void empezarEnMesa(String id) {
+    if (state.esEdicion) state = const Borrador();
+    if (state.mesas.contains(id)) return;
+    state = state.copyWith(mesas: <String>[...state.mesas, id]);
+  }
   void nota(String v) => state = state.copyWith(nota: v);
 
   void eje(String eje, int valor) {

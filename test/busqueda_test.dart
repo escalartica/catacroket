@@ -23,7 +23,7 @@ void main() {
     List<String> acompanantes = const <String>[],
     List<Sabor> sabores = const <Sabor>[Sabor(rellenoId: 'jamon')],
     String autorId = 'tu',
-    String mesaId = 'libreta',
+    List<String> mesas = const <String>[],
   }) =>
       Cata(
         id: id,
@@ -32,7 +32,7 @@ void main() {
         corte: const Corte(crujiente: 8, cremosidad: 7, sabor: 9, relleno: 6),
         sabores: sabores,
         autorId: autorId,
-        mesaId: mesaId,
+        mesas: mesas,
         fecha: DateTime(2026, 3, 14),
         nota: nota,
         acompanantes: acompanantes,

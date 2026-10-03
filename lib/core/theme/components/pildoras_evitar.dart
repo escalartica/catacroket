@@ -48,6 +48,7 @@ class PildorasEvitar extends StatelessWidget {
             button: true,
             label: 'Quitar $palabra de la lista',
             excludeSemantics: true,
+            onTap: () => onQuitar(palabra),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => onQuitar(palabra),
@@ -77,6 +78,7 @@ class PildorasEvitar extends StatelessWidget {
             button: true,
             label: 'Añadir algo que no comes',
             excludeSemantics: true,
+            onTap: () => _preguntar(context),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => _preguntar(context),

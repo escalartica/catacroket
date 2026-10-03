@@ -152,14 +152,16 @@ void main() {
       expect(find.text('Mesas'), findsOneWidget);
     });
 
-    testWidgets('la libreta siempre está, aunque no haya mesas', (
+    testWidgets('tu diario siempre está, aunque no haya mesas', (
       WidgetTester tester,
     ) async {
       await montar(tester, const MesasPage());
 
-      // La libreta no se puede borrar: es la mesa de uno mismo y por eso esta
-      // pantalla nunca aparece del todo vacía.
-      expect(find.text('Mi libreta'), findsOneWidget);
+      // Tu diario no se puede borrar: es todo lo que has catado, y por eso
+      // esta pantalla nunca aparece del todo vacía. Se llamaba «Mi libreta»
+      // cuando era una caja donde metías unas catas sí y otras no; desde que
+      // una cata puede estar en varias mesas, ya no es un destino.
+      expect(find.text('Mi diario'), findsOneWidget);
     });
   });
 
@@ -372,7 +374,7 @@ class _UnaSinCiudad extends CatasNotifier {
         corte: const Corte(crujiente: 7, cremosidad: 7, sabor: 7, relleno: 7),
         sabores: const <Sabor>[Sabor(rellenoId: 'jamon')],
         autorId: 'tu',
-        mesaId: 'libreta',
+        mesas: const <String>[],
         fecha: DateTime(2026),
       ),
     ];

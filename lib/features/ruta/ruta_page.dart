@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' show LatLng;
 
 import '../../core/capturas.dart';
+import '../../core/errores.dart';
 import '../../core/models/cata.dart';
 import '../../core/models/lugar.dart';
 import '../../core/models/persona.dart';
@@ -90,8 +91,15 @@ class _RutaPageState extends ConsumerState<RutaPage> {
   void _teselaFallida(Object error) {
     _fallidas++;
     if (!mounted || _falloTeselas != null) return;
+    // El motivo técnico va a la bitácora, no a la cara del usuario: lo que
+    // se pintaba era literalmente «SocketException: Failed host lookup…»
+    // dentro de una pegatina amarilla, en el momento en que ya está
+    // frustrado y no le dice qué hacer. En la bitácora sí sirve, que es de
+    // donde sale el informe que nos manda.
+    Errores.registrar(error, null, origen: 'ruta.teselas');
+
     // Un solo aviso: si falla el mapa fallan cien teselas a la vez.
-    setState(() => _falloTeselas = error.toString());
+    setState(() => _falloTeselas = 'caido');
   }
 
   /// El estado del mapa, en crudo. Sólo en depuración: esto no se publica.
@@ -135,7 +143,7 @@ class _RutaPageState extends ConsumerState<RutaPage> {
     _vigilante = Timer(const Duration(seconds: 6), () {
       if (!mounted || _pedidas > 0 || _falloTeselas != null) return;
       setState(() {
-        _falloTeselas = 'La capa del mapa no ha pedido ninguna tesela.';
+        _falloTeselas = 'El dibujo del mapa no ha llegado a pedirse.';
       });
     });
   }
@@ -690,16 +698,20 @@ class _AvisoMapaCaido extends StatelessWidget {
                 color: AppColors.tinta,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              motivo,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.etiqueta.copyWith(
-                fontSize: 10.5,
-                color: AppColors.tinta,
+            // El motivo técnico sólo en depuración. En la app publicada, la
+            // explicación de arriba es toda la información que se puede usar.
+            if (kDebugMode) ...<Widget>[
+              const SizedBox(height: 6),
+              Text(
+                motivo,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.etiqueta.copyWith(
+                  fontSize: 10.5,
+                  color: AppColors.tinta,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -963,14 +975,21 @@ class _Racimo extends StatelessWidget {
 
     return Semantics(
       button: true,
+      // Con la acción puesta aquí: `ExcludeSemantics` se lleva por delante
+      // la del GestureDetector de dentro, así que el nodo tenía etiqueta
+      // pero ninguna forma de activarse, y con TalkBack el doble toque no
+      // hacía nada. Se podía leer el mapa pero no usarlo.
+      onTap: onTap,
       label: '$cuantas catas juntas, la mejor '
           '${Formato.nota(grupo.mejorNota)} de 10. Toca para acercarte',
       child: ExcludeSemantics(
         child: GestureDetector(
           onTap: onTap,
           child: Container(
-            width: 42,
-            height: 42,
+            // 44: el mínimo que se puede tocar de pie, en la calle y con una
+            // mano, que es como se usa esta pantalla.
+            width: 44,
+            height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
               // Mango y redondo: un racimo no es una cata, y se distingue
@@ -1012,9 +1031,15 @@ class _Globo extends StatelessWidget {
     return Semantics(
       button: true,
       selected: activo,
+      onTap: onTap,
       label: '${cata.sitio}, ${Formato.nota(cata.puntuacion)} de 10',
       child: ExcludeSemantics(
         child: GestureDetector(
+      // opaque y no el por defecto: así se puede tocar también el hueco
+      // transparente que le añade el padding de abajo, y el globo pasa de
+      // 30 puntos de alto reales a 44. Era la interacción principal de la
+      // pantalla y era la más difícil de acertar.
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: AnimatedScale(
         scale: activo ? 1.12 : 1,
@@ -1023,7 +1048,13 @@ class _Globo extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              // vertical 8 y no 5. Con 5, el globo medía 30 puntos de alto y
+              // había que acertarle de pie, en la calle y con una mano. Con
+              // 8 —más los 9 del pico, que con `opaque` también se toca— la
+              // zona pasa de 39 a 45, por encima del mínimo de 44. Crecer el
+              // globo y no añadirle hueco por fuera es lo único que no lo
+              // mueve de su sitio en el mapa: el marcador se ancla por arriba.
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
               decoration: BoxDecoration(
                 color: apagado ? AppColors.superficie : AppColors.sol,
                 borderRadius: BorderRadius.circular(13),

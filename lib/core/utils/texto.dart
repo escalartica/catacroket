@@ -47,4 +47,20 @@ abstract final class Texto {
     }
     return false;
   }
+
+  /// Una lista de nombres como se dice en castellano: «A», «B» y «C».
+  ///
+  /// Estaba escrito de cuatro formas distintas en cuatro pantallas, y la que
+  /// leía todo el mundo —la que va pegada al botón de publicar— decía
+  /// «A y B y C». Una sola función y una sola forma.
+  static String enumerar(List<String> nombres, {bool comillas = true}) {
+    String vestir(String n) => comillas ? '«$n»' : n;
+
+    if (nombres.isEmpty) return '';
+    if (nombres.length == 1) return vestir(nombres.first);
+
+    final List<String> todos = nombres.map(vestir).toList();
+    final String ultimo = todos.removeLast();
+    return '${todos.join(', ')} y $ultimo';
+  }
 }

@@ -10,12 +10,18 @@
 # Este script no deja que eso pase: sin `mapa.env` no compila.
 #
 #   herramientas/empaquetar.sh movil      -> instala en el móvil enchufado
+#   herramientas/empaquetar.sh movil ID   -> en ESE móvil (`flutter devices`)
 #   herramientas/empaquetar.sh android    -> build/app/outputs/bundle/release
 #   herramientas/empaquetar.sh ios        -> build/ios/ipa
 #
 # «movil» es para probar antes de publicar: compila en release con el mapa
 # bien puesto y lo instala en el aparato que tengas conectado. No hace falta
 # cuenta de desarrollador de pago, basta con la gratuita de Xcode.
+#
+# Con VARIOS aparatos a la vez —tu iPhone, el de otra persona, el simulador—
+# conviene decir cuál, porque el simulador NO puede correr en release y si lo
+# elige por su cuenta el build muere con «Release mode is not supported».
+# `flutter devices` da los identificadores.
 #
 set -euo pipefail
 
@@ -24,7 +30,12 @@ cd "$(dirname "$0")/.."
 destino="${1:-}"
 case "$destino" in
   movil|android|ios) ;;
-  *) echo "Uso: herramientas/empaquetar.sh movil|android|ios" >&2; exit 2 ;;
+  *)
+    echo "Uso: herramientas/empaquetar.sh movil [ID] | android | ios" >&2
+    echo "     El ID sale de \`flutter devices\`. Hace falta cuando hay varios" >&2
+    echo "     aparatos: el simulador no puede correr en release." >&2
+    exit 2
+    ;;
 esac
 
 if [[ ! -f mapa.env ]]; then
@@ -85,6 +96,9 @@ case "$destino" in
   movil)
     # `run` y no `build`: instala y arranca en el aparato de una vez. En
     # release, porque lo que se prueba es lo que va a la tienda.
+    if [[ -n "${2:-}" ]]; then
+      exec flutter run --release -d "$2" "${defines[@]}"
+    fi
     exec flutter run --release "${defines[@]}"
     ;;
   android)

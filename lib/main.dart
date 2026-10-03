@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/router.dart';
 import 'core/bitacora.dart';
 import 'core/errores.dart';
+import 'core/providers/catas_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
 
@@ -80,8 +83,40 @@ Future<void> _arrancar() async {
   );
 }
 
-class CatacroketApp extends StatelessWidget {
+class CatacroketApp extends ConsumerStatefulWidget {
   const CatacroketApp({super.key});
+
+  @override
+  ConsumerState<CatacroketApp> createState() => _CatacroketAppState();
+}
+
+class _CatacroketAppState extends ConsumerState<CatacroketApp> {
+  /// Reintenta lo que se quedó sin subir cada vez que la app vuelve.
+  ///
+  /// Hacía falta porque los reintentos de arranque corren UNA vez por sesión
+  /// y sólo si pasas por Mesas. El caso normal es justo el otro: apuntas tres
+  /// croquetas en un bar sin cobertura, abres la app en el metro —falla—, y
+  /// ya no se vuelve a intentar en toda la sesión aunque salgas a la calle y
+  /// uses la app una hora. Sólo subían cerrando y volviendo a abrir.
+  late final AppLifecycleListener _vigia = AppLifecycleListener(
+    onResume: () {
+      final CatasNotifier catas = ref.read(catasProvider.notifier);
+      unawaited(catas.reintentarPendientes().catchError((Object _) => 0));
+      unawaited(catas.reintentarBorrados().catchError((Object _) => 0));
+    },
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _vigia; // Se crea al arrancar, no en el primer build.
+  }
+
+  @override
+  void dispose() {
+    _vigia.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,16 +126,24 @@ class CatacroketApp extends StatelessWidget {
       theme: AppTheme.tema,
       routerConfig: router,
 
-      // El tamaño de letra del sistema se respeta, pero con tope: por encima
-      // de 1,3 los bloques con contorno y sombra empiezan a romperse, y es
-      // preferible un texto algo menor que una pantalla ilegible.
+      // El tamaño de letra del sistema se respeta hasta el doble.
+      //
+      // Estaba topado en 1,3, y eso incumple la norma de accesibilidad
+      // (WCAG 1.4.4 pide llegar al 200% sin perder contenido): quien tiene
+      // el móvil al 200% porque lo necesita recibía un 130%. No es una
+      // degradación suave, es que la app se niega a crecer.
+      //
+      // Lo que lo hacía peligroso eran dos sitios sin `FittedBox`: las
+      // cifras del Croquetómetro y el nombre del perfil. Los dos están
+      // arreglados, y el resto de filas de la app ya lo llevaban puesto a
+      // propósito desde antes.
       builder: (BuildContext context, Widget? child) {
         final MediaQueryData media = MediaQuery.of(context);
         return MediaQuery(
           data: media.copyWith(
             textScaler: media.textScaler.clamp(
               minScaleFactor: 0.9,
-              maxScaleFactor: 1.3,
+              maxScaleFactor: 2.0,
             ),
           ),
           child: child ?? const SizedBox.shrink(),

@@ -277,21 +277,42 @@ class _FilaSabor extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 5),
-                GestureDetector(
+                Semantics(
+                  button: true,
+                  label: 'Veredicto: ${sabor.veredicto.nombre}. '
+                      'Toca para cambiarlo',
+                  excludeSemantics: true,
+                  onTap: () async {
+                    final Veredicto? nuevo =
+                        await _elegirVeredicto(context, sabor.veredicto);
+                    if (nuevo != null) onVeredicto(nuevo);
+                  },
+                  child: GestureDetector(
+                  // opaque: así se toca también el hueco de la altura
+                  // mínima, no sólo donde hay pintura.
+                  behavior: HitTestBehavior.opaque,
                   onTap: () async {
                     final Veredicto? nuevo =
                         await _elegirVeredicto(context, sabor.veredicto);
                     if (nuevo != null) onVeredicto(nuevo);
                   },
                   child: Container(
+                    // 44 de alto mínimo. Medía 28, y es el control que más se
+                    // repite del paso: en un surtido hay que puntuar por aquí
+                    // cada sabor, uno a uno.
+                    constraints: const BoxConstraints(minHeight: 44),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 9,
                       vertical: 5,
                     ),
+                    alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: AppColors.superficie,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: AppColors.tinta, width: 2),
+                      borderRadius: BorderRadius.circular(AppShape.radioPildora),
+                      border: Border.all(
+                        color: AppColors.tinta,
+                        width: AppShape.bordeFino,
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -307,6 +328,7 @@ class _FilaSabor extends StatelessWidget {
                         const Icon(Icons.expand_more_rounded, size: 15),
                       ],
                     ),
+                  ),
                   ),
                 ),
               ],

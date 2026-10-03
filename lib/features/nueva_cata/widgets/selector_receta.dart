@@ -364,6 +364,7 @@ class _FilaAlergeno extends StatelessWidget {
     return Semantics(
       button: onTap != null,
       selected: marcado,
+      onTap: onTap,
       child: ExcludeSemantics(
         child: Pegatina(
           color: marcado ? AppColors.superficieHonda : AppColors.superficie,

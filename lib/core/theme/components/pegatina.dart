@@ -36,6 +36,8 @@ class Pegatina extends StatefulWidget {
     this.colorLunares,
     this.alineacion,
     this.haptica = true,
+    this.etiqueta,
+    this.conBorde = true,
   });
 
   final Widget child;
@@ -58,6 +60,23 @@ class Pegatina extends StatefulWidget {
 
   final AlignmentGeometry? alineacion;
   final bool haptica;
+
+  /// Cómo se llama esto para un lector de pantalla.
+  ///
+  /// Va aquí dentro y no envolviéndola por fuera: esta pegatina declara
+  /// `container: true`, que abre un límite semántico, así que una anotación
+  /// puesta por fuera no puede aterrizar en el nodo pulsable. Los quince
+  /// botones redondos de la app —«Volver», «Cerrar», «Compartir», «Borrar la
+  /// cata»— se anunciaban como «botón» a secas por eso.
+  final String? etiqueta;
+
+  /// Si lleva el contorno de tinta.
+  ///
+  /// Casi siempre sí: el contorno es la mitad de la identidad de la app. Se
+  /// quita en los sitios donde lo que se quiere de una pegatina es sólo el
+  /// hundimiento al tocarla —una fila de una lista, por ejemplo— y dibujar
+  /// una caja alrededor de cada fila convertiría la lista en una reja.
+  final bool conBorde;
 
   @override
   State<Pegatina> createState() => _PegatinaState();
@@ -113,7 +132,7 @@ class _PegatinaState extends State<Pegatina> {
       decoration: BoxDecoration(
         color: widget.color,
         borderRadius: radio,
-        border: widget.discontinuo
+        border: (widget.discontinuo || !widget.conBorde)
             ? null
             : Border.all(color: AppColors.tinta, width: AppShape.borde),
         // Una pegatina transparente no proyecta sombra: el bloque de tinta
@@ -138,6 +157,7 @@ class _PegatinaState extends State<Pegatina> {
     return Semantics(
       button: true,
       container: true,
+      label: widget.etiqueta,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapDown: (_) {

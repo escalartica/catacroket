@@ -307,6 +307,23 @@ que hay que poner también en las fichas de las dos tiendas.
       01/10/2026. Los datos se tratan dentro de la UE, así que no hay
       transferencia internacional que declarar — ni en la política ni en los
       formularios de las tiendas. Ya está escrito en `docs/privacidad.md`.
+- [ ] **VUELVE A DESPLEGAR `firestore.rules`.** Las reglas han cambiado y el
+      cambio es gordo: antes, cualquiera a quien le reenviaran el código de
+      una mesa podía reescribir la lista de miembros, dejarte fuera de tu
+      propia mesa —y sin acceso a tus catas— y borrarla entera. Y la ficha de
+      cada usuario se podía listar completa, con el nombre de todo el que use
+      Catacroket.
+
+      ```
+      cd ~/development/catacroket
+      firebase deploy --only firestore:rules
+      ```
+
+      **Despliégalas a la vez que instalas el build nuevo, no antes.** Las
+      reglas nuevas no dejan reescribir la fecha de creación de una mesa, y
+      el build viejo la manda en cada «compartir»: con las reglas puestas y
+      el móvil sin actualizar, volver a compartir una mesa fallaría.
+
 - [x] **`firestore.rules` está desplegado.** Comprobado en la consola el
       01/10/2026: el texto coincide con el del repositorio. Si alguna vez se
       tocan las reglas, hay que volver a desplegarlas —el fichero del

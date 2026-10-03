@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/data/datos_demo.dart';
 import '../../core/models/cata.dart';
 import '../../core/providers/catas_provider.dart';
+import '../../core/providers/cuenta_provider.dart';
 
 /// Qué se enseña en el mapa.
 enum FiltroRuta { todas, mias, libres }
@@ -14,19 +14,21 @@ final filtroRutaProvider = StateProvider<FiltroRuta>((ref) => FiltroRuta.todas);
 /// Suelta y no dentro de un provider porque la pantalla también la necesita
 /// con una lista concreta en la mano —al cambiar de filtro, para reencuadrar
 /// el mapa antes de que el provider se haya propagado.
-List<Cata> filtrarRuta(List<Cata> catas, FiltroRuta filtro) {
+List<Cata> filtrarRuta(List<Cata> catas, FiltroRuta filtro, {String? miUid}) {
   return switch (filtro) {
     FiltroRuta.todas => catas,
-    FiltroRuta.mias =>
-      catas.where((Cata c) => c.autorId == DatosDemo.yo).toList(),
+    FiltroRuta.mias => catas.where((Cata c) => c.esMia(miUid)).toList(),
     FiltroRuta.libres => catas.where((Cata c) => c.tieneDietas).toList(),
   };
 }
 
 /// Las catas que tienen punto en el mapa. El resto no se pueden pintar.
 final catasConSitioProvider = Provider<List<Cata>>((ref) {
+  // La lista junta y no sólo la local: desde que las mesas se comparten, el
+  // mapa enseñaba tus bares y ninguno de los de tu gente, y el filtro
+  // «Mías» no quitaba nada porque ya estaba todo filtrado de antemano.
   return ref
-      .watch(catasProvider)
+      .watch(catasRecientesProvider)
       .where((Cata c) => c.tieneUbicacion)
       .toList();
 });
@@ -36,7 +38,8 @@ final catasConSitioProvider = Provider<List<Cata>>((ref) {
 /// Se enseña en vez de esconderse: si tienes tres catas sin sitio, lo mejor
 /// que puede hacer esta pantalla es decírtelo.
 final catasSinSitioProvider = Provider<int>((ref) {
-  return ref.watch(catasProvider).length - ref.watch(catasConSitioProvider).length;
+  return ref.watch(catasRecientesProvider).length -
+      ref.watch(catasConSitioProvider).length;
 });
 
 /// Las catas que el filtro deja ver.
@@ -44,6 +47,7 @@ final catasVisiblesProvider = Provider<List<Cata>>((ref) {
   return filtrarRuta(
     ref.watch(catasConSitioProvider),
     ref.watch(filtroRutaProvider),
+    miUid: ref.watch(miUidProvider),
   );
 });
 

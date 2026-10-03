@@ -100,20 +100,17 @@ class BotonRedondo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: etiqueta,
-      child: Pegatina(
-        onTap: onTap,
-        color: color,
-        radio: tamano,
-        sombra: AppShape.sombraChica,
-        ancho: tamano,
-        alto: tamano,
-        padding: EdgeInsets.zero,
-        alineacion: Alignment.center,
-        child: Icon(icono, size: tamano * 0.46, color: AppColors.tinta),
-      ),
+    return Pegatina(
+      onTap: onTap,
+      etiqueta: etiqueta,
+      color: color,
+      radio: tamano,
+      sombra: AppShape.sombraChica,
+      ancho: tamano,
+      alto: tamano,
+      padding: EdgeInsets.zero,
+      alineacion: Alignment.center,
+      child: Icon(icono, size: tamano * 0.46, color: AppColors.tinta),
     );
   }
 }

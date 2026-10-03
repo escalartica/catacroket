@@ -162,16 +162,22 @@ class AtribucionOsm extends StatelessWidget {
       alignment: Alignment.bottomRight,
       child: Container(
         margin: const EdgeInsets.all(4),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         decoration: BoxDecoration(
-          color: AppColors.crema.withValues(alpha: 0.82),
-          borderRadius: BorderRadius.circular(6),
+          // Sin alfa: con 0,82 el fondo compuesto dependía de la tesela que
+          // hubiera debajo, y sobre una carretera oscura la atribución se
+          // quedaba en 4,25:1. La licencia de OpenStreetMap obliga a que se
+          // lea, así que no puede depender de por dónde vaya el mapa.
+          color: AppColors.crema,
+          borderRadius: BorderRadius.circular(AppShape.radioS),
         ),
         child: Text(
           Mapas.atribucion,
+          // 10,5 y tinta. A 9 px era el texto más pequeño de toda la app por
+          // un punto y medio, y es texto obligatorio.
           style: AppTypography.etiqueta.copyWith(
-            fontSize: 9,
-            color: AppColors.tintaSuave,
+            fontSize: 10.5,
+            color: AppColors.tinta,
           ),
         ),
       ),

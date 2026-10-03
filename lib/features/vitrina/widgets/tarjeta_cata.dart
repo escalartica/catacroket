@@ -70,6 +70,7 @@ class TarjetaCata extends ConsumerWidget {
       button: onTap != null,
       label: enVoz,
       excludeSemantics: true,
+      onTap: onTap,
       child: Pegatina(
       onTap: onTap,
       padding: const EdgeInsets.all(10),
@@ -130,6 +131,29 @@ class TarjetaCata extends ConsumerWidget {
                       ),
                     ChipCata(texto: autor.nombre, punto: autor.color, compacto: true),
                     ChipCata(texto: Formato.relativo(cata.fecha), compacto: true),
+                    // Si la ve alguien más, o no.
+                    //
+                    // En el feed están mezcladas las que sólo ves tú y las
+                    // que ve tu mesa, y hasta aquí no había forma de
+                    // distinguirlas sin entrar en cada una. Es la diferencia
+                    // entre apuntar para ti y enseñar, que es justo lo que la
+                    // app no estaba dejando claro en ninguna pantalla.
+                    if (cata.esSoloMia)
+                      const ChipCata(
+                        texto: 'Sólo yo',
+                        emoji: '🔒',
+                        color: AppColors.superficieCalida,
+                        compacto: true,
+                      )
+                    else
+                      ChipCata(
+                        texto: cata.mesas.length == 1
+                            ? 'Compartida'
+                            : 'En ${cata.mesas.length} mesas',
+                        emoji: '👀',
+                        color: AppColors.menta,
+                        compacto: true,
+                      ),
                     if (cata.tieneMedios)
                       ChipCata(
                         texto: cata.videos.isNotEmpty ? 'Vídeo' : 'Foto',

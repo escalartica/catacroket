@@ -43,26 +43,66 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
   /// conteste no puede impedir apuntar una croqueta. La cata ya está en el
   /// móvil; subirla es un extra que llega cuando llega.
   void _subirSiToca(Cata cata) {
-    try {
-      final Mesa? mesa = _ref
-          .read(mesasProvider)
-          .where((Mesa m) => m.id == cata.mesaId)
-          .firstOrNull;
-      if (mesa == null || !mesa.enLaNube) return;
+    if (cata.mesas.isEmpty) return;
+    unawaited(_subirACadaMesa(cata));
+  }
 
+  /// Sube la cata a cada una de sus mesas, una detrás de otra.
+  ///
+  /// Se apunta en la cola ANTES de intentarlo, y se quita al confirmar. Al
+  /// revés —apuntando sólo en el `onError`— había dos agujeros: el error de
+  /// red tarda doce segundos en llegar, así que apuntar la croqueta en un bar
+  /// sin línea y cerrar la app a los tres segundos la dejaba sin subir y sin
+  /// rastro; y si la lista de mesas aún no se había leído del disco, la mesa
+  /// se saltaba en silencio y tampoco quedaba apuntada. `reintentarPendientes`
+  /// ya sabe tirar solo lo que no toca subir.
+  ///
+  /// En fila y no todas a la vez: las dos colas se leen, se modifican y se
+  /// reescriben, así que dos subidas simultáneas se pisaban el apunte y una
+  /// de las mesas se quedaba sin recibir la cata.
+  Future<void> _subirACadaMesa(Cata cata) async {
+    for (final String mesaId in cata.mesas) {
+      await _apuntarEnLaCola('$mesaId/${cata.id}');
+    }
+
+    List<Medio>? medios;
+    for (final String mesaId in cata.mesas) {
+      if (!_estaEnLaNube(mesaId)) continue;
+      try {
+        // Una sola vez para todas las mesas.
+        medios ??= await NubeService.prepararFotos(cata);
+        await NubeService.subirCata(cata, mesaId, yaPreparados: medios);
+        await _apuntarMinis(cata.id, medios);
+        await _quitarDeLaCola('$mesaId/${cata.id}');
+      } catch (_) {
+        // Sigue apuntada para la próxima.
+      }
+    }
+  }
+
+  /// Si esa mesa está subida y su gente puede ver lo que se escriba ahí.
+  bool _estaEnLaNube(String mesaId) {
+    final Mesa? mesa =
+        _ref.read(mesasProvider).where((Mesa m) => m.id == mesaId).firstOrNull;
+    return mesa != null && mesa.enLaNube;
+  }
+
+  /// Quita del servidor las copias de las mesas de las que se ha sacado.
+  ///
+  /// Hace falta desde que una cata puede estar en varias: al quitarle una
+  /// mesa, la copia que ya está allí no se va sola, y su gente la seguiría
+  /// viendo para siempre aunque tú creyeras haberla sacado.
+  void _retirarDeLasQueSalen(Cata antes, Cata ahora) {
+    for (final String mesaId in antes.mesas) {
+      if (ahora.mesas.contains(mesaId)) continue;
+      unawaited(_quitarDeLaCola('$mesaId/${antes.id}'));
+      if (!_estaEnLaNube(mesaId)) continue;
       unawaited(
-        NubeService.subirCata(cata).then(
-          (List<Medio> medios) {
-            _apuntarMinis(cata.id, medios);
-            _quitarDeLaCola(cata.id);
-          },
-          // Si no sale, se apunta y se reintenta. Antes el error se tiraba a
-          // la basura y la cata se quedaba en el móvil para siempre: su
-          // autora la veía guardada y su mesa no la recibía nunca.
-          onError: (Object _) => _apuntarEnLaCola(cata.id),
+        NubeService.borrarCataDe(mesaId, antes.id).catchError(
+          (Object _) => _apuntarBorradoPendiente(mesaId, antes.id),
         ),
       );
-    } catch (_) {}
+    }
   }
 
   /// Guarda las miniaturas que ya se prepararon para viajar.
@@ -96,11 +136,30 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
     return true;
   }
 
-  /// Las catas que no han conseguido subir todavía.
+  /// Las catas que no han conseguido subir todavía, como «mesaId/cataId».
   ///
   /// Se guardan en el disco porque el motivo más normal para no subir es no
   /// tener cobertura, y de ahí a cerrar la app hay un paso.
-  static const String _claveCola = 'catacroket.catas.pendientes.v1';
+  ///
+  /// Con la mesa delante desde que una cata puede estar en varias: puede
+  /// haber subido a una y haber fallado en otra, y con sólo el identificador
+  /// de la cata no había forma de saber cuál faltaba. La `v2` es porque el
+  /// formato cambió: lo apuntado con el viejo se descarta solo al no llevar
+  /// barra, y como mucho se pierde un reintento.
+  static const String _claveCola = 'catacroket.catas.pendientes.v2';
+
+  /// Las escrituras de las dos colas, de una en una.
+  ///
+  /// Las dos son leer-modificar-escribir sobre la misma clave del disco. Sin
+  /// esto, dos escrituras a la vez leen el mismo conjunto y la que termina
+  /// última borra el apunte de la otra: esa mesa no recibe la cata nunca.
+  Future<void> _turno = Future<void>.value();
+
+  Future<T> _enFila<T>(Future<T> Function() faena) {
+    final Future<T> mio = _turno.then((_) => faena());
+    _turno = mio.then((_) {}, onError: (Object _) {});
+    return mio;
+  }
 
   Future<Set<String>> _cola() async {
     try {
@@ -111,22 +170,22 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
     }
   }
 
-  Future<void> _apuntarEnLaCola(String id) async {
+  Future<void> _apuntarEnLaCola(String id) => _enFila(() async {
     try {
       final Set<String> cola = await _cola()..add(id);
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(_claveCola, cola.toList());
     } catch (_) {}
-  }
+  });
 
-  Future<void> _quitarDeLaCola(String id) async {
+  Future<void> _quitarDeLaCola(String id) => _enFila(() async {
     try {
       final Set<String> cola = await _cola();
       if (!cola.remove(id)) return;
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setStringList(_claveCola, cola.toList());
     } catch (_) {}
-  }
+  });
 
   /// Vuelve a intentar las catas que se quedaron sin subir.
   ///
@@ -138,28 +197,25 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
     if (cola.isEmpty) return 0;
 
     int subidas = 0;
-    for (final String id in cola) {
-      final Cata? cata = _buscar(id);
-      // Si ya no existe, deja de estorbar en la cola.
-      if (cata == null) {
-        await _quitarDeLaCola(id);
+    for (final String apunte in cola) {
+      final (String mesaId, String cataId)? partes = _partir(apunte);
+      if (partes == null) {
+        await _quitarDeLaCola(apunte);
         continue;
       }
+      final (String mesaId, String cataId) = partes;
 
-      final Mesa? mesa = _ref
-          .read(mesasProvider)
-          .where((Mesa m) => m.id == cata.mesaId)
-          .firstOrNull;
-      // La cata cambió a una mesa que ya no se comparte: no hay nada que
-      // subir y quedarse en la cola sería eterno.
-      if (mesa == null || !mesa.enLaNube) {
-        await _quitarDeLaCola(id);
+      final Cata? cata = _buscar(cataId);
+      // Si ya no existe, o ya no está en esa mesa, o esa mesa no se comparte:
+      // no hay nada que subir, y quedarse en la cola sería eterno.
+      if (cata == null || !cata.estaEn(mesaId) || !_estaEnLaNube(mesaId)) {
+        await _quitarDeLaCola(apunte);
         continue;
       }
 
       try {
-        await _apuntarMinis(id, await NubeService.subirCata(cata));
-        await _quitarDeLaCola(id);
+        await _apuntarMinis(cataId, await NubeService.subirCata(cata, mesaId));
+        await _quitarDeLaCola(apunte);
         subidas++;
       } catch (_) {
         // Sigue en la cola para la próxima.
@@ -168,22 +224,108 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
     return subidas;
   }
 
+  /// Parte un apunte «mesaId/cataId». Nulo si no tiene esa forma.
+  static (String, String)? _partir(String apunte) {
+    final int barra = apunte.indexOf('/');
+    if (barra <= 0 || barra == apunte.length - 1) return null;
+    return (apunte.substring(0, barra), apunte.substring(barra + 1));
+  }
+
   void _borrarDeLaNubeSiToca(Cata cata) {
     try {
-      final Mesa? mesa = _ref
-          .read(mesasProvider)
-          .where((Mesa m) => m.id == cata.mesaId)
-          .firstOrNull;
-      if (mesa == null || !mesa.enLaNube) return;
-      unawaited(NubeService.borrarCata(cata).catchError((Object _) {}));
+      for (final String mesaId in cata.mesas) {
+        // Las fotos no hay que borrarlas aparte: viajan dentro de la cata,
+        // así que se van con ella.
 
-      // Las fotos no hay que borrarlas aparte: viajan dentro de la cata, así
-      // que se van con ella.
+        // Fuera de la cola de subidas: una cata borrada que se reintenta
+        // volvería a subirse sola después de haberla borrado.
+        unawaited(_quitarDeLaCola('$mesaId/${cata.id}'));
 
-      // Fuera de la cola de reintentos: una cata borrada que se reintenta
-      // volvería a subirse sola después de haberla borrado.
-      unawaited(_quitarDeLaCola(cata.id));
+        if (!_estaEnLaNube(mesaId)) continue;
+
+        // Y si el borrado no llega al servidor, a la cola de borrados. Antes
+        // el fallo se tiraba: la cata desaparecía del móvil, el servidor no
+        // se enteraba y al volver la cobertura la cata regresaba al feed. Y
+        // ya no había manera de quitarla, porque borrarla otra vez buscaba
+        // en la lista local, donde ya no estaba.
+        unawaited(
+          NubeService.borrarCataDe(mesaId, cata.id).catchError(
+            (Object _) => _apuntarBorradoPendiente(mesaId, cata.id),
+          ),
+        );
+      }
     } catch (_) {}
+  }
+
+  // ── La cola de borrados ───────────────────────────────────────────────
+  //
+  // Hermana de la de subidas y por el mismo motivo: sin cobertura, lo que no
+  // se apunta se pierde. Se guarda «mesaId/cataId» porque para borrar en el
+  // servidor hacen falta los dos y la cata ya no está en el móvil para
+  // preguntárselo.
+
+  static const String _claveColaBorrados = 'catacroket.catas.borradas.v1';
+
+  Future<Set<String>> _colaBorrados() async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      return (prefs.getStringList(_claveColaBorrados) ?? const <String>[])
+          .toSet();
+    } catch (_) {
+      return <String>{};
+    }
+  }
+
+  Future<void> _apuntarBorradoPendiente(String mesaId, String cataId) =>
+      _enFila(() async {
+    try {
+      final Set<String> cola = await _colaBorrados()..add('$mesaId/$cataId');
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_claveColaBorrados, cola.toList());
+    } catch (_) {}
+  });
+
+  Future<void> _quitarDeLaColaBorrados(String apunte) => _enFila(() async {
+    try {
+      final Set<String> cola = await _colaBorrados();
+      if (!cola.remove(apunte)) return;
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_claveColaBorrados, cola.toList());
+    } catch (_) {}
+  });
+
+  /// Vuelve a intentar los borrados que se quedaron sin llegar.
+  ///
+  /// Devuelve cuántos se han completado.
+  Future<int> reintentarBorrados() async {
+    final Set<String> cola = await _colaBorrados();
+    if (cola.isEmpty) return 0;
+
+    int hechos = 0;
+    for (final String apunte in cola) {
+      final (String mesaId, String cataId)? partes = _partir(apunte);
+      if (partes == null) {
+        await _quitarDeLaColaBorrados(apunte);
+        continue;
+      }
+      final (String mesaId, String cataId) = partes;
+
+      // La mesa ya no se comparte desde este móvil: no hay a dónde ir, y
+      // quedarse en la cola sería eterno.
+      if (!_estaEnLaNube(mesaId)) {
+        await _quitarDeLaColaBorrados(apunte);
+        continue;
+      }
+
+      try {
+        await NubeService.borrarCataDe(mesaId, cataId);
+        await _quitarDeLaColaBorrados(apunte);
+        hechos++;
+      } catch (_) {
+        // Sigue en la cola para la próxima.
+      }
+    }
+    return hechos;
   }
 
   static const String _clave = 'catacroket.catas.v1';
@@ -205,6 +347,16 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
   /// no entiende se pueden rescatar a mano desde ahí.
   static const String _claveIlegible = 'catacroket.catas.ilegible.v1';
 
+  /// Si ya se ha leído el disco.
+  ///
+  /// Hace falta porque el notifier arranca con la lista vacía y `_cargar` es
+  /// asíncrono, así que el PRIMER fotograma de La Vitrina siempre tenía cero
+  /// catas: a alguien con cuarenta se le enseñaba «Aquí irán tus croquetas,
+  /// dale al botón rojo y apunta la primera», y la pantalla pegaba un salto
+  /// al llegar los datos. Con esto se puede esperar en vez de mentir.
+  bool get cargado => _cargado;
+  bool _cargado = false;
+
   Future<void> _cargar() async {
     String? crudo;
     try {
@@ -225,6 +377,12 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
       // se aparta tal cual, antes de que nadie pueda pisarlo.
       await _apartarIlegible(crudo);
       Errores.registrar(error, pila, origen: 'catas.cargar');
+    } finally {
+      _cargado = true;
+      // Un toque al estado para que quien lo observe se entere de que ya no
+      // estamos esperando. La lista es la misma; lo que cambia es que ahora
+      // significa lo que dice.
+      if (mounted) state = <Cata>[...state];
     }
   }
 
@@ -316,7 +474,13 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
         if (c.id == cata.id) cata else c,
     ];
     final bool guardada = await _guardar();
-    if (guardada) _subirSiToca(cata);
+    if (guardada) {
+      _subirSiToca(cata);
+      // Y fuera de las que ya no la ven. Sin esto, quitarle una mesa a una
+      // cata la quitaba de tu pantalla y la dejaba intacta en la de su
+      // gente: tú creías haberla sacado y ellos seguían viéndola.
+      if (antes != null) _retirarDeLasQueSalen(antes, cata);
+    }
 
     // Las fotos que se quitaron al editar ya no las referencia nadie. Sólo si
     // el cambio ha llegado al disco: si no, la cata sigue siendo la de antes y
@@ -410,6 +574,16 @@ final catasProvider = StateNotifierProvider<CatasNotifier, List<Cata>>(
   (ref) => CatasNotifier(ref),
 );
 
+/// Si las catas del disco ya están leídas.
+///
+/// Mientras sea falso, una lista vacía no quiere decir «no tienes catas»:
+/// quiere decir «todavía no lo sé». Son dos cosas muy distintas y la
+/// pantalla de La Vitrina las enseñaba igual.
+final catasCargadasProvider = Provider<bool>((ref) {
+  ref.watch(catasProvider);
+  return ref.read(catasProvider.notifier).cargado;
+});
+
 /// Catas de la más reciente a la más antigua. Es el orden del feed y el de
 /// todas las listas de la app; nunca se ordena a mano en una pantalla.
 final catasRecientesProvider = Provider<List<Cata>>((ref) {
@@ -441,10 +615,25 @@ final cataProvider = Provider.family<Cata?, String>((ref, String id) {
   return null;
 });
 
+/// Las catas que se ven en esa mesa.
+///
+/// La libreta es un caso aparte y no un identificador más: ya no es una caja
+/// donde se guardan unas catas sí y otras no, es TU diario, y ahí está todo
+/// lo que has catado, lo compartas o no. Es el cambio que pedía el usuario y
+/// el que hace que apuntar una croqueta deje de obligar a elegir entre
+/// guardarla para ti o enseñarla.
 final catasDeMesaProvider = Provider.family<List<Cata>, String>((ref, String mesaId) {
+  if (mesaId == Mesa.libretaId) {
+    // La lista del móvil tal cual, sin filtrar por cuenta. Tu diario es lo
+    // que has apuntado en este teléfono: filtrándolo por el uid de la sesión,
+    // entrar con otra cuenta —por ejemplo tras perder la contraseña— te lo
+    // dejaba vacío, el perfil a cero y el Croquetómetro a cero, con las
+    // catas intactas en el disco. Indistinguible de haberlas perdido.
+    return ref.watch(catasProvider);
+  }
   return ref
       .watch(catasRecientesProvider)
-      .where((Cata c) => c.mesaId == mesaId)
+      .where((Cata c) => c.estaEn(mesaId))
       .toList();
 });
 
@@ -547,13 +736,14 @@ final busquedaVitrinaProvider = StateProvider<String>((ref) => '');
 
 final feedProvider = Provider<List<Cata>>((ref) {
   final List<Cata> catas = ref.watch(catasRecientesProvider);
+  final String? miUid = ref.watch(miUidProvider);
 
   final List<Cata> delFiltro = switch (ref.watch(filtroVitrinaProvider)) {
     FiltroVitrina.todo => catas,
     FiltroVitrina.misMesas =>
-      catas.where((Cata c) => c.mesaId != Mesa.libretaId).toList(),
+      catas.where((Cata c) => c.mesas.isNotEmpty).toList(),
     FiltroVitrina.mias =>
-      catas.where((Cata c) => c.autorId == DatosDemo.yo).toList(),
+      catas.where((Cata c) => c.esMia(miUid)).toList(),
   };
 
   // La búsqueda se aplica después del filtro y no al revés: los dos son del
@@ -595,8 +785,14 @@ final recuentoDietasProvider = Provider<Map<Dieta, int>>((ref) {
   final Map<Dieta, int> cuenta = <Dieta, int>{
     for (final Dieta d in Dieta.values) d: 0,
   };
-  for (final Cata c in ref.watch(catasProvider)) {
-    for (final Dieta d in c.aptas) {
+  // Por las dietas DEDUCIDAS de la receta, y sobre la lista junta.
+  //
+  // Contaba las marcadas a mano, que están vacías en todo lo que se apunta
+  // hoy, así que las seis pastillas decían «0» aunque debajo hubiera catas
+  // listadas. Y miraba sólo tus catas, no las de tu mesa, que es la mitad de
+  // lo que hay en esta pantalla.
+  for (final Cata c in ref.watch(catasRecientesProvider)) {
+    for (final Dieta d in c.aptasCalculadas) {
       cuenta[d] = (cuenta[d] ?? 0) + 1;
     }
   }
@@ -608,8 +804,10 @@ final recuentoDietasProvider = Provider<Map<Dieta, int>>((ref) {
 /// Ojo con lo que significa: son las catas a las que alguien apuntó la
 /// receta, no las que le valen a nadie en concreto. Una puede ser sin gluten
 /// y llevar jamón.
-final totalLibresProvider = Provider<int>((ref) =>
-    ref.watch(catasProvider).where((Cata c) => c.tieneDietas).length);
+final totalLibresProvider = Provider<int>((ref) => ref
+    .watch(catasRecientesProvider)
+    .where((Cata c) => c.tieneDietas)
+    .length);
 
 /// Cuántas catas le valen a quien usa la app, según la dieta de su perfil.
 ///
@@ -620,7 +818,7 @@ final totalParaMiProvider = Provider<int?>((ref) {
   final Set<Dieta> mia = ref.watch(miDietaProvider);
   if (mia.isEmpty) return null;
   return ref
-      .watch(catasProvider)
+      .watch(catasRecientesProvider)
       .where((Cata c) => c.tieneDietas && c.valePara(mia))
       .length;
 });

@@ -124,7 +124,12 @@ class _BienvenidaPageState extends ConsumerState<BienvenidaPage>
                   opacity: texto,
                   child: Text(
                     'Cata, puntúa, presume.',
-                    style: AppTypography.tituloS.copyWith(color: Colors.white),
+                    // Tinta y no blanco: el blanco sobre el tomate de marca
+                    // se queda en 3,05:1, que es justo lo que el tema evita
+                    // en el resto de la app. Es la primera frase que lee
+                    // cualquiera que abre Catacroket.
+                    style: AppTypography.tituloS
+                        .copyWith(color: AppColors.textoSobre(AppColors.tomate)),
                   ),
                 ),
               ],

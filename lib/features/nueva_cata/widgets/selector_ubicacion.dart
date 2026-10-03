@@ -217,6 +217,7 @@ class _ConPunto extends StatelessWidget {
             button: true,
             label: 'Ajustar el punto en el mapa',
             excludeSemantics: true,
+            onTap: onAjustar,
             child: GestureDetector(
               onTap: onAjustar,
               child: MapaMini(lat: lugar.lat, lon: lugar.lon),

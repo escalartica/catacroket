@@ -21,7 +21,7 @@ Cata cata({
       sabores: const <Sabor>[Sabor(rellenoId: 'jamon')],
       autorId: autorId,
       autorUid: autorUid,
-      mesaId: 'mesa',
+      mesas: const <String>['mesa'],
       fecha: DateTime(2026),
     );
 

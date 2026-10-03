@@ -65,10 +65,16 @@ abstract final class Siembra {
   static List<Mesa> mesasCon(bool ejemplos) =>
       ejemplos ? DatosDemo.mesas : <Mesa>[libreta];
 
+  /// Tu diario: todas tus catas, las enseñes o no.
+  ///
+  /// Dejó de ser un destino el día que una cata pasó a poder estar en varias
+  /// mesas. Antes era una caja: o metías la croqueta aquí o la metías en una
+  /// mesa, y elegir una cosa era renunciar a la otra. Ahora es una ventana a
+  /// todo lo que has catado, y quién lo ve se decide cata a cata.
   static const Mesa libreta = Mesa(
     id: Mesa.libretaId,
-    nombre: 'Mi libreta',
-    descripcion: 'Sólo tú. Lo que catas sin contárselo a nadie.',
+    nombre: 'Mi diario',
+    descripcion: 'Todo lo que has catado, lo enseñes o no.',
     colorHex: 0xFFFFC93C,
     miembros: <String>[DatosDemo.yo],
   );

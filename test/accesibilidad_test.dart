@@ -197,7 +197,7 @@ void main() {
           ),
           sabores: <Sabor>[Sabor(rellenoId: rellenoId)],
           autorId: 'tu',
-          mesaId: 'libreta',
+          mesas: const <String>[],
           fecha: DateTime(2026),
         );
 

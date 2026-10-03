@@ -18,10 +18,14 @@ import 'sabor.dart';
 /// ISO de dos letras para que la bandera se calcule sola y el dato sirva
 /// luego para agrupar y comparar.
 ///
-/// `mesaId` apunta a dónde se guarda: una mesa compartida o
-/// [Mesa.libretaId], la libreta privada. No hay una entidad "cata privada"
-/// aparte; la privacidad es propiedad de la mesa, no de la cata. Por eso
-/// mover una cata de sitio es cambiar un campo y no migrar nada.
+/// `mesas` dice QUIÉN LA VE, y no dónde está guardada. Una cata siempre es
+/// tuya y siempre está en tu diario: la lista vacía quiere decir que no la ve
+/// nadie más, y cada identificador que lleve es una mesa cuya gente la ve.
+///
+/// Antes era un `mesaId` suelto y una cata vivía en un único sitio: o en tu
+/// libreta o en una mesa, nunca en las dos. Eso obligaba a elegir entre
+/// guardarla para ti o enseñarla, y a la gente le salía la cuenta al revés:
+/// apuntaban la croqueta, se iba a la libreta y su mesa no la veía nunca.
 class Cata {
   const Cata({
     required this.id,
@@ -30,8 +34,8 @@ class Cata {
     required this.corte,
     required this.sabores,
     required this.autorId,
-    required this.mesaId,
     required this.fecha,
+    this.mesas = const <String>[],
     this.autorUid,
     this.pais = Paises.porDefecto,
     this.precio,
@@ -60,7 +64,10 @@ class Cata {
   /// Uno si es una croqueta suelta, varios si es un surtido. Nunca vacío.
   final List<Sabor> sabores;
   final String autorId;
-  final String mesaId;
+
+  /// Las mesas cuya gente ve esta cata. Vacía: sólo tú.
+  final List<String> mesas;
+
   final DateTime fecha;
 
   /// Quién la apuntó, con su identificador de cuenta.
@@ -283,7 +290,14 @@ class Cata {
 
   /// Vale para todas las dietas pedidas. Con el filtro vacío vale cualquiera:
   /// así la pantalla de la Barra Libre no necesita un caso aparte.
-  bool valePara(Set<Dieta> pedidas) => pedidas.every(aptas.contains);
+  /// Por [aptasCalculadas] y no por [aptas].
+  ///
+  /// `aptas` son las que alguien marcó a mano, y están vacías en todo lo que
+  /// se apunta hoy. Comparando contra ésas, la Barra Libre enseñaba la lista
+  /// entera sin filtro y CERO en cuanto marcabas «sin gluten», aunque
+  /// hubiera diez deducidas de su receta como sin gluten. A un celíaco le
+  /// decía que no hay nada para él.
+  bool valePara(Set<Dieta> pedidas) => pedidas.every(aptasCalculadas.contains);
 
   /// La misma cata con dueño de cuenta.
   ///
@@ -300,6 +314,40 @@ class Cata {
     return null;
   }
 
+  /// Si esta cata la apuntaste tú, estés en el móvil que estés.
+  ///
+  /// Hay que preguntarlo así y no mirando [autorId], porque [autorId] vale
+  /// `'tu'` en TODOS los teléfonos: es un identificador de andar por casa.
+  /// Una cata que llega de la mesa de otra persona trae `autorId: 'tu'`
+  /// igualmente, así que compararlo contaba las croquetas de los demás como
+  /// tuyas —en el perfil, en las medallas, en el filtro «Mías»— y te ponía
+  /// el botón de borrar encima de una cata que no era tuya.
+  ///
+  /// [autorUid] manda siempre que lo haya. Sólo es nulo en las catas
+  /// apuntadas en este móvil antes de que hubiera cuentas, y ésas nunca
+  /// han salido de aquí: si no tiene uid, es local, y entonces [autorId]
+  /// sí dice la verdad.
+  /// Si no la ve nadie más que tú.
+  bool get esSoloMia => mesas.isEmpty;
+
+  /// Si la gente de esa mesa la ve.
+  bool estaEn(String mesaId) => mesas.contains(mesaId);
+
+  /// La misma cata, vista por quien la recibe desde una mesa concreta.
+  ///
+  /// Hace falta porque el documento del servidor no puede llevar la lista
+  /// entera: en qué OTRAS mesas tienes puesta una cata es cosa tuya, y no
+  /// tiene por qué saberlo la gente de ésta.
+  Cata soloEnLaMesa(String mesaId) => copyWith(mesas: <String>[mesaId]);
+
+  bool esMia(String? miUid) {
+    // Sin sesión manda el identificador local: sin cuenta no llega nada de
+    // fuera, así que lo que hay en este móvil es tuyo.
+    if (miUid == null) return autorId == 'tu';
+    if (autorUid == null) return autorId == 'tu';
+    return autorUid == miUid;
+  }
+
   Cata conAutorUid(String uid) => Cata(
         id: id,
         sitio: sitio,
@@ -309,7 +357,7 @@ class Cata {
         corte: corte,
         autorId: autorId,
         autorUid: uid,
-        mesaId: mesaId,
+        mesas: mesas,
         fecha: fecha,
         precio: precio,
         nota: nota,
@@ -331,7 +379,7 @@ class Cata {
     String? pais,
     List<Sabor>? sabores,
     Corte? corte,
-    String? mesaId,
+    List<String>? mesas,
     double? precio,
     String? nota,
     int? mordiscos,
@@ -354,7 +402,7 @@ class Cata {
       corte: corte ?? this.corte,
       autorId: autorId,
       autorUid: autorUid,
-      mesaId: mesaId ?? this.mesaId,
+      mesas: mesas ?? this.mesas,
       fecha: fecha,
       precio: precio ?? this.precio,
       nota: nota ?? this.nota,
@@ -371,6 +419,21 @@ class Cata {
     );
   }
 
+  /// En qué mesas está, leyendo tanto el formato nuevo como el viejo.
+  static List<String> _mesasDesdeJson(Map<String, dynamic> json) {
+    final Object? nuevo = json['mesas'];
+    if (nuevo is List<dynamic>) {
+      return <String>[
+        for (final dynamic m in nuevo)
+          if (m.toString().isNotEmpty && m.toString() != 'libreta')
+            m.toString(),
+      ];
+    }
+
+    final String viejo = json['mesaId'] as String? ?? 'libreta';
+    return viejo == 'libreta' ? const <String>[] : <String>[viejo];
+  }
+
   Map<String, dynamic> toJson() => <String, dynamic>{
         'id': id,
         'sitio': sitio,
@@ -380,7 +443,7 @@ class Cata {
         'corte': corte.toJson(),
         'autorId': autorId,
         'autorUid': autorUid,
-        'mesaId': mesaId,
+        'mesas': mesas,
         'fecha': fecha.toIso8601String(),
         'precio': precio,
         'nota': nota,
@@ -420,7 +483,11 @@ class Cata {
         sabores: _saboresDesdeJson(json),
         autorId: json['autorId'] as String? ?? 'tu',
         autorUid: json['autorUid'] as String?,
-        mesaId: json['mesaId'] as String? ?? 'libreta',
+        // Puente con lo guardado antes: entonces había un `mesaId` suelto
+        // y la libreta era un destino más. Una cata que estaba en la libreta
+        // pasa a no estar en ninguna mesa —que es lo mismo: sólo la ves tú—
+        // y una que estaba en una mesa pasa a estar en esa y nada más.
+        mesas: _mesasDesdeJson(json),
         fecha: DateTime.tryParse(json['fecha'] as String? ?? '') ??
             DateTime.now(),
         precio: (json['precio'] as num?)?.toDouble(),

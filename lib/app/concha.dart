@@ -40,7 +40,44 @@ class Concha extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.fondo,
       body: FondoLunares(
-        child: SafeArea(bottom: false, child: child),
+        // Las pestañas se cruzaban de golpe, de un fotograma al siguiente, y
+        // eso borra la sensación de que son cuatro sitios distintos de una
+        // misma app: parecían cuatro pantallas sin relación. Entra deslizando
+        // un poco desde abajo y apareciendo; corto, porque cambiar de pestaña
+        // se hace muchas veces al día y una transición larga acaba cansando.
+        //
+        // La llave es la ruta: sin ella AnimatedSwitcher no ve que haya
+        // cambiado nada, porque el widget es del mismo tipo.
+        child: SafeArea(
+          bottom: false,
+          child: AnimatedSwitcher(
+            duration: AppMotion.rapida,
+            switchInCurve: AppMotion.entrada,
+            switchOutCurve: Curves.easeIn,
+            // El saliente no se queda ocupando sitio debajo del entrante:
+            // con el por defecto, los dos se dibujan a la vez centrados y el
+            // contenido daba un tirón vertical.
+            layoutBuilder: (Widget? actual, List<Widget> antiguos) => Stack(
+              alignment: Alignment.topCenter,
+              children: <Widget>[
+                ...antiguos,
+                ?actual,
+              ],
+            ),
+            transitionBuilder: (Widget hijo, Animation<double> animacion) =>
+                FadeTransition(
+              opacity: animacion,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.012),
+                  end: Offset.zero,
+                ).animate(animacion),
+                child: hijo,
+              ),
+            ),
+            child: KeyedSubtree(key: ValueKey<int>(_indice), child: child),
+          ),
+        ),
       ),
       bottomNavigationBar: _BarraPestanas(indice: _indice, destinos: _destinos),
       extendBody: true,
@@ -106,6 +143,12 @@ class _Pestana extends StatelessWidget {
         inMutuallyExclusiveGroup: true,
         label: destino.texto,
         excludeSemantics: true,
+        // La acción va aquí arriba y no sólo en el hijo: `excludeSemantics`
+        // descarta la semántica de dentro, la acción de pulsar incluida, así
+        // que el nodo quedaba con nombre de botón y sin forma de activarse.
+        // Con TalkBack la app se podía leer entera y no se podía usar: ni
+        // cambiar de pestaña ni abrir una cata.
+        onTap: () => context.go(destino.ruta),
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () {
@@ -157,21 +200,30 @@ class _BotonAnadir extends StatelessWidget {
         child: Align(
           alignment: Alignment.topCenter,
           heightFactor: 1,
-          child: Semantics(
-            button: true,
-            label: 'Nueva cata',
-            child: Pegatina(
-              color: AppColors.tomate,
-              radio: 999,
-              ancho: 60,
-              alto: 60,
-              padding: EdgeInsets.zero,
-              alineacion: Alignment.center,
-              onTap: () {
-                HapticFeedback.mediumImpact();
-                context.push('/nueva');
-              },
-              child: const Icon(Icons.add_rounded, size: 32, color: Colors.white),
+          // La etiqueta va DENTRO de la pegatina, no envolviéndola: la
+          // pegatina declara `container: true`, que abre un límite
+          // semántico, así que una etiqueta puesta por fuera no aterriza en
+          // el nodo que se pulsa. Es la única acción que crea contenido en
+          // toda la app, y era la que se quedaba sin nombre.
+          child: Pegatina(
+            etiqueta: 'Apuntar una croqueta',
+            color: AppColors.tomate,
+            radio: AppShape.radioPildora,
+            ancho: 60,
+            alto: 60,
+            padding: EdgeInsets.zero,
+            alineacion: Alignment.center,
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              context.push('/nueva');
+            },
+            child: Icon(
+              Icons.add_rounded,
+              size: 32,
+              // Blanco sobre tomate son 3,05:1, por debajo del 3:1 que pide
+              // la norma para un icono… por cinco centésimas. Que lo decida
+              // el token y no la suerte.
+              color: AppColors.textoSobre(AppColors.tomate),
             ),
           ),
         ),

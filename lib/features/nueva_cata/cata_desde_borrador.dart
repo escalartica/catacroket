@@ -52,7 +52,12 @@ Cata cataDesdeBorrador(
     sabores: sabores,
     corte: b.corteFinal,
     autorId: original?.autorId ?? DatosDemo.yo,
-    mesaId: b.mesaId,
+    // Se conserva: es quién la escribió, y el formulario no lo pregunta.
+    // Sin esto, corregir una cata estando desconectado la dejaba sin dueño, y
+    // la siguiente cuenta que entrara en este móvil se la quedaba —y la subía
+    // a la mesa firmada con su nombre—.
+    autorUid: original?.autorUid,
+    mesas: b.mesas,
     fecha: original?.fecha ?? (ahora ?? DateTime.now)(),
     precio: precio,
     nota: b.nota.trim(),

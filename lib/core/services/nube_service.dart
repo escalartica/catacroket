@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -5,10 +6,19 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 
+import '../errores.dart';
 import '../models/cata.dart';
 import '../models/medio.dart';
 import '../models/mesa.dart';
 import 'cuenta_service.dart';
+
+/// Una mesa tal y como está en el servidor ahora mismo.
+typedef MesaViva = ({
+  String? nombre,
+  String? descripcion,
+  int? colorHex,
+  List<String> miembros,
+});
 
 /// Lo que puede salir mal al compartir, ya traducido.
 class FalloNube implements Exception {
@@ -26,10 +36,11 @@ class FalloNube implements Exception {
 /// privada no pasan por aquí nunca: sólo viajan las de una mesa que hayas
 /// compartido a propósito.
 ///
-/// Las fotos NO viajan. Son ficheros del móvil y mandarlas exigiría otro
-/// servicio de almacenamiento —y su factura—. Lo que sí llega es el dibujo
-/// del corte, porque sale de los cuatro números y se pinta en cada móvil.
-/// Quien mira una cata de otro ve la croqueta, la nota y el sitio.
+/// Las fotos sí viajan, pero en pequeño y dentro de la propia cata: se
+/// reducen a 800 píxeles y se meten codificadas en el mismo documento,
+/// porque guardar ficheros aparte exigiría otro servicio —y su factura—.
+/// El dibujo del corte no viaja como imagen: sale de los cuatro números y se
+/// repinta en cada móvil.
 class NubeService {
   const NubeService._();
 
@@ -37,6 +48,23 @@ class NubeService {
 
   static CollectionReference<Map<String, dynamic>> get _mesas =>
       _db.collection('mesas');
+
+  /// Lo que se espera a que el servidor conteste antes de rendirse.
+  ///
+  /// Hace falta porque el `Future` de una escritura de Firestore no se
+  /// resuelve hasta que el servidor confirma: sin cobertura no falla, es que
+  /// no vuelve nunca. Sin esto, pulsar «Activar el código» en un bar sin
+  /// línea dejaba el botón en «Activando…» para siempre, sin error y sin
+  /// vuelta atrás, y la cola de pendientes —que existe justo para eso— no
+  /// se enteraba porque el `catch` tampoco llegaba a ejecutarse.
+  static const Duration _tope = Duration(seconds: 12);
+
+  static Future<T> _conTope<T>(Future<T> faena) => faena.timeout(
+        _tope,
+        onTimeout: () => throw const FalloNube(
+          'Sin conexión. Inténtalo cuando vuelva la cobertura.',
+        ),
+      );
 
   static String get _uid {
     final String? uid = CuentaService.quien?.uid;
@@ -77,8 +105,24 @@ class NubeService {
     // no existe». El código local es una PREFERENCIA, no una reserva.
     final String codigo = await _reservarCodigo(mesa.id, mesa.codigo);
 
+    // ¿Existe ya en el servidor? Se pregunta en vez de fiarse de `enLaNube`,
+    // que es una marca del móvil y puede mentir: basta con vaciar la base de
+    // datos —cosa que hay que hacer antes de publicar la app— para que el
+    // móvil siga creyendo que la mesa está subida cuando ya no está.
+    //
+    // Importa porque las reglas sólo dejan poner `creadoPor` al crear: si lo
+    // mandáramos siempre, volver a compartir la mesa de otro se rechazaría,
+    // y si no lo mandáramos nunca, crearla se rechazaría también.
+    bool esNueva = true;
     try {
-      await _mesas.doc(mesa.id).set(
+      esNueva = !(await _conTope(_mesas.doc(mesa.id).get())).exists;
+    } on FirebaseException {
+      // Si no se puede comprobar, se intenta como nueva: crearla es lo que
+      // falla de forma limpia y recuperable si resulta que ya estaba.
+    }
+
+    try {
+      await _conTope(_mesas.doc(mesa.id).set(
         <String, dynamic>{
           'nombre': mesa.nombre,
           'descripcion': mesa.descripcion,
@@ -88,11 +132,16 @@ class NubeService {
           // ya tiene gente dentro NO puede echarla. Con `[_uid]` a secas, la
           // segunda vez que alguien pulsaba compartir se quedaba solo.
           'miembros': FieldValue.arrayUnion(<String>[_uid]),
-          'creadoPor': _uid,
-          'creada': FieldValue.serverTimestamp(),
+          // Sólo al crearla. Yendo en el merge siempre, volver a pulsar
+          // compartir reescribía la fecha de creación en cada pulsación y
+          // chocaría con las reglas, que protegen al dueño de la mesa.
+          if (esNueva) ...<String, dynamic>{
+            'creadoPor': _uid,
+            'creada': FieldValue.serverTimestamp(),
+          },
         },
         SetOptions(merge: true),
-      );
+      ));
     } on FirebaseException catch (e) {
       // Queda un código apuntando a una mesa que no llegó a escribirse. No se
       // puede limpiar —las reglas no dejan borrar códigos, a propósito— pero
@@ -134,10 +183,10 @@ class NubeService {
   /// que escribir sobre uno cogido falla, y ese fallo es el que avisa.
   static Future<bool> _apartar(String codigo, String mesaId) async {
     try {
-      await _db.collection('codigos').doc(codigo).set(<String, dynamic>{
+      await _conTope(_db.collection('codigos').doc(codigo).set(<String, dynamic>{
         'mesaId': mesaId,
         'creadoPor': _uid,
-      });
+      }));
       return true;
     } on FirebaseException catch (e) {
       if (e.code != 'permission-denied') throw FalloNube(_traducir(e));
@@ -147,10 +196,14 @@ class NubeService {
     // compartir una mesa ya compartida tiene que seguir funcionando.
     try {
       final DocumentSnapshot<Map<String, dynamic>> ya =
-          await _db.collection('codigos').doc(codigo).get();
+          await _conTope(_db.collection('codigos').doc(codigo).get());
       return ya.exists && ya.data()?['mesaId'] == mesaId;
-    } on FirebaseException {
-      return false;
+    } on FirebaseException catch (e) {
+      // Que no se pueda leer no significa que el código sea de otro. Darlo
+      // por ocupado gastaba los cinco intentos contra el mismo muro y
+      // acababa en «no se ha podido crear el código», que no dice nada de
+      // lo que de verdad pasa, que es que no hay internet.
+      throw FalloNube(_traducir(e));
     }
   }
 
@@ -167,10 +220,15 @@ class NubeService {
   /// impedirte usar la app.
   static Future<void> publicarNombre(String nombre) async {
     try {
-      await _db.collection('usuarios').doc(_uid).set(<String, dynamic>{
+      await _conTope(_db.collection('usuarios').doc(_uid).set(<String, dynamic>{
         'nombre': nombre,
-      });
-    } catch (_) {}
+      }, SetOptions(merge: true)));
+    } catch (error, pila) {
+      // Sigue sin molestar al usuario, pero ahora queda apuntado: cuando
+      // alguien dice «a mi gente le sigo saliendo como Alguien», esto es lo
+      // primero que hay que mirar y antes no dejaba ni rastro.
+      Errores.registrar(error, pila, origen: 'nube.publicarNombre');
+    }
   }
 
   /// Los nombres de esa gente, por su identificador de cuenta.
@@ -178,21 +236,68 @@ class NubeService {
   /// Devuelve sólo los que encuentra: quien no haya abierto la app desde que
   /// existe esto no tiene nombre publicado todavía, y su sitio en la mesa se
   /// pinta como «Alguien» igual que antes.
-  static Future<Map<String, String>> nombresDe(List<String> uids) async {
-    final Map<String, String> nombres = <String, String>{};
-    for (final String uid in uids) {
-      try {
-        final DocumentSnapshot<Map<String, dynamic>> d =
-            await _db.collection('usuarios').doc(uid).get();
-        final String? nombre = d.data()?['nombre'] as String?;
-        if (nombre != null && nombre.trim().isNotEmpty) {
-          nombres[uid] = nombre.trim();
+  /// Los nombres de esa gente, y los que vayan cambiando.
+  ///
+  /// En vivo y no de una vez, y la diferencia se nota: con una sola consulta,
+  /// quien se ponía nombre después de que tú abrieras la app te seguía
+  /// saliendo como «Alguien» hasta que la cerrabas y la volvías a abrir.
+  /// Justo el caso normal — dos personas estrenando una mesa a la vez.
+  ///
+  /// Va por tandas de 30 porque es el tope de `whereIn` de Firestore, y se
+  /// acumulan: cada tanda que responde completa el mapa sin pisar a las otras.
+  static Stream<Map<String, String>> nombresVivosDe(List<String> uids) {
+    if (uids.isEmpty) return Stream<Map<String, String>>.value(const <String, String>{});
+
+    final Map<String, String> acumulado = <String, String>{};
+    final List<StreamSubscription<QuerySnapshot<Map<String, dynamic>>>> hilos =
+        <StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>[];
+    late final StreamController<Map<String, String>> salida;
+
+    salida = StreamController<Map<String, String>>(
+      // En `onListen` y no sueltas aquí mismo: escuchando al construir, una
+      // pantalla de mesas que se abre y se cierra de golpe —o un cambio de
+      // cuenta al arrancar— dejaba las consultas vivas sin que nadie llegara
+      // a suscribirse, así que `onCancel` no saltaba nunca y se quedaban
+      // hablando con Firestore hasta cerrar la app.
+      onListen: () {
+        for (int i = 0; i < uids.length; i += 30) {
+          final List<String> tanda =
+              uids.sublist(i, i + 30 > uids.length ? uids.length : i + 30);
+          hilos.add(
+            _db
+                .collection('usuarios')
+                .where(FieldPath.documentId, whereIn: tanda)
+                .snapshots()
+                .listen(
+              (QuerySnapshot<Map<String, dynamic>> foto) {
+                for (final QueryDocumentSnapshot<Map<String, dynamic>> d
+                    in foto.docs) {
+                  final String? nombre = d.data()['nombre'] as String?;
+                  if (nombre != null && nombre.trim().isNotEmpty) {
+                    acumulado[d.id] = nombre.trim();
+                  }
+                }
+                if (!salida.isClosed) {
+                  salida.add(Map<String, String>.from(acumulado));
+                }
+              },
+              // Que una tanda falle no puede dejar sin nombre a las demás.
+              onError: (Object _) {},
+            ),
+          );
         }
-      } catch (_) {
-        // Uno que falle no puede dejar sin nombre a los demás.
-      }
-    }
-    return nombres;
+      },
+      onCancel: () async {
+        for (final StreamSubscription<QuerySnapshot<Map<String, dynamic>>> h
+            in hilos) {
+          await h.cancel();
+        }
+        hilos.clear();
+        await salida.close();
+      },
+    );
+
+    return salida.stream;
   }
 
   /// Las mesas compartidas en las que estás, según el servidor.
@@ -206,9 +311,9 @@ class NubeService {
   /// puede impedirte abrir la app con lo que ya tienes en el móvil.
   static Future<List<Mesa>> misMesas() async {
     try {
-      final QuerySnapshot<Map<String, dynamic>> s = await _mesas
-          .where('miembros', arrayContains: _uid)
-          .get();
+      final QuerySnapshot<Map<String, dynamic>> s = await _conTope(
+        _mesas.where('miembros', arrayContains: _uid).get(),
+      );
 
       final List<Mesa> mesas = <Mesa>[];
       for (final QueryDocumentSnapshot<Map<String, dynamic>> d in s.docs) {
@@ -233,7 +338,8 @@ class NubeService {
         } catch (_) {}
       }
       return mesas;
-    } catch (_) {
+    } catch (error, pila) {
+      Errores.registrar(error, pila, origen: 'nube.misMesas');
       return const <Mesa>[];
     }
   }
@@ -249,23 +355,47 @@ class NubeService {
 
     try {
       final DocumentSnapshot<Map<String, dynamic>> ref =
-          await _db.collection('codigos').doc(limpio).get();
+          await _conTope(_db.collection('codigos').doc(limpio).get());
+
+      // Un «no existe» que sale de la caché no significa que no exista:
+      // significa que este móvil nunca lo ha visto. Firestore guarda copia
+      // local y sin red contesta desde ella, así que el mensaje de antes
+      // mandaba a comprobar un código bien escrito, y la culpa parecía de
+      // quien lo tecleaba en vez de de la cobertura del bar.
+      if (!ref.exists && ref.metadata.isFromCache) {
+        throw const FalloNube(
+          'Sin conexión. Inténtalo cuando vuelva la cobertura.',
+        );
+      }
       if (!ref.exists) {
         throw const FalloNube('Ese código no existe. Compruébalo.');
       }
 
-      final String mesaId = ref.data()!['mesaId'] as String;
+      // Sin `!`: un documento de código sin `mesaId` lanzaría un TypeError,
+      // que no es FirebaseException y se escapaba de todos los `catch` de
+      // aquí y de la hoja. El usuario pulsaba «Entrar» y no pasaba nada:
+      // ni mensaje, ni avance, ni pista.
+      final Object? quizaId = ref.data()?['mesaId'];
+      if (quizaId is! String || quizaId.isEmpty) {
+        throw const FalloNube(
+          'Ese código está roto. Pide otro a quien te invitó.',
+        );
+      }
+      final String mesaId = quizaId;
 
       // Añadirse a sí mismo. Las reglas del servidor comprueban que sea
       // exactamente eso y nada más: quien tiene un código no puede renombrar
       // la mesa ni echar a nadie.
-      await _mesas.doc(mesaId).update(<String, dynamic>{
+      await _conTope(_mesas.doc(mesaId).update(<String, dynamic>{
         'miembros': FieldValue.arrayUnion(<String>[_uid]),
-      });
+      }));
 
       final DocumentSnapshot<Map<String, dynamic>> doc =
-          await _mesas.doc(mesaId).get();
-      final Map<String, dynamic> d = doc.data()!;
+          await _conTope(_mesas.doc(mesaId).get());
+      final Map<String, dynamic>? d = doc.data();
+      if (d == null) {
+        throw const FalloNube('Esa mesa ya no existe.');
+      }
 
       return Mesa(
         id: mesaId,
@@ -294,12 +424,30 @@ class NubeService {
   /// propia cata, en Firestore, y ahí el techo es 1 MB por cata.
   static const int _anchoMini = 800;
 
-  /// Lo máximo que puede pesar una miniatura ya codificada.
+  /// Lo máximo que puede pesar una miniatura YA codificada en base64.
   ///
-  /// El tope de Firestore es 1 MB por documento y una cata admite dos fotos,
-  /// así que 320 KB cada una deja sitio de sobra para el texto, los sabores y
-  /// lo que venga después. Base64 engorda un tercio, y eso ya está contado.
-  static const int _pesoMaximoMini = 320 * 1024;
+  /// Ya codificada, y la palabra importa: antes se medían los bytes crudos
+  /// del JPEG y se decía que el engorde de base64 estaba contado. Estaba
+  /// contado al revés. 320 KB crudos son 427 KB codificados, dos fotos son
+  /// 854 KB, y con el texto de la cata encima eso se come el techo de 1 MiB
+  /// por documento de Firestore. La cata fallaba al subir con un error que
+  /// no se entendía y se quedaba reintentando para siempre, mientras su
+  /// autora la veía guardada y su mesa no la recibía nunca.
+  ///
+  /// 360 KB por foto deja ~280 KB para todo lo demás.
+  static const int _pesoMaximoMini = 440 * 1024;
+
+  /// Los apretones que se prueban, de mejor a peor, hasta que la foto quepa.
+  ///
+  /// El primero es el de siempre y es el que acierta en casi todas: una foto
+  /// de móvil a 800 píxeles de ancho y calidad 72 pesa bastante menos del
+  /// tope. Los otros dos son para las raras —un panorama, una captura enorme—
+  /// que antes se quedaban sin viajar sin que nadie se enterara.
+  static const List<(int, int)> _apreturas = <(int, int)>[
+    (_anchoMini, 72),
+    (_anchoMini, 55),
+    (600, 45),
+  ];
 
   /// Comprime las fotos que aún no viajan y las devuelve con su miniatura.
   ///
@@ -327,23 +475,40 @@ class NubeService {
           continue;
         }
 
-        final Uint8List? datos = await FlutterImageCompress.compressWithFile(
-          m.ruta,
-          minWidth: _anchoMini,
-          minHeight: _anchoMini,
-          quality: 72,
-          format: CompressFormat.jpeg,
-        );
+        // Se aprieta hasta que quepa, en vez de rendirse a la primera.
+        //
+        // Antes, una foto que no cabía se quedaba en casa sin avisar, y lo
+        // que veía quien la recibía era una cata sin foto y ningún motivo.
+        // Una foto algo peor se parece mucho más a la foto que hiciste que
+        // ninguna foto.
+        String? codificada;
+        for (final (int ancho, int calidad) in _apreturas) {
+          final Uint8List? datos = await FlutterImageCompress.compressWithFile(
+            m.ruta,
+            minWidth: ancho,
+            minHeight: ancho,
+            quality: calidad,
+            format: CompressFormat.jpeg,
+          );
+          if (datos == null) break;
 
-        // Una foto rarísima —un panorama larguísimo— podría seguir sin caber
-        // después de comprimir. Antes que romper el guardado de la cata
-        // entera, esa foto se queda en casa.
-        if (datos == null || datos.length > _pesoMaximoMini) {
+          // Se mide lo que de verdad viaja, no lo que sale del compresor:
+          // base64 engorda un tercio y el techo de Firestore es por documento.
+          final String intento = base64Encode(datos);
+          if (intento.length <= _pesoMaximoMini) {
+            codificada = intento;
+            break;
+          }
+        }
+
+        // Ni al mínimo cabe: un panorama larguísimo, por ejemplo. Antes que
+        // romper el guardado de la cata entera, esa foto se queda en casa.
+        if (codificada == null) {
           listos.add(m);
           continue;
         }
 
-        listos.add(m.conMini(base64Encode(datos)));
+        listos.add(m.conMini(codificada));
       } catch (_) {
         listos.add(m);
       }
@@ -359,11 +524,23 @@ class NubeService {
   /// no mandar nada, porque su app intentaría enseñar una foto rota.
   /// Devuelve los medios con sus urls, para que quien la subió guarde en su
   /// móvil lo que ya está en la nube y no lo vuelva a subir.
-  static Future<List<Medio>> subirCata(Cata cata) async {
+  /// Se sube UNA mesa por llamada. Una cata puede estar en varias, y en
+  /// Firestore cada mesa guarda su propia copia —las catas cuelgan de la
+  /// mesa, que es lo que permite que las reglas digan quién puede leerlas—.
+  /// Quien llama recorre las mesas; aquí sólo se escribe una.
+  static Future<List<Medio>> subirCata(
+    Cata cata,
+    String mesaId, {
+    List<Medio>? yaPreparados,
+  }) async {
     // Las fotos primero: si suben, la cata viaja con ellas; si no, viaja sin
     // ellas y se reintenta luego. Lo que no puede pasar es que la cata se
     // quede sin subir por culpa de una foto.
-    final List<Medio> medios = await prepararFotos(cata);
+    //
+    // `yaPreparados` evita comprimirlas una vez por mesa: una cata en tres
+    // mesas apretaba la misma foto tres veces y gastaba el triple de batería
+    // y de datos para subir exactamente lo mismo.
+    final List<Medio> medios = yaPreparados ?? await prepararFotos(cata);
 
     try {
       final Map<String, dynamic> datos = Map<String, dynamic>.from(
@@ -374,16 +551,33 @@ class NubeService {
         // de una mesa nunca veía las fotos de los demás.
         ..['medios'] = <Map<String, dynamic>>[
           for (final Medio m in medios)
-            if (m.viaja) m.paraViajar.toJson(),
+            if (m.viaja) m.paraViajar.toJsonParaLaNube(),
         ]
         ..['autorUid'] = _uid
+        // Sólo esta mesa, no la lista entera: en qué OTRAS mesas tienes
+        // puesta una cata es cosa tuya, y la gente de ésta no tiene por qué
+        // saberlo. Quien la reciba la verá donde le toca y en ningún sitio
+        // más.
+        ..['mesas'] = <String>[mesaId]
+        // Y el campo viejo, un par de versiones más. Un móvil sin actualizar
+        // sólo entiende `mesaId`, y sin esto mete la cata que le llega de la
+        // mesa en su libreta privada y firmada como suya. Durante el tiempo
+        // en que unos han actualizado y otros no, que es siempre, eso es lo
+        // peor que puede pasar.
+        ..['mesaId'] = mesaId
         ..['subida'] = FieldValue.serverTimestamp();
 
-      await _mesas
-          .doc(cata.mesaId)
-          .collection('catas')
-          .doc(cata.id)
-          .set(datos);
+      // Con merge: un móvil con una versión vieja de la app que corrige una
+      // cata guardada por una nueva se llevaba por delante los campos que
+      // su `toJson` todavía no conoce. Los medios van explícitos justo
+      // arriba, así que quitar una foto sigue quitándola.
+      await _conTope(
+        _mesas
+            .doc(mesaId)
+            .collection('catas')
+            .doc(cata.id)
+            .set(datos, SetOptions(merge: true)),
+      );
 
       return medios;
     } on FirebaseException catch (e) {
@@ -391,16 +585,21 @@ class NubeService {
     }
   }
 
-  static Future<void> borrarCata(Cata cata) async {
+  /// Borra una cata de su mesa compartida.
+  ///
+  /// Lanza si no se puede. Antes se tragaba el fallo «para no asustar», y lo
+  /// que pasaba era peor que un susto: borrabas una cata sin cobertura,
+  /// desaparecía del móvil, el servidor no se enteraba y al volver la red la
+  /// cata regresaba al feed. Intentar borrarla otra vez no hacía nada —ya no
+  /// estaba en la lista local— así que se quedaba ahí para siempre. Quien
+  /// llama decide qué hacer; hoy, apuntarla en la cola de borrados.
+  static Future<void> borrarCataDe(String mesaId, String cataId) async {
     try {
-      await _mesas
-          .doc(cata.mesaId)
-          .collection('catas')
-          .doc(cata.id)
-          .delete();
-    } on FirebaseException catch (_) {
-      // Si no se puede borrar del servidor no se le cuenta a nadie: en el
-      // móvil ya está borrada y reventar aquí sólo asustaría.
+      await _conTope(
+        _mesas.doc(mesaId).collection('catas').doc(cataId).delete(),
+      );
+    } on FirebaseException catch (e) {
+      throw FalloNube(_traducir(e));
     }
   }
 
@@ -411,22 +610,79 @@ class NubeService {
   /// aunque los demás ya estuvieran dentro: el servidor lo sabía y el móvil
   /// no se enteraba. Sólo se escuchan los miembros; el nombre y el color son
   /// de quien la creó y no se pisan desde aquí.
-  static Stream<List<String>> miembrosDe(String mesaId) {
+  static Stream<MesaViva?> miembrosDe(String mesaId) {
     return _mesas.doc(mesaId).snapshots().map(
-          (DocumentSnapshot<Map<String, dynamic>> d) => <String>[
-            for (final dynamic m
-                in (d.data()?['miembros'] as List<dynamic>? ??
-                    const <dynamic>[]))
-              m.toString(),
+      (DocumentSnapshot<Map<String, dynamic>> d) {
+        final Map<String, dynamic>? m = d.data();
+        if (m == null) return null;
+        return (
+          nombre: m['nombre'] as String?,
+          descripcion: m['descripcion'] as String?,
+          colorHex: (m['colorHex'] as num?)?.toInt(),
+          miembros: <String>[
+            for (final dynamic x
+                in (m['miembros'] as List<dynamic>? ?? const <dynamic>[]))
+              x.toString(),
           ],
         );
+      },
+    );
+  }
+
+  /// Te saca de una mesa compartida.
+  ///
+  /// Hacía falta porque borrar una mesa sólo la quitaba de TU móvil. El
+  /// servidor seguía teniéndote como miembro, así que al siguiente arranque
+  /// `misMesas()` te la devolvía —con su código activo y las catas de la
+  /// otra persona— pero vacía por tu lado, porque tus catas ya se habían
+  /// salido de ella. Una mesa zombi que no había manera de quitar.
+  /// Siempre quitándote de la lista, también si la creaste: borrar el
+  /// documento entero le quitaría la mesa a los demás sin avisarles, y «me la
+  /// quito de encima» no es lo mismo que «que desaparezca para todos».
+  static Future<void> salirDe(Mesa mesa) async {
+    try {
+      await _conTope(_mesas.doc(mesa.id).update(<String, dynamic>{
+        'miembros': FieldValue.arrayRemove(<String>[_uid]),
+      }));
+    } on FirebaseException catch (e) {
+      throw FalloNube(_traducir(e));
+    }
+  }
+
+  /// Sube el nombre, la descripción y el color de una mesa que ya existe.
+  ///
+  /// Faltaba del todo: cambiarle el nombre a una mesa compartida sólo lo
+  /// cambiaba en TU móvil. El servidor no se enteraba y tu gente seguía
+  /// viendo el nombre viejo para siempre, sin manera de arreglarlo.
+  ///
+  /// No se tocan ni los miembros ni quién la creó: las reglas lo prohíben a
+  /// propósito, y ésa es justo la protección que impide que alguien con el
+  /// código se quede con la mesa.
+  static Future<void> renombrarMesa(Mesa mesa) async {
+    try {
+      await _conTope(_mesas.doc(mesa.id).set(<String, dynamic>{
+        'nombre': mesa.nombre,
+        'descripcion': mesa.descripcion,
+        'colorHex': mesa.colorHex,
+      }, SetOptions(merge: true)));
+    } on FirebaseException catch (e) {
+      throw FalloNube(_traducir(e));
+    }
   }
 
   /// Las catas que hay en esa mesa, según van llegando.
-  static Stream<List<Cata>> catasDe(String mesaId) {
+  ///
+  /// Con tope y de la más nueva a la más vieja. Sin tope, abrir una mesa
+  /// viva de doscientas catas con foto se descarga entero —y las fotos van
+  /// dentro de cada cata— cada vez que se abre la app. El plan gratuito da
+  /// 10 GiB de salida al mes, así que esto no es una optimización: es la
+  /// diferencia entre que la mesa funcione a final de mes o no.
+  static Stream<List<Cata>> catasDe(String mesaId, {int tope = 150}) {
     return _mesas
         .doc(mesaId)
         .collection('catas')
+        .orderBy('fecha', descending: true)
+        .limit(tope)
         .snapshots()
         .map((QuerySnapshot<Map<String, dynamic>> s) {
       final List<Cata> catas = <Cata>[];
@@ -434,7 +690,14 @@ class NubeService {
         // Una cata con un campo corrupto no puede tumbar el feed entero de
         // la mesa: se salta esa y se enseñan las demás.
         try {
-          catas.add(Cata.fromJson(<String, dynamic>{...d.data(), 'id': d.id}));
+          // `soloEnLaMesa` y no lo que venga: el documento se escribió con
+          // esta mesa y nada más, pero una copia antigua podría traer otra
+          // cosa, y una cata que dijera estar en una mesa que este móvil no
+          // conoce ensuciaría la lista de quien la recibe.
+          catas.add(
+            Cata.fromJson(<String, dynamic>{...d.data(), 'id': d.id})
+                .soloEnLaMesa(mesaId),
+          );
         } catch (_) {}
       }
       return catas;
@@ -444,8 +707,12 @@ class NubeService {
   static String _traducir(FirebaseException e) => switch (e.code) {
         'permission-denied' =>
           'No tienes acceso a esa mesa. Pide el código a quien la creó.',
-        'unavailable' || 'network-request-failed' =>
-          'Sin conexión. Se enviará cuando vuelva.',
+        // 'network-request-failed' era un código de Firebase Auth, no de
+        // Firestore: rama muerta. El caso real es 'unavailable'.
+        'unavailable' => 'Sin conexión. Inténtalo cuando vuelva la cobertura.',
+        // Una cata que no cabe no se arregla reintentándola.
+        'invalid-argument' =>
+          'Esa cata pesa demasiado para enviarla. Quítale una foto.',
         'not-found' => 'Esa mesa ya no existe.',
         _ => 'No se ha podido. Inténtalo otra vez.',
       };

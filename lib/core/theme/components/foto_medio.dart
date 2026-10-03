@@ -54,11 +54,29 @@ class FotoMedio extends StatelessWidget {
         width: ancho,
         height: alto,
         fit: fit,
+        // Mantiene el fotograma anterior mientras se decodifica el nuevo.
+        // Sin esto, cada vez que la lista se reconstruye —cambiar el filtro
+        // de La Vitrina, por ejemplo— la foto se iba a blanco un fotograma
+        // y volvía: el parpadeo.
+        gaplessPlayback: true,
         errorBuilder: (_, _, _) => _laQueViajo(),
       );
     }
     return _laQueViajo();
   }
+
+  /// Las miniaturas ya decodificadas, por el texto del que salieron.
+  ///
+  /// No es por ahorrar el base64, que es barato. Es que `MemoryImage` se
+  /// compara por identidad de la lista de bytes: decodificar otra vez daba
+  /// una lista NUEVA, o sea una imagen nueva para Flutter, o sea caché
+  /// perdida y a redibujar. Guardando la lista, la misma foto es siempre la
+  /// misma imagen y la caché funciona.
+  ///
+  /// El tope existe porque esto no se vacía solo: son miniaturas de 800 px,
+  /// y sin límite una sesión larga de scroll las acumularía todas.
+  static final Map<String, Uint8List> _decodificadas = <String, Uint8List>{};
+  static const int _maximoEnCache = 60;
 
   /// La miniatura que viajó con la cata.
   ///
@@ -69,12 +87,21 @@ class FotoMedio extends StatelessWidget {
     if (!medio.viaja) return siFalla();
 
     try {
-      final Uint8List datos = base64Decode(medio.mini!);
+      final String clave = medio.mini!;
+      Uint8List? datos = _decodificadas[clave];
+      if (datos == null) {
+        if (_decodificadas.length >= _maximoEnCache) {
+          _decodificadas.remove(_decodificadas.keys.first);
+        }
+        datos = _decodificadas[clave] = base64Decode(clave);
+      }
+
       return Image.memory(
         datos,
         width: ancho,
         height: alto,
         fit: fit,
+        gaplessPlayback: true,
         errorBuilder: (_, _, _) => siFalla(),
       );
     } catch (_) {

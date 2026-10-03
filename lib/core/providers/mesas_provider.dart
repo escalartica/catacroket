@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -113,6 +114,62 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
           m,
     ];
     await _guardar();
+
+    // Y al servidor, si la mesa es compartida. Esto faltaba entero: cambiarle
+    // el nombre a una mesa sólo lo cambiaba en TU móvil, el servidor no se
+    // enteraba y tu gente seguía viendo el nombre viejo para siempre.
+    //
+    // Sin esperar y sin molestar si falla: el nombre ya está cambiado en el
+    // móvil y no poder avisar al servidor no puede dejarte la pantalla
+    // colgada. Queda en la bitácora.
+    final Mesa? ahora = state.where((Mesa m) => m.id == id).firstOrNull;
+    if (ahora == null || !ahora.enLaNube) return;
+    unawaited(
+      NubeService.renombrarMesa(ahora).catchError(
+        (Object error, StackTrace pila) =>
+            Errores.registrar(error, pila, origen: 'mesas.renombrar'),
+      ),
+    );
+  }
+
+  /// Guarda lo que dice el servidor de una mesa compartida.
+  ///
+  /// Para una mesa que se comparte, el servidor manda: es el único sitio
+  /// donde los dos móviles se ponen de acuerdo. No vuelve a subir nada —sería
+  /// una pescadilla— y no toca nada si no ha cambiado nada, que es lo que
+  /// evita reescribir el disco en cada latido del servidor.
+  Future<void> apuntarDeLaNube(String mesaId, MesaViva viva) async {
+    final Mesa? mesa = state.where((Mesa m) => m.id == mesaId).firstOrNull;
+    if (mesa == null) return;
+
+    final String nombre = (viva.nombre ?? mesa.nombre).trim();
+    final String descripcion = (viva.descripcion ?? mesa.descripcion).trim();
+    final int colorHex = viva.colorHex ?? mesa.colorHex;
+    // Una lista de miembros vacía es casi siempre un documento a medio llegar,
+    // no una mesa sin nadie: quien la lee es miembro por definición.
+    final List<String> miembros =
+        viva.miembros.isEmpty ? mesa.miembros : viva.miembros;
+
+    final bool igual = nombre == mesa.nombre &&
+        descripcion == mesa.descripcion &&
+        colorHex == mesa.colorHex &&
+        miembros.length == mesa.miembros.length &&
+        mesa.miembros.toSet().containsAll(miembros);
+    if (igual) return;
+
+    state = <Mesa>[
+      for (final Mesa m in state)
+        if (m.id == mesaId)
+          m.copyWith(
+            nombre: nombre,
+            descripcion: descripcion,
+            colorHex: colorHex,
+            miembros: miembros,
+          )
+        else
+          m,
+    ];
+    await _guardar();
   }
 
   /// Sube una mesa para que su gente pueda verla.
@@ -199,23 +256,38 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
     await _guardar();
   }
 
-  /// Borra una mesa y devuelve sus catas a la libreta.
+  /// Borra una mesa. Las catas que estaban en ella se quedan en tu diario.
   ///
   /// Borrar la mesa NO borra lo que catasteis: son dos cosas distintas y
-  /// confundirlas sería la peor pérdida de datos posible en esta app. La
-  /// libreta no se puede borrar.
+  /// confundirlas sería la peor pérdida de datos posible en esta app. Lo que
+  /// se pierde es que esa gente las vea; tuyas siguen siendo. La libreta no
+  /// se puede borrar.
   Future<int> borrar(String id) async {
     if (id == Mesa.libretaId) return 0;
 
+    // Primero el servidor. Si falla, la mesa NO se borra del móvil: antes
+    // esto no se hacía en absoluto, así que el servidor te seguía teniendo
+    // dentro y al siguiente arranque la mesa volvía sola —con su código
+    // activo— pero vacía, porque tus catas ya se habían salido de ella.
+    final Mesa? mesa = state.where((Mesa m) => m.id == id).firstOrNull;
+    if (mesa != null && mesa.enLaNube) {
+      await NubeService.salirDe(mesa);
+    }
+
     final List<Cata> suyas = _ref
         .read(catasProvider)
-        .where((Cata c) => c.mesaId == id)
+        .where((Cata c) => c.estaEn(id))
         .toList();
 
     for (final Cata c in suyas) {
-      await _ref
-          .read(catasProvider.notifier)
-          .actualizar(c.copyWith(mesaId: Mesa.libretaId));
+      await _ref.read(catasProvider.notifier).actualizar(
+            c.copyWith(
+              mesas: <String>[
+                for (final String m in c.mesas)
+                  if (m != id) m,
+              ],
+            ),
+          );
     }
 
     state = state.where((Mesa m) => m.id != id).toList();

@@ -77,7 +77,7 @@ void main() {
         corte: const Corte(crujiente: 9, cremosidad: 8, sabor: 9, relleno: 7),
         sabores: const <Sabor>[Sabor(rellenoId: 'jamon')],
         autorId: 'tu',
-        mesaId: 'libreta',
+        mesas: const <String>[],
         fecha: DateTime(2026, 3, 14),
         nota: 'Estaba muy buena',
       );

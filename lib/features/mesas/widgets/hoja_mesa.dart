@@ -236,6 +236,7 @@ class _Tinte extends StatelessWidget {
       inMutuallyExclusiveGroup: true,
       label: nombre,
       excludeSemantics: true,
+      onTap: onTap,
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
@@ -254,7 +255,13 @@ class _Tinte extends StatelessWidget {
             boxShadow: elegido ? AppShape.sombra(const Offset(2, 2)) : null,
           ),
           child: elegido
-              ? const Icon(Icons.check_rounded, size: 20, color: AppColors.tinta)
+              ? Icon(
+                  Icons.check_rounded,
+                  size: 20,
+                  // Sobre la uva, la tinta se queda en 2,69:1 y el único
+                  // glifo que dice cuál has elegido no se ve.
+                  color: AppColors.textoSobre(color),
+                )
               : null,
         ),
       ),
@@ -335,17 +342,18 @@ class _FotoDeMesa extends StatelessWidget {
                 ),
               ),
               if (hay) ...<Widget>[
-                const SizedBox(height: 4),
-                GestureDetector(
+                const SizedBox(height: AppSpacing.s),
+                // Un botón de verdad y no un texto subrayado. Como texto en
+                // tomate sobre el crema de la hoja se quedaba en 2,78:1 —el
+                // único texto de color de la app que no llega al 4,5:1— y
+                // medía 18 puntos de alto cuando el mínimo para algo que se
+                // toca son 44. Y es la única acción destructiva de la app
+                // que no se anunciaba como botón.
+                BotonPegatina.fantasma(
+                  texto: 'Quitar la foto',
+                  icono: Icons.delete_outline_rounded,
+                  pequeno: true,
                   onTap: onQuitar,
-                  child: Text(
-                    'Quitar la foto',
-                    style: AppTypography.cuerpoS.copyWith(
-                      fontSize: 12.5,
-                      color: AppColors.tomate,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
                 ),
               ],
             ],

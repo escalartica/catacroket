@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../errores.dart';
+import '../services/nube_service.dart';
 
 /// Quién eres tú: nombre y foto.
 ///
@@ -75,6 +77,13 @@ class YoNotifier extends StateNotifier<Yo> {
     if (limpio.isEmpty) return;
 
     state = state.copiaCon(nombre: limpio);
+
+    // Y al servidor, aquí dentro y no en quien llama. Antes esto sólo se
+    // publicaba desde la pantalla de mesas: cambiarte el nombre en el perfil
+    // lo guardaba en tu móvil y tu gente te seguía viendo como «Alguien».
+    // Si falla no se avisa: es un extra, y el nombre ya está guardado.
+    unawaited(NubeService.publicarNombre(limpio));
+
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.setString(_claveNombre, limpio);

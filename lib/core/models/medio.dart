@@ -43,12 +43,25 @@ class Medio {
   /// ruta no existe.
   Medio get paraViajar => Medio(tipo: tipo, ruta: '', mini: mini);
 
-  /// Lo que se guarda en el móvil.
+  /// Lo que se guarda en el móvil. SIN la miniatura.
   ///
-  /// La miniatura NO se guarda aquí: en el móvil que hizo la foto ya está el
-  /// fichero entero, y duplicarla en disco engordaría el guardado de todas
-  /// las catas sin que nadie la mire nunca.
+  /// El comentario llevaba tiempo diciendo esto y el código hacía lo
+  /// contrario, y salía caro: una miniatura pesa hasta 440 KB y una cata
+  /// admite dos, así que cuarenta catas compartidas eran ~35 MB metidos en
+  /// una sola cadena de `SharedPreferences`… que se reescribe ENTERA en cada
+  /// mordisco, en cada corrección y en cada subida. Eso es volcar 35 MB de
+  /// disco bloqueando la pantalla, y una copia de seguridad inservible.
+  ///
+  /// No hace falta guardarla: en este móvil está el fichero entero, y la
+  /// copia pequeña ya está en el servidor.
   Map<String, dynamic> toJson() => <String, dynamic>{
+        'tipo': tipo.name,
+        'ruta': ruta,
+      };
+
+  /// Lo que se manda a otro móvil. Aquí la miniatura es justo lo único que
+  /// importa: la ruta local allí no abre nada.
+  Map<String, dynamic> toJsonParaLaNube() => <String, dynamic>{
         'tipo': tipo.name,
         'ruta': ruta,
         if (mini != null) 'mini': mini,

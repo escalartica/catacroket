@@ -13,7 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 Cata cata({
   String id = 'nueva',
   String sitio = 'Bar de prueba',
-  String mesaId = 'libreta',
+  List<String> mesas = const <String>[],
   int crujiente = 7,
   int mordiscos = 0,
   List<Medio> medios = const <Medio>[],
@@ -30,7 +30,7 @@ Cata cata({
       ),
       sabores: const <Sabor>[Sabor(rellenoId: 'jamon')],
       autorId: 'tu',
-      mesaId: mesaId,
+      mesas: mesas,
       fecha: DateTime(2026),
       mordiscos: mordiscos,
       medios: medios,
