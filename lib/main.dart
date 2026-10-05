@@ -9,9 +9,11 @@ import 'app/router.dart';
 import 'core/bitacora.dart';
 import 'core/errores.dart';
 import 'core/providers/catas_provider.dart';
+import 'core/services/cuenta_service.dart';
+import 'core/services/instalacion.dart';
 import 'core/theme/app_theme.dart';
-import 'firebase_options.dart';
 import 'core/utils/archivos.dart';
+import 'firebase_options.dart';
 
 void main() {
   // Todo el arranque va dentro de la zona vigilada, no sólo el runApp: el
@@ -43,6 +45,15 @@ Future<void> _arrancar() async {
   } catch (e, pila) {
     Errores.registrar(e, pila, origen: 'arranque de Firebase');
   }
+
+  // Si esta instalación es nueva, fuera la sesión que quedara en el llavero.
+  // Tiene que ir DESPUÉS de levantar Firebase —antes no hay a quién
+  // preguntarle— y ANTES de montar la app, para que ningún provider llegue a
+  // ver un uid que ya no vale y se baje las mesas del dueño anterior.
+  await Instalacion.cerrarSesionHeredada(
+    haySesion: () async => CuentaService.quien != null,
+    salir: CuentaService.salir,
+  );
 
   // La app está pensada en vertical: el formulario de cata y el mapa con la
   // hoja de resultados no tienen sentido apaisados en un móvil.

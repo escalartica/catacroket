@@ -26,3 +26,7 @@ mapa.env
 
 # Caché del desplegador de Firebase. Se regenera sola.
 .firebase/
+
+# Registros que dejan los emuladores de Firebase al correr test_reglas.
+# Se regeneran en cada ejecución y no dicen nada que haga falta guardar.
+*-debug.log
