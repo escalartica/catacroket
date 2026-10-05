@@ -112,4 +112,36 @@ class AppColors {
     final double bajo = la > lb ? lb : la;
     return (alto + 0.05) / (bajo + 0.05);
   }
+
+  /// El mismo color, lavado hasta que todos pesen lo mismo en pantalla.
+  ///
+  /// Mezclar cada color con el blanco en la misma proporción NO da seis
+  /// fondos igual de suaves: da seis fondos con el mismo porcentaje de
+  /// pintura y luminancias muy distintas, porque un rosa saturado aguanta el
+  /// lavado mucho mejor que un amarillo. Con un velo fijo del 86 %, «sin
+  /// frutos secos» (chicle) quedaba en luminancia 0,830 y las otras cinco
+  /// entre 0,877 y 0,934: la pastilla del rosa parecía encendida al lado de
+  /// las demás, y en una fila donde encendido significa «esto no lo puedo
+  /// comer» eso no es un matiz.
+  ///
+  /// Así que no se iguala la mezcla, se iguala el resultado: se busca la
+  /// proporción que deja cada color en la luminancia pedida. Doce pasos de
+  /// bisección por pastilla, que es nada, y salen seis fondos que de verdad
+  /// se leen igual de apagados.
+  static Color velo(Color color, {double claridad = 0.88}) {
+    if (color.computeLuminance() >= claridad) return color;
+
+    double flojo = 0;
+    double fuerte = 1;
+    for (int i = 0; i < 12; i++) {
+      final double medio = (flojo + fuerte) / 2;
+      final Color probada = Color.lerp(color, superficie, medio)!;
+      if (probada.computeLuminance() < claridad) {
+        flojo = medio;
+      } else {
+        fuerte = medio;
+      }
+    }
+    return Color.lerp(color, superficie, (flojo + fuerte) / 2)!;
+  }
 }

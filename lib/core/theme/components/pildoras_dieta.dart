@@ -52,7 +52,12 @@ class PildorasDieta extends StatelessWidget {
             colorActiva: AppColors.lima,
             colorInactiva: AppColors.superficie,
             enGrupoUnico: false,
-            onTap: marcadas.isEmpty ? null : onComoDeTodo,
+            // Siempre pulsable, aunque ya esté puesta. Apagarla con `onTap:
+            // null` la dejaba al 42 % de opacidad, que es como se pinta lo
+            // que no se puede tocar: la opción que describe tu estado actual
+            // se veía desvaída y con el borde gris, o sea rota. Volver a
+            // tocarla no hace daño.
+            onTap: onComoDeTodo,
           ),
         for (final Dieta d in Dieta.values) _unaPildora(d),
       ],
@@ -86,7 +91,11 @@ class PildorasDieta extends StatelessWidget {
       // Un velo del color de la dieta, no el color entero: se reconoce
       // cada una de un vistazo y la marcada sigue destacando, porque
       // va a saturación completa y con más sombra.
-      colorInactiva: Color.lerp(d.color, AppColors.superficie, 0.86)!,
+      //
+      // Por [AppColors.velo] y no por una mezcla fija: con el 86 % de antes,
+      // el rosa de «sin frutos secos» quedaba bastante más oscuro que los
+      // otros cinco y parecía marcado sin estarlo.
+      colorInactiva: AppColors.velo(d.color),
       // Se marcan varias: alguien puede ser vegano Y celíaco.
       enGrupoUnico: false,
       // El número, en su propia insignia y no pegado al nombre.
