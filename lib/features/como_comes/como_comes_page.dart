@@ -83,12 +83,15 @@ class _ComoComesPageState extends ConsumerState<ComoComesPage> {
                 child: _Panel(
                   etiqueta: 'Lo que no puedes comer',
                   explicacion:
-                      'Cada cata te dirá si te vale, si hay que '
-                      'preguntar o si no.',
+                      'Si comes de todo, déjalo como está. Lo que marques '
+                      'aquí es lo que NO puedes, y cada cata te dirá si te '
+                      'vale, si hay que preguntar o si no.',
                   child: PildorasDieta(
                     marcadas: mias,
                     onAlternar:
                         ref.read(miDietaProvider.notifier).alternar,
+                    onComoDeTodo:
+                        ref.read(miDietaProvider.notifier).limpiar,
                   ),
                 ),
               ),

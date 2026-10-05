@@ -263,6 +263,7 @@ class PerfilPage extends ConsumerWidget {
               _ComoComo(
                 mias: ref.watch(miDietaProvider),
                 onAlternar: ref.read(miDietaProvider.notifier).alternar,
+                onComoDeTodo: ref.read(miDietaProvider.notifier).limpiar,
                 evitar: ref.watch(evitarProvider),
                 onEvitarAnadir: ref.read(evitarProvider.notifier).anadir,
                 onEvitarQuitar: ref.read(evitarProvider.notifier).quitar,
@@ -678,6 +679,7 @@ class _ComoComo extends StatelessWidget {
   const _ComoComo({
     required this.mias,
     required this.onAlternar,
+    required this.onComoDeTodo,
     required this.evitar,
     required this.onEvitarAnadir,
     required this.onEvitarQuitar,
@@ -685,6 +687,7 @@ class _ComoComo extends StatelessWidget {
 
   final Set<Dieta> mias;
   final void Function(Dieta) onAlternar;
+  final VoidCallback onComoDeTodo;
 
   /// Lo escrito a mano: marisco, sésamo, boletus. Va debajo de las dietas y
   /// no mezclado con ellas porque no promete lo mismo — las dietas se
@@ -701,16 +704,27 @@ class _ComoComo extends StatelessWidget {
         children: <Widget>[
           const EtiquetaPanel(texto: 'Cómo comes'),
           const SizedBox(height: AppSpacing.m),
+          // «Lo que NO puedes comer», con todas las letras.
+          //
+          // Sin decirlo, seis pastillas apetecibles se leen como «marca lo
+          // que puedes comer» y hay quien las marca todas queriendo decir
+          // «como de todo». La app entiende lo contrario y le esconde media
+          // lista de rellenos en cada cata.
           Text(
             mias.isEmpty
-                ? 'Si no comes de todo, márcalo. La app te dirá en cada cata '
+                ? 'Marca lo que NO puedes comer. La app te dirá en cada cata '
                     'si te vale, y la Barra Libre abrirá ya filtrada.'
-                : 'Cada cata te dirá si te vale, si hay que preguntar o si '
-                    'no. Se guarda sólo en este móvil.',
+                : 'Esto es lo que NO puedes comer. Cada cata te dirá si te '
+                    'vale, si hay que preguntar o si no. Se guarda sólo en '
+                    'este móvil.',
             style: AppTypography.cuerpoS.copyWith(height: 1.35),
           ),
           const SizedBox(height: AppSpacing.m),
-          PildorasDieta(marcadas: mias, onAlternar: onAlternar),
+          PildorasDieta(
+            marcadas: mias,
+            onAlternar: onAlternar,
+            onComoDeTodo: onComoDeTodo,
+          ),
           const SizedBox(height: AppSpacing.l),
           Text(
             'Y si hay algo que no quieres que te pongan —marisco, sésamo, '

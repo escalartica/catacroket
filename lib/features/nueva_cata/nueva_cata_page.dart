@@ -51,9 +51,23 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
     'Los detalles',
   ];
 
+  /// Lo que hay escrito venía de una cata que se dejó a medias.
+  ///
+  /// El borrador se guarda a propósito —entra una llamada, el móvil mata la
+  /// app, vuelves— pero hasta ahora volvía sin decir nada: abrías «apuntar
+  /// una cata» y te encontrabas un bar, una ciudad y una foto que no habías
+  /// puesto en ese momento, sin saber de dónde salían ni cómo quitarlos.
+  bool _vieneDeAntes = false;
+
   @override
   void initState() {
     super.initState();
+
+    // Se mira UNA vez, al abrir: a partir de aquí lo que haya escrito lo
+    // estás escribiendo tú, y el aviso sobraría.
+    final Borrador abierto = ref.read(borradorProvider);
+    _vieneDeAntes = !abierto.esEdicion && abierto.tieneAlgoEscrito;
+
     final String? id = widget.cataId;
     if (id == null) return;
 
@@ -300,23 +314,18 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
 
         // ── Paso ──────────────────────────────────────────────────────────
         //
-        // El contenido se desvanece contra la barra de progreso en vez de
-        // cortarse a cuchillo. Sin esto, una píldora a medio salir se veía
-        // pegada al indicador de pasos y parecía un elemento roto: en las
-        // capturas del móvil se confundía con un fallo de pintado.
+        // Aquí hubo un desvanecido contra la barra de progreso, y era peor
+        // que el problema que venía a resolver. Un elemento a medio salir se
+        // veía translúcido ENCIMA de las barritas de los pasos, y eso no se
+        // lee como «la lista sigue arriba»: se lee como la app pintando mal.
+        // Pasó por dos revisiones seguidas señalado como fallo.
+        //
+        // Un corte limpio es lo que hace cualquier aplicación y lo que todo
+        // el mundo entiende. Lo único que hacía falta era el hueco de abajo,
+        // para que la línea del corte no quede pegada a las barritas.
+        const SizedBox(height: AppSpacing.s),
         Expanded(
-          child: ShaderMask(
-            shaderCallback: (Rect area) => const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: <Color>[Colors.transparent, Colors.black],
-              // Antes 0.035, unos 20 puntos: justo el alto de un deslizador
-              // o de un renglón, así que en vez de disolverse se quedaba a
-              // medio pintar y parecía un elemento roto colgando de la barra
-              // de pasos. Al doble se deshace de verdad.
-              stops: <double>[0.0, 0.07],
-            ).createShader(area),
-            blendMode: BlendMode.dstIn,
+          child: ClipRect(
             child: AnimatedSwitcher(
             duration: AppMotion.rapida,
             child: SingleChildScrollView(
@@ -328,7 +337,21 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
                 AppSpacing.xl,
               ),
               child: switch (paso) {
-                1 => const PasoSitio(),
+                1 => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      if (_vieneDeAntes) ...<Widget>[
+                        _DeAntes(
+                          onEmpezarDeCero: () {
+                            ref.read(borradorProvider.notifier).limpiar();
+                            setState(() => _vieneDeAntes = false);
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.l),
+                      ],
+                      const PasoSitio(),
+                    ],
+                  ),
                 2 => const PasoSabores(),
                 3 => const PasoCorte(),
                 _ => const PasoDetalles(),
@@ -522,6 +545,57 @@ class _QuienLaVera extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// El aviso de que el formulario viene con lo de la última vez.
+class _DeAntes extends StatelessWidget {
+  const _DeAntes({required this.onEmpezarDeCero});
+
+  final VoidCallback onEmpezarDeCero;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.superficieCalida,
+        borderRadius: BorderRadius.circular(AppShape.radioM),
+        border: Border.all(color: AppColors.tinta, width: AppShape.bordeFino),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              const Text('📝', style: TextStyle(fontSize: 17)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Esto lo dejaste a medias la última vez y no llegó a '
+                  'publicarse. Sigue donde lo dejaste, o empieza de cero.',
+                  style: AppTypography.cuerpoS.copyWith(
+                    fontSize: 12.5,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.s),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OpcionPildora(
+              texto: 'Empezar de cero',
+              emoji: '🧹',
+              activa: false,
+              onTap: onEmpezarDeCero,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -15,10 +15,23 @@ class PildorasDieta extends StatelessWidget {
     required this.marcadas,
     required this.onAlternar,
     this.recuento,
+    this.onComoDeTodo,
   });
 
   final Set<Dieta> marcadas;
   final void Function(Dieta) onAlternar;
+
+  /// Pone delante un «Como de todo» que lo desmarca todo.
+  ///
+  /// Hace falta donde se dice CÓMO COMES, y no donde se describe una
+  /// croqueta ni donde se filtra. «No tengo ninguna restricción» era el
+  /// estado por defecto y no se veía por ninguna parte: seis pastillas
+  /// apetecibles y nada que diga qué significan, así que quien come de todo
+  /// las marca TODAS pensando que dice «puedo con todo esto», cuando lo que
+  /// la app entiende es que eres vegano, celíaco y alérgico al huevo a la
+  /// vez. Pasó de verdad, y deja la app escondiéndote media lista de
+  /// rellenos en cada cata que apuntas.
+  final VoidCallback? onComoDeTodo;
 
   /// Cuántas catas quedarían al marcar cada una, contando lo que ya haya
   /// marcado. Sólo lo pasa el filtro; en el formulario el número no significa
@@ -31,6 +44,16 @@ class PildorasDieta extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: <Widget>[
+        if (onComoDeTodo != null)
+          OpcionPildora(
+            texto: 'Como de todo',
+            emoji: '🍽️',
+            activa: marcadas.isEmpty,
+            colorActiva: AppColors.lima,
+            colorInactiva: AppColors.superficie,
+            enGrupoUnico: false,
+            onTap: marcadas.isEmpty ? null : onComoDeTodo,
+          ),
         for (final Dieta d in Dieta.values) _unaPildora(d),
       ],
     );
@@ -38,6 +61,10 @@ class PildorasDieta extends StatelessWidget {
 
   Widget _unaPildora(Dieta d) {
     final bool marcada = marcadas.contains(d);
+    // Marcar una dieta es decir que NO puedes con ella, así que al tocarla
+    // «Como de todo» se apaga solo. Lo hace el propio estado: está activa
+    // mientras no haya ninguna marcada.
+
     final int? cuantas = recuento?[d];
 
     // Sin ninguna detrás, la pastilla se apaga.
