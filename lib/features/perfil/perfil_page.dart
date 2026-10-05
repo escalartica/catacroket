@@ -43,6 +43,8 @@ import '../../core/services/compartir_service.dart';
 import '../../core/utils/formato.dart';
 import '../vitrina/widgets/tarjeta_cata.dart';
 import '../../core/utils/texto.dart';
+import '../../core/providers/bloqueados_provider.dart';
+import '../../core/theme/components/campo.dart';
 
 /// CROQUETÓMETRO — tu historial de paladar.
 class PerfilPage extends ConsumerWidget {
@@ -758,6 +760,14 @@ class _ComoComo extends StatelessWidget {
                   'la cocina.',
             ),
           ],
+          // Deshacer un bloqueo. Sólo aparece si hay alguno: una lista vacía
+          // de gente bloqueada es un apartado que no le hace falta a nadie.
+          //
+          // Tiene que estar. Bloquear sin poder desbloquear no es una
+          // herramienta, es una trampa: alguien corta con su cuñado en un
+          // arrebato y se queda sin ver sus croquetas para siempre sin saber
+          // por qué su mesa se ha quedado a medias.
+          const _Desbloquear(),
         ],
       ),
     );
@@ -875,6 +885,62 @@ class _PanelCuenta extends ConsumerWidget {
               }
             },
             child: const Text('Sí, borrarla'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// La gente bloqueada, para poder volver atrás.
+class _Desbloquear extends ConsumerWidget {
+  const _Desbloquear();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final Set<String> bloqueados = ref.watch(bloqueadosProvider);
+    if (bloqueados.isEmpty) return const SizedBox.shrink();
+
+    final Map<String, Persona> personas = ref.watch(personasProvider);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.l),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            bloqueados.length == 1
+                ? 'Has bloqueado a una persona. No ve sus catas nadie más que '
+                    'tú, y ella no se entera.'
+                : 'Has bloqueado a ${bloqueados.length} personas. No ven sus '
+                    'catas nadie más que tú, y ellas no se enteran.',
+            style: AppTypography.cuerpoS.copyWith(height: 1.35),
+          ),
+          const SizedBox(height: AppSpacing.m),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              for (final String uid in bloqueados)
+                OpcionPildora(
+                  // Quien ya no está en ninguna de tus mesas no tiene nombre
+                  // que enseñar, y «Alguien» es mejor que un identificador de
+                  // veintiocho letras.
+                  texto: personas[uid]?.nombre ?? 'Alguien',
+                  emoji: '🚫',
+                  activa: false,
+                  onTap: () =>
+                      ref.read(bloqueadosProvider.notifier).desbloquear(uid),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.s),
+          Text(
+            'Tócalos para volver a verlos.',
+            style: AppTypography.cuerpoS.copyWith(
+              fontSize: 12.5,
+              color: AppColors.tintaSuave,
+            ),
           ),
         ],
       ),

@@ -18,6 +18,22 @@ class Enlaces {
   static String get dondeEsta =>
       hayTienda ? tienda : 'Se llama Catacroket, búscala en la App Store.';
 
+  // ── Lo público ──────────────────────────────────────────────────────────
+
+  /// Dónde escribe quien tiene un problema, quiere denunciar algo o pide que
+  /// le borren los datos. Es un buzón que lee una persona.
+  static const String correoSoporte = 'escalartica@gmail.com';
+
+  /// La política de privacidad, colgada en el hosting del propio proyecto de
+  /// Firebase. App Store Connect no deja enviar la ficha sin una dirección
+  /// que conteste, y la revisión la abre.
+  static const String privacidad =
+      'https://catacroket-2b047.web.app/privacidad.html';
+
+  /// La página de soporte, que Apple pide como campo aparte.
+  static const String soporte =
+      'https://catacroket-2b047.web.app/soporte.html';
+
   // ── La otra app ─────────────────────────────────────────────────────────
 
   /// Palito de Sabores, de los mismos, en la App Store.

@@ -80,6 +80,27 @@ if [[ "$CATACROKET_TESELAS" == *"tile.openstreetmap.org"* ]]; then
   exit 1
 fi
 
+# Lo que va a la tienda va VACÍO. Sin catas, sin mesas inventadas, sin gente
+# que el usuario no conoce: quien se la baje empieza por su primera croqueta.
+#
+# Eso lo decide `Siembra.conEjemplos`, que mira `kReleaseMode`, así que
+# compilar en release basta... salvo por una puerta: `CATACROKET_CAPTURAS`
+# siembra los datos de ejemplo AUNQUE sea release, porque una ficha de tienda
+# con la app vacía no enseña nada. Está bien que exista, y está muy mal que se
+# cuele en el paquete que sube a la tienda.
+#
+# Si esa variable anda puesta en el entorno —de haber hecho capturas hace un
+# rato, por ejemplo— aquí se para. Es el único camino por el que los datos de
+# prueba podrían llegar a un desconocido.
+if [[ "$destino" == "android" || "$destino" == "ios" ]]; then
+  if [[ -n "${CATACROKET_CAPTURAS:-}" ]]; then
+    echo "CATACROKET_CAPTURAS está puesta y esto va a la tienda." >&2
+    echo "Con ella, la app se publicaría CON datos de ejemplo dentro." >&2
+    echo "Quítala del entorno (unset CATACROKET_CAPTURAS) y repite." >&2
+    exit 1
+  fi
+fi
+
 defines=(
   --dart-define="CATACROKET_TESELAS=$CATACROKET_TESELAS"
   --dart-define="CATACROKET_MAPA_CLAVE=$CATACROKET_MAPA_CLAVE"

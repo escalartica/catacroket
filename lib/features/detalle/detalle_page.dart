@@ -37,6 +37,9 @@ import '../../core/utils/formato.dart';
 import '../../core/utils/texto.dart';
 import '../compartir/compartir_cata.dart';
 import 'widgets/carrusel_medios.dart';
+import '../../core/data/enlaces.dart';
+import '../../core/providers/bloqueados_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Ficha de una cata.
 class DetallePage extends ConsumerWidget {
@@ -601,6 +604,17 @@ class DetallePage extends ConsumerWidget {
                   ],
                 ),
               ],
+              // Y en la de otra persona, la salida.
+              //
+              // Las mesas son privadas y por invitación, así que aquí no hay
+              // desconocidos. Aun así tiene que haber una forma de cortar sin
+              // montar una escena: salirse de la mesa se nota, bloquear a
+              // alguien no. Apple además lo exige a toda app que enseñe cosas
+              // escritas por otros.
+              if (!esMia && cata.autorUid != null) ...<Widget>[
+                const SizedBox(height: AppSpacing.l),
+                _Cortar(cata: cata, autor: autor),
+              ],
               const SizedBox(height: AppSpacing.huecoBarra),
             ],
           ),
@@ -1145,6 +1159,110 @@ class _QuienLaVePanel extends ConsumerWidget {
           const Icon(Icons.chevron_right_rounded, color: AppColors.tinta),
         ],
       ),
+    );
+  }
+}
+
+/// Denunciar una cata y bloquear a quien la escribió.
+///
+/// Discreto y al final de la ficha a propósito: es la salida de emergencia de
+/// un grupo de amigos, no un botón que haya que ver cada vez que lees una
+/// croqueta de tu cuñado.
+class _Cortar extends ConsumerWidget {
+  const _Cortar({required this.cata, required this.autor});
+
+  final Cata cata;
+  final Persona autor;
+
+  Future<void> _denunciar(BuildContext context) async {
+    // Un correo y no un documento en el servidor: hace falta que haya alguien
+    // al otro lado leyendo, y ese alguien es una persona con un buzón. Montar
+    // una colección de denuncias que nadie mira sería peor que esto.
+    final Uri correo = Uri(
+      scheme: 'mailto',
+      path: Enlaces.correoSoporte,
+      queryParameters: <String, String>{
+        'subject': 'Denuncia de una cata en Catacroket',
+        'body': 'Cata: ${cata.id}\n'
+            'La apuntó: ${autor.nombre}\n'
+            'Sitio: ${cata.sitioYLugar}\n\n'
+            'Cuéntanos qué pasa con ella:\n',
+      },
+    );
+
+    final ScaffoldMessengerState barra = ScaffoldMessenger.of(context);
+    if (!await launchUrl(correo)) {
+      barra
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No se ha podido abrir el correo. Escríbenos a '
+              '${Enlaces.correoSoporte}',
+            ),
+          ),
+        );
+    }
+  }
+
+  Future<void> _bloquear(BuildContext context, WidgetRef ref) async {
+    final bool? seguro = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext c) => AlertDialog(
+        title: Text('¿Bloquear a ${autor.nombre}?'),
+        content: Text(
+          'Dejarás de ver sus catas en todas tus mesas. Sigue en el grupo y '
+          'no se entera de nada; puedes deshacerlo cuando quieras desde tu '
+          'perfil.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(c).pop(false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(c).pop(true),
+            child: const Text('Sí, bloquear'),
+          ),
+        ],
+      ),
+    );
+    if (seguro != true || !context.mounted) return;
+
+    final ScaffoldMessengerState barra = ScaffoldMessenger.of(context);
+    final NavigatorState nav = Navigator.of(context);
+    await ref.read(bloqueadosProvider.notifier).bloquear(cata.autorUid!);
+
+    // Fuera de la ficha: la cata que acabas de bloquear ya no debería estar
+    // en pantalla.
+    if (nav.canPop()) nav.pop();
+    barra
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(content: Text('${autor.nombre} bloqueado. No se entera.')),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: BotonPegatina.fantasma(
+            texto: 'Denunciar',
+            icono: Icons.flag_outlined,
+            onTap: () => _denunciar(context),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.s),
+        Expanded(
+          child: BotonPegatina.fantasma(
+            texto: 'Bloquear',
+            icono: Icons.block_rounded,
+            onTap: () => _bloquear(context, ref),
+          ),
+        ),
+      ],
     );
   }
 }

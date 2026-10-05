@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../errores.dart';
 import '../services/nube_service.dart';
 import '../utils/archivos.dart';
+import 'carga_inicial.dart';
 
 /// Quién eres tú: nombre y foto.
 ///
@@ -51,7 +52,7 @@ class Yo {
       );
 }
 
-class YoNotifier extends StateNotifier<Yo> {
+class YoNotifier extends StateNotifier<Yo> with CargaInicial<Yo> {
   YoNotifier() : super(const Yo()) {
     _cargar();
   }
@@ -64,10 +65,10 @@ class YoNotifier extends StateNotifier<Yo> {
   Future<void> _cargar() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      state = Yo(
+      desdeDisco(Yo(
         nombre: prefs.getString(_claveNombre) ?? 'Tú',
         foto: prefs.getString(_claveFoto),
-      );
+      ));
     } catch (_) {
       // Sin nada guardado se queda el valor de partida.
     }

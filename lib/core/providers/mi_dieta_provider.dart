@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/dieta.dart';
+import 'carga_inicial.dart';
 
 /// Cómo come quien usa la app.
 ///
@@ -13,7 +14,8 @@ import '../models/dieta.dart';
 /// vale, si hay que preguntar o si no, y la Barra Libre abre ya filtrada por
 /// lo tuyo. Vacío es un estado legítimo y es el de por defecto: quien come de
 /// todo no tiene que configurar nada.
-class MiDietaNotifier extends StateNotifier<Set<Dieta>> {
+class MiDietaNotifier extends StateNotifier<Set<Dieta>>
+    with CargaInicial<Set<Dieta>> {
   MiDietaNotifier() : super(const <Dieta>{}) {
     _cargar();
   }
@@ -25,7 +27,7 @@ class MiDietaNotifier extends StateNotifier<Set<Dieta>> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final List<String>? ids = prefs.getStringList(_clave);
       if (ids == null) return;
-      state = Dieta.desdeJson(ids);
+      desdeDisco(Dieta.desdeJson(ids));
     } catch (_) {
       // Si no se puede leer, se come de todo. Es el fallo más inofensivo.
     }

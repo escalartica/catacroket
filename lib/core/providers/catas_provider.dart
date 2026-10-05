@@ -7,21 +7,23 @@ import '../data/datos_demo.dart';
 import '../data/siembra.dart';
 import '../errores.dart';
 import '../models/cata.dart';
-import '../theme/tokens/app_colors.dart';
-import 'cuenta_provider.dart';
-import 'mesas_provider.dart';
-import 'nube_provider.dart';
-import '../services/nube_service.dart';
-import 'dart:async';
 import '../models/dieta.dart';
 import '../models/medio.dart';
 import '../models/mesa.dart';
 import '../models/persona.dart';
 import '../services/medios_service.dart';
+import '../services/nube_service.dart';
+import '../theme/tokens/app_colors.dart';
 import '../utils/texto.dart';
+import 'bloqueados_provider.dart';
+import 'carga_inicial.dart';
+import 'cuenta_provider.dart';
 import 'evitar_provider.dart';
+import 'mesas_provider.dart';
 import 'mi_dieta_provider.dart';
+import 'nube_provider.dart';
 import 'yo_provider.dart';
+import 'dart:async';
 
 /// Almacén de catas.
 ///
@@ -29,7 +31,8 @@ import 'yo_provider.dart';
 /// en `SharedPreferences` cada cambio. El contrato de este notifier (añadir,
 /// mordisco, borrar) es el mismo que tendrá cuando detrás haya Firestore, así
 /// que las pantallas no se tocarán al migrar.
-class CatasNotifier extends StateNotifier<List<Cata>> {
+class CatasNotifier extends StateNotifier<List<Cata>>
+    with CargaInicial<List<Cata>> {
   CatasNotifier(this._ref) : super(Siembra.catas()) {
     _cargar();
   }
@@ -396,7 +399,7 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
       if (rotas > 0) await _apartarIlegible(crudo);
 
       final List<Cata> sinRepetir = Cata.sinRepetidas(leidas);
-      if (sinRepetir.isNotEmpty) state = sinRepetir;
+      if (sinRepetir.isNotEmpty) desdeDisco(sinRepetir);
     } catch (error, pila) {
       // Un guardado corrupto no puede dejar la app en blanco: se sigue con lo
       // que haya en memoria. Pero tampoco puede desaparecer, así que primero
@@ -625,7 +628,23 @@ final catasRecientesProvider = Provider<List<Cata>>((ref) {
         orElse: () => const <Cata>[],
       );
 
-  return juntarCatas(mias, deOtros);
+  // Sin la gente que hayas bloqueado.
+  //
+  // Se filtra aquí, en el sitio por el que pasan TODAS las pantallas —el
+  // feed, la mesa, el mapa, la Barra Libre y el buscador— y no en cada una.
+  // Un bloqueo que funciona en cuatro pantallas y en la quinta no, no es un
+  // bloqueo.
+  //
+  // Sólo afecta a lo de los demás: lo tuyo no se puede esconder ni por error.
+  final Set<String> bloqueados = ref.watch(bloqueadosProvider);
+  final List<Cata> visibles = bloqueados.isEmpty
+      ? deOtros
+      : <Cata>[
+          for (final Cata c in deOtros)
+            if (!bloqueados.contains(c.autorUid)) c,
+        ];
+
+  return juntarCatas(mias, visibles);
 });
 
 /// Una cata por su identificador, sea tuya o de tu gente.

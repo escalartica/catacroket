@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'carga_inicial.dart';
+
 /// Lo que ya se ha enseñado una vez y no hace falta repetir.
 ///
 /// Una sola lista para todo lo que se explica al entrar: la pregunta de como
@@ -25,7 +27,8 @@ enum Visto {
   final String id;
 }
 
-class VistoNotifier extends StateNotifier<Set<String>> {
+class VistoNotifier extends StateNotifier<Set<String>>
+    with CargaInicial<Set<String>> {
   VistoNotifier() : super(const <String>{}) {
     _cargar();
   }
@@ -45,10 +48,10 @@ class VistoNotifier extends StateNotifier<Set<String>> {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       final Set<String> guardado = <String>{...?prefs.getStringList(_clave)};
       _cargado = true;
-      state = guardado;
+      desdeDisco(guardado);
     } catch (_) {
       _cargado = true;
-      state = const <String>{};
+      desdeDisco(const <String>{});
     }
   }
 

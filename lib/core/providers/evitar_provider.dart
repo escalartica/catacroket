@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../utils/texto.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../errores.dart';
+import '../utils/texto.dart';
+import 'carga_inicial.dart';
 
 /// Lo que quien usa la app no quiere encontrarse.
 ///
@@ -22,7 +22,8 @@ import '../errores.dart';
 ///
 /// Sirve igual para alergias que para manias, que por dentro es lo mismo:
 /// "esto no me lo pongas".
-class EvitarNotifier extends StateNotifier<Set<String>> {
+class EvitarNotifier extends StateNotifier<Set<String>>
+    with CargaInicial<Set<String>> {
   EvitarNotifier() : super(const <String>{}) {
     _cargar();
   }
@@ -36,7 +37,7 @@ class EvitarNotifier extends StateNotifier<Set<String>> {
   Future<void> _cargar() async {
     try {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      state = <String>{...?prefs.getStringList(_clave)};
+      desdeDisco(<String>{...?prefs.getStringList(_clave)});
     } catch (error, pila) {
       // Si no se puede leer, no se evita nada: la app deja de avisar de lo que
       // el usuario apuntó que no quiere. No es el fallo más inofensivo, es de

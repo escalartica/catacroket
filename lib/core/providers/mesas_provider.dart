@@ -7,10 +7,11 @@ import 'package:uuid/uuid.dart';
 
 import '../data/datos_demo.dart';
 import '../data/siembra.dart';
+import '../errores.dart';
 import '../models/cata.dart';
 import '../models/mesa.dart';
 import '../services/nube_service.dart';
-import '../errores.dart';
+import 'carga_inicial.dart';
 import 'catas_provider.dart';
 
 /// Mesas del usuario.
@@ -22,7 +23,8 @@ import 'catas_provider.dart';
 ///
 /// Como las catas, esto vive en el móvil y se guarda en `SharedPreferences`.
 /// Antes no se guardaba: una mesa creada se perdía al cerrar la app.
-class MesasNotifier extends StateNotifier<List<Mesa>> {
+class MesasNotifier extends StateNotifier<List<Mesa>>
+    with CargaInicial<List<Mesa>> {
   MesasNotifier(this._ref) : super(Siembra.mesas) {
     _cargar();
   }
@@ -46,9 +48,9 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
       // Si un guardado viejo no trae la libreta, se le pone delante: sin ella
       // las catas sin mesa no tendrían dónde caer.
       if (leidas.isNotEmpty) {
-        state = leidas.any((Mesa m) => m.esLibreta)
+        desdeDisco(leidas.any((Mesa m) => m.esLibreta)
             ? leidas
-            : <Mesa>[Siembra.libreta, ...leidas];
+            : <Mesa>[Siembra.libreta, ...leidas]);
       }
     } catch (error, pila) {
       // Un guardado corrupto no puede dejar al usuario sin mesas.
