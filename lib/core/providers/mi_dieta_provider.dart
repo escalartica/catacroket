@@ -53,6 +53,18 @@ class MiDietaNotifier extends StateNotifier<Set<Dieta>> {
     await _guardar();
   }
 
+  /// Deja la dieta exactamente en lo que se le pase.
+  ///
+  /// Lo usa la Barra Libre: alli se filtra con las mismas seis pastillas, y
+  /// quien marca «sin gluten» cada vez que entra esta diciendo como come. Sin
+  /// esto habia dos sitios distintos para la misma respuesta —el filtro de la
+  /// pantalla y la dieta del perfil— y ninguna manera de pasar de uno a otro,
+  /// asi que las tarjetas del resto de la app seguian contestando por la otra.
+  Future<void> poner(Set<Dieta> dietas) async {
+    state = <Dieta>{...dietas};
+    await _guardar();
+  }
+
   Future<void> limpiar() async {
     state = const <Dieta>{};
     await _guardar();

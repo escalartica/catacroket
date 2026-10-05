@@ -11,7 +11,14 @@ enum Visto {
   pistaVitrina('pista.vitrina'),
   pistaRuta('pista.ruta'),
   pistaMesas('pista.mesas'),
-  pistaPerfil('pista.perfil');
+  pistaPerfil('pista.perfil'),
+
+  /// La explicacion de la Barra Libre.
+  ///
+  /// No es un cartel que se cierra y no vuelve, como los demas: es un panel
+  /// que se pliega. Esto solo recuerda que ya se leyo una vez, para que la
+  /// segunda visita abra por la lista y no por el parrafo.
+  pistaLibre('pista.libre');
 
   const Visto(this.id);
 

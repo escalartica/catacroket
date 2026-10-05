@@ -780,34 +780,88 @@ final catasLibresProvider = Provider<List<Cata>>((ref) {
       .toList();
 });
 
-/// Cuántas catas hay de cada dieta, para los contadores del filtro.
+/// Cuántas catas quedarían si tocases cada pastilla.
+///
+/// No es «cuántas hay de cada dieta», que es lo que contaba antes y es un
+/// número que miente en cuanto hay un filtro puesto: con «sin gluten» marcado
+/// decía «Sin lactosa 7», tocabas, y salían dos, porque las otras cinco
+/// llevaban gluten. Un contador al lado de un botón es una promesa de lo que
+/// va a pasar al pulsarlo, así que cuenta sobre el filtro que ya hay.
+///
+/// Por eso también descuenta lo que hayas dicho que no quieres comer: la
+/// lista de abajo lo descuenta, y los dos números tienen que ser el mismo.
+///
+/// Para una pastilla ya marcada el número es el de la lista entera, que es lo
+/// correcto: quitarla no es lo que promete, pulsarla otra vez la deja igual.
 final recuentoDietasProvider = Provider<Map<Dieta, int>>((ref) {
-  final Map<Dieta, int> cuenta = <Dieta, int>{
-    for (final Dieta d in Dieta.values) d: 0,
-  };
-  // Por las dietas DEDUCIDAS de la receta, y sobre la lista junta.
-  //
-  // Contaba las marcadas a mano, que están vacías en todo lo que se apunta
-  // hoy, así que las seis pastillas decían «0» aunque debajo hubiera catas
-  // listadas. Y miraba sólo tus catas, no las de tu mesa, que es la mitad de
-  // lo que hay en esta pantalla.
-  for (final Cata c in ref.watch(catasRecientesProvider)) {
-    for (final Dieta d in c.aptasCalculadas) {
-      cuenta[d] = (cuenta[d] ?? 0) + 1;
-    }
+  final Set<Dieta> filtro = ref.watch(filtroDietaProvider);
+  final Set<String> fuera = ref.watch(evitarProvider);
+  final List<Cata> todas = ref.watch(catasRecientesProvider);
+
+  // Por las dietas DEDUCIDAS de la receta (`valePara`) y no por las marcadas
+  // a mano, que están vacías en todo lo que se apunta hoy: las seis pastillas
+  // decían «0» aunque debajo hubiera catas listadas.
+  int conLa(Dieta d) {
+    final Set<Dieta> pedidas = <Dieta>{...filtro, d};
+    return todas
+        .where((Cata c) =>
+            c.tieneDietas &&
+            c.valePara(pedidas) &&
+            Evitar.coincidencias(fuera, c.loQueLleva).isEmpty)
+        .length;
   }
-  return cuenta;
+
+  return <Dieta, int>{
+    for (final Dieta d in Dieta.values) d: conLa(d),
+  };
 });
 
-/// Cuántas catas llevan al menos una dieta marcada.
+/// Qué pastilla está dejando la lista vacía.
+///
+/// Devuelve, de cada dieta marcada, cuántas catas saldrían si la quitases;
+/// sólo las que de verdad desbloquean algo y de mayor a menor.
+///
+/// Hace falta porque el filtro se puede llenar solo con lo que marcaste en
+/// «Cómo comes»: entras, ves cinco pastillas encendidas que tú no has tocado,
+/// cero croquetas debajo, y no hay forma de saber cuál de las cinco sobra.
+/// Con una sola marcada no devuelve nada: ahí la respuesta es quitarla, y
+/// para eso ya está «Quitar filtros».
+final culpablesDelVacioProvider = Provider<List<(Dieta, int)>>((ref) {
+  final Set<Dieta> filtro = ref.watch(filtroDietaProvider);
+  if (filtro.length < 2) return const <(Dieta, int)>[];
+
+  final Set<String> fuera = ref.watch(evitarProvider);
+  final List<Cata> todas = ref.watch(catasRecientesProvider);
+
+  final List<(Dieta, int)> salen = <(Dieta, int)>[];
+  for (final Dieta d in Dieta.ordenar(filtro)) {
+    final Set<Dieta> sinElla = <Dieta>{...filtro}..remove(d);
+    final int cuantas = todas
+        .where((Cata c) =>
+            c.tieneDietas &&
+            c.valePara(sinElla) &&
+            Evitar.coincidencias(fuera, c.loQueLleva).isEmpty)
+        .length;
+    if (cuantas > 0) salen.add((d, cuantas));
+  }
+  salen.sort(((Dieta, int) a, (Dieta, int) b) => b.$2.compareTo(a.$2));
+  return salen;
+});
+
+/// Cuántas catas llevan al menos una dieta deducida de su receta.
 ///
 /// Ojo con lo que significa: son las catas a las que alguien apuntó la
 /// receta, no las que le valen a nadie en concreto. Una puede ser sin gluten
 /// y llevar jamón.
-final totalLibresProvider = Provider<int>((ref) => ref
-    .watch(catasRecientesProvider)
-    .where((Cata c) => c.tieneDietas)
-    .length);
+final totalLibresProvider = Provider<int>((ref) {
+  final Set<String> fuera = ref.watch(evitarProvider);
+  return ref
+      .watch(catasRecientesProvider)
+      .where((Cata c) =>
+          c.tieneDietas &&
+          Evitar.coincidencias(fuera, c.loQueLleva).isEmpty)
+      .length;
+});
 
 /// Cuántas catas le valen a quien usa la app, según la dieta de su perfil.
 ///
@@ -817,8 +871,14 @@ final totalLibresProvider = Provider<int>((ref) => ref
 final totalParaMiProvider = Provider<int?>((ref) {
   final Set<Dieta> mia = ref.watch(miDietaProvider);
   if (mia.isEmpty) return null;
+  // Descontando lo que has dicho que no quieres: el bloque de La Vitrina
+  // prometía un número y la lista de la Barra Libre enseñaba otro.
+  final Set<String> fuera = ref.watch(evitarProvider);
   return ref
       .watch(catasRecientesProvider)
-      .where((Cata c) => c.tieneDietas && c.valePara(mia))
+      .where((Cata c) =>
+          c.tieneDietas &&
+          c.valePara(mia) &&
+          Evitar.coincidencias(fuera, c.loQueLleva).isEmpty)
       .length;
 });

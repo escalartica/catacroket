@@ -91,6 +91,21 @@ class _PildorasRellenoState extends ConsumerState<PildorasRelleno> {
         !visibles.any((Relleno r) => r.perfil != PerfilRelleno.sinSaber &&
             _coincide(r, _busqueda));
 
+    // Las que la búsqueda sí encuentra pero el filtro de dieta esconde.
+    //
+    // Sin esto la pantalla decía «Nada con «gamba»» teniendo la de gamba en
+    // la lista: estaba, pero tapada por el filtro, y el mensaje mandaba a
+    // escribirla a mano como si no existiera. La app no puede decir que no
+    // hay algo que hay.
+    final int tapadas = !filtrando
+        ? 0
+        : Rellenos.todos
+            .where((Relleno r) =>
+                r.perfil != PerfilRelleno.sinSaber &&
+                !_cuadra(r, limite) &&
+                _coincide(r, _busqueda))
+            .length;
+
     final bool hayBuscador =
         (filtrando ? Rellenos.para(limite).length : Rellenos.todos.length) >=
             _umbralBuscador;
@@ -116,14 +131,36 @@ class _PildorasRellenoState extends ConsumerState<PildorasRelleno> {
 
         if (sinResultados) ...<Widget>[
           Text(
-            'Nada con «${_busqueda.trim()}». Si no está en la lista, marca '
-            '«A mi manera» aquí abajo y se escribe tal cual.',
+            tapadas == 0
+                ? 'Nada con «${_busqueda.trim()}». Si no está en la lista, '
+                    'marca «A mi manera» aquí abajo y se escribe tal cual.'
+                : tapadas == 1
+                    ? 'Hay una con «${_busqueda.trim()}», pero no entra en lo '
+                        'que comes.'
+                    : 'Hay $tapadas con «${_busqueda.trim()}», pero no entran '
+                        'en lo que comes.',
             style: AppTypography.cuerpoS.copyWith(
               fontSize: 12.5,
               height: 1.3,
               color: AppColors.tintaSuave,
             ),
           ),
+          if (tapadas > 0) ...<Widget>[
+            const SizedBox(height: AppSpacing.s),
+            // Aquí mismo y no sólo arriba: quien acaba de buscar está mirando
+            // este renglón, y mandarlo a un enlace de otra parte de la
+            // pantalla es la manera de que no lo encuentre.
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OpcionPildora(
+                texto: 'Enseñármelas igualmente',
+                emoji: '👀',
+                activa: false,
+                colorInactiva: AppColors.superficieCalida,
+                onTap: () => setState(() => _verTodos = true),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.m),
         ],
 

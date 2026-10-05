@@ -310,7 +310,11 @@ class _NuevaCataPageState extends ConsumerState<NuevaCataPage> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: <Color>[Colors.transparent, Colors.black],
-              stops: <double>[0.0, 0.035],
+              // Antes 0.035, unos 20 puntos: justo el alto de un deslizador
+              // o de un renglón, así que en vez de disolverse se quedaba a
+              // medio pintar y parecía un elemento roto colgando de la barra
+              // de pasos. Al doble se deshace de verdad.
+              stops: <double>[0.0, 0.07],
             ).createShader(area),
             blendMode: BlendMode.dstIn,
             child: AnimatedSwitcher(

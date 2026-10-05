@@ -164,6 +164,56 @@ enum Dieta {
   ///   que le puedes poner delante a un celíaco.
   /// - Lo **dudoso no cuenta como ausente**. Si algo no se preguntó, no
   ///   aparece en la lista. Callarse es correcto; suponer, no.
+  /// Las que se pueden DESCARTAR, porque algo que sí se sabe las contradice.
+  ///
+  /// Es la otra mitad de [deducir], y hacía falta para no mentir. `deducir`
+  /// contesta «de éstas estoy seguro»; lo que queda fuera es un saco con dos
+  /// cosas muy distintas dentro: lo que se sabe que no vale (lleva gluten) y
+  /// lo que nadie preguntó (la bechamel es «no lo sé», así que el gluten está
+  /// en el aire). Tratar las dos igual es decirle «no te vale» a un celíaco
+  /// sobre una croqueta que a lo mejor sí, y esconderle la que se habría
+  /// comido si alguien hubiera preguntado en la barra.
+  ///
+  /// Aquí sólo entra lo que se afirma con un hecho apuntado. La duda nunca
+  /// descarta: para eso está el «pregunta».
+  static Set<Dieta> descartar({
+    required Receta receta,
+    required List<Relleno> rellenos,
+  }) {
+    if (receta.sinRellenar && rellenos.isEmpty) return const <Dieta>{};
+
+    final Set<Alergeno> hay = <Alergeno>{
+      ...receta.alergenos,
+      for (final Relleno r in rellenos) ...r.alergenos,
+    };
+
+    /// Un relleno sin describir no descarta nada: podría ser cualquier cosa,
+    /// y «cualquier cosa» incluye que valga.
+    final List<Relleno> sabidos = rellenos
+        .where((Relleno r) => r.perfil != PerfilRelleno.sinSaber)
+        .toList();
+
+    return <Dieta>{
+      if (sabidos.any((Relleno r) => !r.perfil.esVegano) ||
+          hay.contains(Alergeno.leche) ||
+          hay.contains(Alergeno.huevo))
+        vegana,
+      if (sabidos.any((Relleno r) => !r.perfil.esVegetariano) ||
+          hay.contains(Alergeno.pescado) ||
+          hay.contains(Alergeno.crustaceos) ||
+          hay.contains(Alergeno.moluscos))
+        vegetariana,
+      // Ojo: «sin lactosa» no es «sin leche». La bechamel sin lactosa vale;
+      // la de leche normal y un relleno de queso, no.
+      if (receta.bechamel == Bechamel.leche ||
+          rellenos.any((Relleno r) => r.alergenos.contains(Alergeno.leche)))
+        sinLactosa,
+      if (hay.contains(Alergeno.gluten)) sinGluten,
+      if (hay.contains(Alergeno.huevo)) sinHuevo,
+      if (hay.contains(Alergeno.frutosCascara)) sinFrutosSecos,
+    };
+  }
+
   static Set<Dieta> deducir({
     required Receta receta,
     required List<Relleno> rellenos,

@@ -29,16 +29,29 @@ class TarjetaCata extends ConsumerWidget {
     required this.cata,
     required this.autor,
     this.onTap,
+    this.segun,
   });
 
   final Cata cata;
   final Persona autor;
   final VoidCallback? onTap;
 
+  /// Contra qué dieta se dice si la cata vale. Por defecto, la del perfil.
+  ///
+  /// La Barra Libre pasa un conjunto vacío a propósito, y no es un descuido:
+  /// allí la lista ya viene filtrada, así que la pastilla del veredicto o
+  /// sobra o miente. Mentía: debajo del título «Te valen» salía una tarjeta
+  /// con un «⛔ No te vale», porque el veredicto contestaba por la dieta del
+  /// perfil y el título por el filtro de la pantalla. Dos preguntas distintas
+  /// con la misma cara. Sin veredicto se enseñan las dietas de la croqueta,
+  /// que ahí sí dicen algo nuevo: por qué está en la lista.
+  final Set<Dieta>? segun;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final Relleno relleno = Rellenos.de(cata.rellenoId);
-    final Encaje encaje = cata.encajeCon(ref.watch(miDietaProvider));
+    final Set<Dieta> mias = ref.watch(miDietaProvider);
+    final Encaje encaje = cata.encajeCon(segun ?? mias);
 
     // Lo que has dicho que no quieres y esta croqueta lleva apuntado. Va
     // delante de todo lo demás: si lleva marisco, el resto de las pastillas
@@ -84,12 +97,27 @@ class TarjetaCata extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
+                // Dos líneas para el nombre del catálogo, una para el
+                // escrito a mano.
+                //
+                // Una croqueta puede llevar tres rellenos, y el nombre
+                // entonces es «Setas y trufa, espinacas y queso». En una
+                // línea se quedaba en «Setas y trufa, Espinaca…»: cortado a
+                // mitad de palabra y sin decir qué te comiste, que es lo
+                // único que de verdad hay que poder leer de un vistazo. Ese
+                // nombre lo acota el catálogo, así que la segunda línea tiene
+                // techo.
+                //
+                // Lo escrito a mano no lo acota nada —es una caja de texto
+                // sin límite— y ahí una línea sola es lo correcto: si no, una
+                // croqueta «a mi manera» con una parrafada dentro crecería
+                // más que todas las de al lado y rompería el ritmo del feed.
                 Text(
                   cata.esSurtido
                       ? 'Surtido de ${cata.sabores.length}'
                       : '${relleno.emoji}  ${cata.saborPrincipal.nombre}',
                   style: AppTypography.tituloS,
-                  maxLines: 1,
+                  maxLines: cata.saborPrincipal.tienePropio ? 1 : 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (cata.esSurtido)

@@ -254,19 +254,37 @@ class _VisorState extends State<_Visor> {
   }
 }
 
+/// Cuando no hay ni fichero en este móvil ni miniatura que viajara.
+///
+/// «No se encuentra» a secas sonaba a avería de la app y dejaba a cualquiera
+/// pensando qué había hecho mal. Pasa por una razón concreta y se puede
+/// decir: la foto estaba en el teléfono donde se hizo, y una cata que nunca
+/// se compartió no llevó copia a ningún sitio.
 class _MedioRoto extends StatelessWidget {
   const _MedioRoto();
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          const Icon(Icons.broken_image_rounded, color: AppColors.tinta),
-          const SizedBox(height: 6),
-          Text('No se encuentra', style: AppTypography.etiqueta),
-        ],
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Icon(Icons.image_not_supported_rounded,
+                color: AppColors.tintaSuave, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              'Esta foto se quedó\nen el móvil de origen',
+              textAlign: TextAlign.center,
+              style: AppTypography.cuerpoS.copyWith(
+                fontSize: 12,
+                height: 1.3,
+                color: AppColors.tintaSuave,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

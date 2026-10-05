@@ -166,13 +166,31 @@ class OpcionPildora extends StatelessWidget {
     this.colorActiva = AppColors.sol,
     this.colorInactiva = AppColors.superficie,
     this.enGrupoUnico = true,
+    this.cola,
+    this.enVoz,
   });
 
   final String texto;
   final bool activa;
-  final VoidCallback onTap;
+
+  /// Nulo apaga la pastilla: se ve, se lee y no se puede pulsar.
+  ///
+  /// Hace falta para un filtro con contador. Una pastilla que pone «0» y
+  /// acepta el dedo es un callejón sin salida: te lleva a una lista vacía y
+  /// tienes que volver sobre tus pasos para entender que el número ya te lo
+  /// había dicho.
+  final VoidCallback? onTap;
   final Color? color;
   final String? emoji;
+
+  /// Lo que va después del texto, antes de la marca de seleccionada.
+  final Widget? cola;
+
+  /// Cómo se anuncia entera, si el texto suelto no basta.
+  ///
+  /// Con el contador puesto, un lector de pantalla leía «Vegana» y «0» como
+  /// dos cosas sin relación. Aquí se dice la frase completa.
+  final String? enVoz;
 
   /// Con qué se rellena al estar activa. Por defecto el amarillo de la app;
   /// las dietas usan el suyo para que se reconozcan por el color allá donde
@@ -194,83 +212,100 @@ class OpcionPildora extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool apagada = onTap == null;
+
+    final Widget pastilla = GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      // El único control de la app que se tocaba sin decir nada. Las
+      // pestañas, los deslizadores y las pegatinas ya vibraban; éstas, que
+      // son las más tocadas de todas, no.
+      onTap: apagada
+          ? null
+          : () {
+              HapticFeedback.selectionClick();
+              onTap!();
+            },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        // 44 px de alto: es lo mínimo que pide Apple para algo que se toca,
+        // y con el relleno de antes se quedaba en 39.
+        constraints: const BoxConstraints(minHeight: 44),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: activa ? colorActiva : colorInactiva,
+          borderRadius: BorderRadius.circular(AppShape.radioPildora),
+          border: Border.all(color: AppColors.tinta, width: AppShape.borde),
+          boxShadow: AppShape.sombra(
+            activa ? AppShape.sombraNormal : const Offset(2, 2),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            if (color != null) ...<Widget>[
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.tinta, width: 2),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ] else if (emoji != null) ...<Widget>[
+              Text(emoji!, style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 6),
+            ],
+            Flexible(
+              child: Text(
+                texto,
+                // El texto activo va sobre el color elegido, y hay colores
+                // de esta paleta que no admiten tinta encima.
+                style: AppTypography.etiqueta.copyWith(
+                  fontSize: 13.5,
+                  color: activa
+                      ? AppColors.textoSobre(colorActiva)
+                      : AppColors.tinta,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (cola != null) ...<Widget>[
+              const SizedBox(width: 7),
+              cola!,
+            ],
+            // Un segundo indicador además del color. Quien no distingue el
+            // verde del gris necesita algo más que un relleno para saber
+            // qué tiene marcado.
+            if (activa) ...<Widget>[
+              const SizedBox(width: 6),
+              Icon(
+                Icons.check_rounded,
+                size: 15,
+                color: AppColors.textoSobre(colorActiva),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+
     return Semantics(
       button: true,
+      enabled: !apagada,
       selected: activa,
       inMutuallyExclusiveGroup: enGrupoUnico,
       checked: enGrupoUnico ? null : activa,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        // El único control de la app que se tocaba sin decir nada. Las
-        // pestañas, los deslizadores y las pegatinas ya vibraban; éstas, que
-        // son las más tocadas de todas, no.
-        onTap: () {
-          HapticFeedback.selectionClick();
-          onTap();
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          // 44 px de alto: es lo mínimo que pide Apple para algo que se toca,
-          // y con el relleno de antes se quedaba en 39.
-          constraints: const BoxConstraints(minHeight: 44),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-          decoration: BoxDecoration(
-            color: activa ? colorActiva : colorInactiva,
-            borderRadius: BorderRadius.circular(AppShape.radioPildora),
-            border: Border.all(color: AppColors.tinta, width: AppShape.borde),
-            boxShadow: AppShape.sombra(
-              activa ? AppShape.sombraNormal : const Offset(2, 2),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              if (color != null) ...<Widget>[
-                Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.tinta, width: 2),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ] else if (emoji != null) ...<Widget>[
-                Text(emoji!, style: const TextStyle(fontSize: 14)),
-                const SizedBox(width: 6),
-              ],
-              Flexible(
-                child: Text(
-                  texto,
-                  // El texto activo va sobre el color elegido, y hay colores
-                  // de esta paleta que no admiten tinta encima.
-                  style: AppTypography.etiqueta.copyWith(
-                    fontSize: 13.5,
-                    color: activa
-                        ? AppColors.textoSobre(colorActiva)
-                        : AppColors.tinta,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              // Un segundo indicador además del color. Quien no distingue el
-              // verde del gris necesita algo más que un relleno para saber
-              // qué tiene marcado.
-              if (activa) ...<Widget>[
-                const SizedBox(width: 6),
-                Icon(
-                  Icons.check_rounded,
-                  size: 15,
-                  color: AppColors.textoSobre(colorActiva),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+      label: enVoz,
+      excludeSemantics: enVoz != null,
+      onTap: onTap,
+      // Apagada se ve, pero se ve apagada. Quitarla de la pantalla sería
+      // peor: en un filtro, saber que «sin gluten» existe y que hoy no tiene
+      // ninguna es la mitad de la información.
+      child: apagada ? Opacity(opacity: 0.42, child: pastilla) : pastilla,
     );
   }
 }

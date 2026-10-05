@@ -250,6 +250,11 @@ class Cata {
 
   bool get tieneDietas => aptasCalculadas.isNotEmpty;
 
+  /// Las dietas que se pueden descartar con lo apuntado. Ver [Dieta.descartar].
+  Set<Dieta> get descartadas => receta == null
+      ? const <Dieta>{}
+      : Dieta.descartar(receta: receta!, rellenos: rellenos);
+
   /// Todo lo que lleva, junte lo que junte el relleno y la base.
   Set<Alergeno> get alergenos => <Alergeno>{
         for (final Relleno r in rellenos) ...r.alergenos,
@@ -269,7 +274,19 @@ class Cata {
     if (mias.isEmpty) return Encaje.sinSaber;
     if (receta == null && aptas.isEmpty) return Encaje.sinSaber;
 
-    if (mias.difference(aptasCalculadas).isNotEmpty) return Encaje.no;
+    // Un «no» sólo cuando hay un hecho apuntado que lo contradice.
+    //
+    // Antes bastaba con que la dieta no estuviera entre las deducidas, y eso
+    // mete en el mismo saco «lleva gluten» y «nadie preguntó de qué era la
+    // bechamel». Con la receta a medias —que es como se apuntan casi todas:
+    // relleno «a mi manera», bechamel «no lo sé»— no se deduce nada, así que
+    // la app le contestaba «⛔ No te vale» a un celíaco sobre una croqueta de
+    // la que no sabía absolutamente nada. Eso es lo contrario de lo que esta
+    // sección promete, y esconde justo las que se habría comido preguntando.
+    if (mias.intersection(descartadas).isNotEmpty) return Encaje.no;
+
+    // Lo que no se descarta pero tampoco se afirma es una pregunta, no un no.
+    if (mias.difference(aptasCalculadas).isNotEmpty) return Encaje.ojo;
 
     if (riesgoDeFreidora && mias.contains(Dieta.sinGluten)) return Encaje.ojo;
 

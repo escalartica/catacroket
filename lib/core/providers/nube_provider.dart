@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/cata.dart';
+import '../models/medio.dart';
 import '../models/mesa.dart';
 import '../services/nube_service.dart';
 import 'catas_provider.dart';
@@ -246,11 +247,55 @@ List<Cata> juntarCatas(List<Cata> mias, List<Cata> deOtros) {
 
   // Y las tuyas por encima: la copia buena de una cata tuya es la del móvil,
   // con la lista completa de mesas, que el servidor no conoce entera.
+  //
+  // Por encima en todo MENOS en las miniaturas, que es lo único que el móvil
+  // no tiene. Aquí estaba el fallo de «han desaparecido algunas fotos»: la
+  // miniatura no se guarda en este teléfono a propósito —pesa 440 KB y el
+  // guardado se reescribe entero en cada mordisco—, así que vive sólo en el
+  // servidor. Al pisar la copia del servidor con la del móvil se tiraba, y
+  // con ella la única foto que quedaba de una cata tuya después de
+  // reinstalar la app: el fichero local ya no existe y la ruta guardada
+  // apunta a un sitio vacío. La ficha ponía «No se encuentra» para siempre.
   for (final Cata c in mias) {
-    porId[c.id] = c;
+    final Cata? enLaNube = porId[c.id];
+    porId[c.id] = enLaNube == null
+        ? c
+        : c.copyWith(medios: _conSusMinis(c.medios, enLaNube.medios));
   }
 
   final List<Cata> todas = porId.values.toList();
   todas.sort((Cata a, Cata b) => b.fecha.compareTo(a.fecha));
   return todas;
+}
+
+/// Devuelve los medios del móvil con la miniatura que sólo está en la nube.
+///
+/// Se emparejan por la ruta, que viaja con la cata justamente para esto, y si
+/// eso no casa se tira de la posición: el orden se respeta al subir, y al
+/// reinstalar la app en iOS la carpeta de la aplicación cambia de nombre, así
+/// que la ruta guardada hace meses puede no coincidir ya con nada.
+List<Medio> _conSusMinis(List<Medio> mios, List<Medio> deLaNube) {
+  if (mios.isEmpty || deLaNube.isEmpty) return mios;
+
+  final Map<String, String> porRuta = <String, String>{
+    for (final Medio m in deLaNube)
+      if (m.viaja && m.ruta.isNotEmpty) m.ruta: m.mini!,
+  };
+  final bool mismaTira = mios.length == deLaNube.length;
+
+  return <Medio>[
+    for (int i = 0; i < mios.length; i++)
+      if (mios[i].viaja)
+        mios[i]
+      else
+        switch (porRuta[mios[i].ruta] ??
+            (mismaTira &&
+                    deLaNube[i].viaja &&
+                    deLaNube[i].tipo == mios[i].tipo
+                ? deLaNube[i].mini
+                : null)) {
+          final String mini => mios[i].conMini(mini),
+          _ => mios[i],
+        },
+  ];
 }
