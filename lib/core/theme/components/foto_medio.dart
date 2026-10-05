@@ -1,11 +1,10 @@
-import 'dart:io';
-
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
 import '../../models/medio.dart';
+import '../../utils/archivos.dart';
 
 /// La foto de una cata, venga de donde venga.
 ///
@@ -50,7 +49,7 @@ class FotoMedio extends StatelessWidget {
     // ficheros ya no— el error cae en la miniatura, que es la que queda.
     if (medio.ruta.isNotEmpty) {
       return Image.file(
-        File(medio.ruta),
+        Archivos.fichero(medio.ruta),
         width: ancho,
         height: alto,
         fit: fit,

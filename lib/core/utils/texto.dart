@@ -32,7 +32,26 @@ abstract final class Texto {
   static bool contiene(String pajar, String aguja) {
     final String q = normalizar(aguja);
     if (q.isEmpty) return true;
-    return normalizar(pajar).contains(q);
+
+    final String texto = normalizar(pajar);
+    if (texto.contains(q)) return true;
+
+    // Y en plural. Buscar «gambas» no encontraba «Gamba roja», que es como se
+    // llama en la lista: nadie dice «he pedido una de gamba», se dice «de
+    // gambas». Lo mismo con setas, espinacas o piñones. En vez de un
+    // diccionario de plurales, se mira palabra a palabra si una empieza por
+    // la otra: «gambas» empieza por «gamba» y ya está.
+    //
+    // La palabra del texto tiene que medir cuatro letras para valer por este
+    // camino; si no, «de» o «al» casarían con media lista.
+    final List<String> buscadas =
+        q.split(' ').where((String p) => p.length >= 3).toList();
+    if (buscadas.isEmpty) return false;
+    final List<String> suyas =
+        texto.split(' ').where((String p) => p.length >= 4).toList();
+
+    return buscadas.every((String b) =>
+        suyas.any((String s) => b.startsWith(s) || s.startsWith(b)));
   }
 
   /// ¿Aparece [aguja] en alguno de [textos]?

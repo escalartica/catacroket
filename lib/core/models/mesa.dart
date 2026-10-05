@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'dart:math';
+import '../utils/archivos.dart';
 
 /// Un grupo de catas. Puede ser privada (la libreta de uno) o compartida.
 ///
@@ -38,7 +38,7 @@ class Mesa {
   /// quiere, y guardarla es garantizar una foto rota en unas semanas.
   final String? foto;
 
-  bool get tieneFoto => foto != null && File(foto!).existsSync();
+  bool get tieneFoto => foto != null && Archivos.fichero(foto!).existsSync();
 
   /// Si esta mesa está subida y su gente puede verla.
   ///

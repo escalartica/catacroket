@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -24,6 +23,7 @@ import '../../core/services/compartir_service.dart';
 import '../../core/utils/formato.dart';
 import 'widgets/hoja_codigo.dart';
 import 'widgets/hoja_mesa.dart';
+import '../../core/utils/archivos.dart';
 
 /// MESAS — tu diario y tu gente.
 class MesasPage extends ConsumerWidget {
@@ -193,7 +193,7 @@ class _TarjetaMesa extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppShape.radioS),
                   child: Image.file(
-                    File(mesa.foto!),
+                    Archivos.fichero(mesa.foto!),
                     width: 42,
                     height: 42,
                     fit: BoxFit.cover,

@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../errores.dart';
 import '../services/nube_service.dart';
+import '../utils/archivos.dart';
 
 /// Quién eres tú: nombre y foto.
 ///
@@ -39,7 +40,7 @@ class Yo {
   /// digno y muchísima gente no va a poner foto nunca.
   final String? foto;
 
-  bool get tieneFoto => foto != null && File(foto!).existsSync();
+  bool get tieneFoto => foto != null && Archivos.fichero(foto!).existsSync();
 
   String get inicial =>
       nombre.trim().isEmpty ? '?' : nombre.trim().substring(0, 1).toUpperCase();
@@ -126,11 +127,14 @@ class YoNotifier extends StateNotifier<Yo> {
           '${perfil.path}/yo_${DateTime.now().millisecondsSinceEpoch}.jpg';
       await File(elegida.path).copy(destino);
 
+      // Relativa a la carpeta de la app, que cambia de nombre al reinstalar.
+      final String guardable = Archivos.guardable(destino);
+
       final String? anterior = state.foto;
-      state = state.copiaCon(foto: destino);
+      state = state.copiaCon(foto: guardable);
 
       final SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_claveFoto, destino);
+      await prefs.setString(_claveFoto, guardable);
 
       // La anterior se borra después de guardar la nueva, nunca antes: si
       // algo falla a mitad, es preferible dejar un fichero de sobra que
@@ -157,7 +161,7 @@ class YoNotifier extends StateNotifier<Yo> {
   static Future<void> _borrar(String? ruta) async {
     if (ruta == null) return;
     try {
-      final File f = File(ruta);
+      final File f = Archivos.fichero(ruta);
       if (f.existsSync()) await f.delete();
     } catch (_) {
       // Un huérfano ocupa unos KB. Reventar aquí sí se notaría.

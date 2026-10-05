@@ -1,9 +1,8 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/models/medio.dart';
+import '../../../core/utils/archivos.dart';
 import '../../../core/theme/tokens/app_colors.dart';
 import '../../../core/theme/components/foto_medio.dart';
 import '../../../core/theme/tokens/app_shape.dart';
@@ -316,7 +315,7 @@ class _VideoState extends State<_Video> {
   Future<void> _preparar() async {
     try {
       final VideoPlayerController control = VideoPlayerController.file(
-        File(widget.ruta),
+        Archivos.fichero(widget.ruta),
       );
       await control.initialize();
       await control.setLooping(true);

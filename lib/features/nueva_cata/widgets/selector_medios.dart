@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,6 +9,7 @@ import '../../../core/theme/tokens/app_shape.dart';
 import '../../../core/theme/tokens/app_spacing.dart';
 import '../../../core/theme/tokens/app_typography.dart';
 import '../../../core/theme/components/pegatina.dart';
+import '../../../core/utils/archivos.dart';
 
 /// Fotos y vídeo de la cata.
 ///
@@ -257,7 +256,7 @@ class _Miniatura extends StatelessWidget {
                     ),
                   )
                 : Image.file(
-                    File(medio.ruta),
+                    Archivos.fichero(medio.ruta),
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) => const Center(
                       child: Icon(Icons.broken_image_rounded),

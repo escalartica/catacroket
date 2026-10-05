@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
 
 import '../models/medio.dart';
+import '../utils/archivos.dart';
 
 /// Resultado de intentar añadir una foto o un vídeo.
 ///
@@ -90,7 +91,7 @@ class MediosService {
   static Future<Duration?> _duracionDe(String ruta) async {
     VideoPlayerController? control;
     try {
-      control = VideoPlayerController.file(File(ruta));
+      control = VideoPlayerController.file(Archivos.fichero(ruta));
       await control.initialize();
       return control.value.duration;
     } catch (_) {
@@ -138,14 +139,16 @@ class MediosService {
     final String destino = '${medios.path}/$nombre';
 
     await File(origen.path).copy(destino);
-    return destino;
+    // Se guarda «medios/foto_123.jpg», no la ruta entera: la carpeta de
+    // la app cambia de nombre al reinstalar. Ver [Archivos].
+    return Archivos.guardable(destino);
   }
 
   /// Borra el fichero de un medio descartado. Si falla no pasa nada: un
   /// huérfano ocupa unos KB, y reventar aquí sí se notaría.
   static Future<void> borrar(Medio medio) async {
     try {
-      final File fichero = File(medio.ruta);
+      final File fichero = Archivos.fichero(medio.ruta);
       if (fichero.existsSync()) await fichero.delete();
     } catch (_) {}
   }

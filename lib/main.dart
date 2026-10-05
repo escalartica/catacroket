@@ -11,6 +11,7 @@ import 'core/errores.dart';
 import 'core/providers/catas_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'firebase_options.dart';
+import 'core/utils/archivos.dart';
 
 void main() {
   // Todo el arranque va dentro de la zona vigilada, no sólo el runApp: el
@@ -20,6 +21,10 @@ void main() {
 
 Future<void> _arrancar() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Antes que nada: las fotos se guardan con la ruta relativa a esta
+  // carpeta, y hace falta saber cómo se llama hoy para poder abrirlas.
+  await Archivos.preparar();
   Errores.instalar();
 
   // Firebase arranca en un try, y no es pereza: la cuenta es OPCIONAL.

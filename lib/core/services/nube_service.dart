@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -11,6 +10,7 @@ import '../models/cata.dart';
 import '../models/medio.dart';
 import '../models/mesa.dart';
 import 'cuenta_service.dart';
+import '../utils/archivos.dart';
 
 /// Una mesa tal y como está en el servidor ahora mismo.
 typedef MesaViva = ({
@@ -470,7 +470,7 @@ class NubeService {
       }
 
       try {
-        if (!File(m.ruta).existsSync()) {
+        if (!Archivos.fichero(m.ruta).existsSync()) {
           listos.add(m);
           continue;
         }
@@ -484,7 +484,7 @@ class NubeService {
         String? codificada;
         for (final (int ancho, int calidad) in _apreturas) {
           final Uint8List? datos = await FlutterImageCompress.compressWithFile(
-            m.ruta,
+            Archivos.enDisco(m.ruta),
             minWidth: ancho,
             minHeight: ancho,
             quality: calidad,

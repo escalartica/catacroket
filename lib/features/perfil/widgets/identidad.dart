@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +9,7 @@ import '../../../core/theme/tokens/app_colors.dart';
 import '../../../core/theme/tokens/app_shape.dart';
 import '../../../core/theme/tokens/app_spacing.dart';
 import '../../../core/theme/tokens/app_typography.dart';
+import '../../../core/utils/archivos.dart';
 
 /// Tu foto, tu nombre y tu rango, arriba del Croquetómetro.
 ///
@@ -144,7 +143,7 @@ class _Retrato extends ConsumerWidget {
                     child: ClipOval(
                       child: yo.tieneFoto
                           ? Image.file(
-                              File(yo.foto!),
+                              Archivos.fichero(yo.foto!),
                               width: lado,
                               height: lado,
                               fit: BoxFit.cover,

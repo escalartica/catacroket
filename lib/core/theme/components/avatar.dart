@@ -1,11 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../../models/persona.dart';
 import '../tokens/app_colors.dart';
 import '../tokens/app_shape.dart';
 import '../tokens/app_typography.dart';
+import '../../utils/archivos.dart';
 
 /// Avatar de una persona: inicial sobre su color, con contorno.
 class Avatar extends StatelessWidget {
@@ -42,10 +41,12 @@ class Avatar extends StatelessWidget {
 
   Widget get _contenido {
     final String? foto = persona.foto;
-    if (foto == null || !File(foto).existsSync()) return _inicial;
+    if (foto == null || !Archivos.fichero(foto).existsSync()) {
+      return _inicial;
+    }
 
     return Image.file(
-      File(foto),
+      Archivos.fichero(foto),
       width: tamano,
       height: tamano,
       fit: BoxFit.cover,

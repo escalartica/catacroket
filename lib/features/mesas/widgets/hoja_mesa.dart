@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,6 +10,7 @@ import '../../../core/theme/tokens/app_colors.dart';
 import '../../../core/theme/tokens/app_shape.dart';
 import '../../../core/theme/tokens/app_spacing.dart';
 import '../../../core/theme/tokens/app_typography.dart';
+import '../../../core/utils/archivos.dart';
 
 /// Crea una mesa o cambia una que ya existe.
 ///
@@ -289,7 +289,7 @@ class _FotoDeMesa extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hay = foto != null && File(foto!).existsSync();
+    final bool hay = foto != null && Archivos.fichero(foto!).existsSync();
 
     return Row(
       children: <Widget>[
@@ -309,7 +309,7 @@ class _FotoDeMesa extends StatelessWidget {
             ),
             child: hay
                 ? Image.file(
-                    File(foto!),
+                    Archivos.fichero(foto!),
                     fit: BoxFit.cover,
                     // Si el fichero desapareció, se vuelve al icono en vez
                     // de dejar un hueco roto.

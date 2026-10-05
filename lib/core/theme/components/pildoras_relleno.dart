@@ -294,10 +294,13 @@ class _AvisoFiltro extends StatelessWidget {
           Text(limite.emoji, style: const TextStyle(fontSize: 15)),
           const SizedBox(width: 8),
           Expanded(
+            // De dónde sale esto. Sin decirlo, la lista aparece recortada
+            // sin que nadie la haya tocado y parece que la app decide por su
+            // cuenta qué croquetas existen.
             child: Text(
               limite == PerfilRelleno.vegano
-                  ? 'Viendo sólo las veganas'
-                  : 'Viendo sólo las que puedes comer',
+                  ? 'Sólo las veganas, como pusiste en «Cómo comes»'
+                  : 'Sólo las que comes, como pusiste en «Cómo comes»',
               style: AppTypography.cuerpoS.copyWith(fontSize: 12.5),
             ),
           ),
