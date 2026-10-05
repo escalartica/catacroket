@@ -106,18 +106,33 @@ final perfilProvider = Provider<Perfil>((ref) {
     return c.acompanantes.any((String a) => Texto.normalizar(a) == tuNombre);
   }).length;
 
-  if (mias.isEmpty && comidas == 0) {
-    return const Perfil(
+  // Sólo `mias.isEmpty`, y el «y comidas == 0» que había aquí era el fallo
+  // más grave de la app.
+  //
+  // Lo de abajo calcula medias y busca la mejor cata sobre `mias`, así que
+  // con la lista vacía hace `mias.first` —que lanza— y divide entre cero. La
+  // guarda pedía las DOS condiciones, y hay un camino muy fácil en el que
+  // sólo se cumple una, que además es justo el camino que la app empuja a
+  // seguir el primer día: te instalas la app, no has apuntado nada todavía,
+  // entras con el código en la mesa de un amigo, y resulta que tu amigo ya
+  // te había puesto de acompañante en sus catas. `comidas` sale mayor que
+  // cero, `mias` sigue vacía, y La Vitrina y el Croquetómetro —las dos
+  // pantallas que miran este provider— se quedan en el rectángulo gris de
+  // error, sin texto y sin explicación, hasta que apuntes tu primera cata.
+  //
+  // `comidas` se devuelve igual: ese dato no necesita catas propias.
+  if (mias.isEmpty) {
+    return Perfil(
       catas: 0,
-      comidas: 0,
+      comidas: comidas,
       media: null,
       ciudades: 0,
       paises: 0,
       racha: 0,
-      semanas: <bool>[false, false, false, false, false, false, false],
-      paladar: Corte(crujiente: 0, cremosidad: 0, sabor: 0, relleno: 0),
+      semanas: const <bool>[false, false, false, false, false, false, false],
+      paladar: const Corte(crujiente: 0, cremosidad: 0, sabor: 0, relleno: 0),
       mejor: null,
-      medallas: <String>{},
+      medallas: const <String>{},
     );
   }
 

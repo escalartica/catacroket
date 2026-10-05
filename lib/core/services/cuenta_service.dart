@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'nube_service.dart';
 
 /// Lo que puede salir mal al entrar o registrarse, ya traducido.
 ///
@@ -100,21 +101,39 @@ class CuentaService {
     }
   }
 
-  /// Borrar la cuenta del todo.
+  /// Borrar la cuenta del todo, y con ella lo que haya subido.
   ///
   /// No es un extra: la App Store lo exige desde 2022 a toda app que deje
-  /// crear una cuenta, y tiene que poder hacerse desde dentro de la app, sin
-  /// escribir a nadie.
+  /// crear una cuenta, y lo que exige es que se borre la cuenta **y sus
+  /// datos**, no sólo el usuario.
   ///
-  /// Las catas del móvil NO se tocan. Son tuyas y están en tu móvil; lo que
-  /// desaparece es la cuenta y con ella el acceso a las mesas compartidas.
-  static Future<void> borrarCuenta() async {
+  /// Antes aquí sólo había `u.delete()`, que borra el usuario de Firebase y
+  /// nada más. Tus catas se quedaban en las mesas compartidas —con su nota,
+  /// sus fotos y las coordenadas del bar— a la vista de quien siguiera
+  /// dentro. Y para siempre: borrarlas exige ser su autor, y ese autor
+  /// acababa de dejar de existir. La política de privacidad prometía lo
+  /// contrario.
+  ///
+  /// El orden importa y es el del servicio equivalente de Palito: primero lo
+  /// subido, mientras la sesión sigue viva, y la cuenta al final. Si lo de
+  /// arriba falla a medias, la cuenta NO se borra: más vale poder
+  /// reintentarlo que quedarse sin cuenta y con los datos puestos.
+  ///
+  /// Las catas del móvil no se tocan. Son tuyas y están en tu móvil.
+  ///
+  /// Devuelve lo que no se haya podido limpiar, para poder decirlo en vez de
+  /// prometer una limpieza que no fue.
+  static Future<List<String>> borrarCuenta() async {
     final User? u = quien;
-    if (u == null) return;
+    if (u == null) return const <String>[];
+
+    final List<String> fallaron = await NubeService.borrarLoMio();
+
     try {
       await u.delete();
     } catch (e) {
       throw FalloCuenta.de(e);
     }
+    return fallaron;
   }
 }

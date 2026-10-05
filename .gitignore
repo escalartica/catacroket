@@ -23,3 +23,6 @@ android/key.properties
 
 # Configuración del mapa: lleva la clave de CARTO.
 mapa.env
+
+# Caché del desplegador de Firebase. Se regenera sola.
+.firebase/

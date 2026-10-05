@@ -42,6 +42,7 @@ import '../../core/theme/tokens/app_typography.dart';
 import '../../core/services/compartir_service.dart';
 import '../../core/utils/formato.dart';
 import '../vitrina/widgets/tarjeta_cata.dart';
+import '../../core/utils/texto.dart';
 
 /// CROQUETÓMETRO — tu historial de paladar.
 class PerfilPage extends ConsumerWidget {
@@ -849,11 +850,23 @@ class _PanelCuenta extends ConsumerWidget {
                   ScaffoldMessenger.of(context);
               nav.pop();
               try {
-                await CuentaService.borrarCuenta();
+                final List<String> fallaron =
+                    await CuentaService.borrarCuenta();
                 barra
                   ..clearSnackBars()
                   ..showSnackBar(
-                    const SnackBar(content: Text('Cuenta borrada.')),
+                    SnackBar(
+                      // Si algo no se ha podido limpiar se dice, en vez de
+                      // cantar un «borrada» que no sería verdad del todo.
+                      content: Text(
+                        fallaron.isEmpty
+                            ? 'Cuenta borrada, y lo que habías subido con ella.'
+                            : 'Cuenta borrada. No se ha podido limpiar '
+                                '${Texto.enumerar(fallaron)}: escríbenos y lo '
+                                'quitamos.',
+                      ),
+                      duration: Duration(seconds: fallaron.isEmpty ? 4 : 8),
+                    ),
                   );
               } on FalloCuenta catch (e) {
                 barra

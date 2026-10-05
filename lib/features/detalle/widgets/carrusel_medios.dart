@@ -306,6 +306,15 @@ class _VideoState extends State<_Video> {
   VideoPlayerController? _control;
   bool _listo = false;
 
+  /// El fichero no está o no se puede abrir.
+  ///
+  /// Hacía falta un tercer estado. Con sólo «listo» y «no listo», un vídeo
+  /// que no abría —el fichero ya no está, el códec falla— dejaba girando la
+  /// ruleta de carga PARA SIEMPRE, y quien abría esa ficha se quedaba
+  /// mirándola sin que pasara nada nunca. Las fotos ya tenían salida; el
+  /// vídeo se quedó sin ella.
+  bool _roto = false;
+
   @override
   void initState() {
     super.initState();
@@ -313,6 +322,13 @@ class _VideoState extends State<_Video> {
   }
 
   Future<void> _preparar() async {
+    // Sin ruta no hay nada que intentar: montar el reproductor con una
+    // cadena vacía es la forma más rápida de llegar a la ruleta eterna.
+    if (widget.ruta.trim().isEmpty) {
+      if (mounted) setState(() => _roto = true);
+      return;
+    }
+
     try {
       final VideoPlayerController control = VideoPlayerController.file(
         Archivos.fichero(widget.ruta),
@@ -328,7 +344,7 @@ class _VideoState extends State<_Video> {
         _listo = true;
       });
     } catch (_) {
-      if (mounted) setState(() => _listo = false);
+      if (mounted) setState(() => _roto = true);
     }
   }
 
@@ -341,6 +357,8 @@ class _VideoState extends State<_Video> {
   @override
   Widget build(BuildContext context) {
     final VideoPlayerController? control = _control;
+
+    if (_roto) return const _MedioRoto();
 
     if (!_listo || control == null) {
       return const Center(

@@ -365,12 +365,38 @@ class CatasNotifier extends StateNotifier<List<Cata>> {
       if (crudo == null || crudo.isEmpty) return;
 
       final List<dynamic> lista = jsonDecode(crudo) as List<dynamic>;
-      final List<Cata> leidas = Cata.sinRepetidas(
-        lista.map((dynamic e) =>
-            Cata.fromJson(Map<String, dynamic>.from(e as Map<dynamic, dynamic>))),
-      );
 
-      if (leidas.isNotEmpty) state = leidas;
+      // Una a una, y cada una con su propia red.
+      //
+      // Estaban todas dentro del mismo `try`: bastaba con que UNA cata
+      // tuviera un campo raro para que saltara el catch de abajo y se
+      // perdieran las cuarenta. El usuario abría la app y no tenía nada.
+      // Es el mismo patrón que ya usa bien la lectura de la nube, que se
+      // salta el documento roto y sigue con los demás.
+      final List<Cata> leidas = <Cata>[];
+      int rotas = 0;
+      for (final dynamic e in lista) {
+        try {
+          leidas.add(
+            Cata.fromJson(Map<String, dynamic>.from(e as Map<dynamic, dynamic>)),
+          );
+        } catch (error, pila) {
+          rotas++;
+          // Sólo la primera a la bitácora: si el guardado entero está
+          // corrupto serían cuarenta apuntes iguales tapando lo demás.
+          if (rotas == 1) {
+            Errores.registrar(error, pila, origen: 'catas.cargar.una');
+          }
+        }
+      }
+
+      // Si alguna no se ha podido leer, el texto original se aparta entero
+      // antes de que el siguiente guardado lo pise: ahí está lo que haya que
+      // rescatar a mano.
+      if (rotas > 0) await _apartarIlegible(crudo);
+
+      final List<Cata> sinRepetir = Cata.sinRepetidas(leidas);
+      if (sinRepetir.isNotEmpty) state = sinRepetir;
     } catch (error, pila) {
       // Un guardado corrupto no puede dejar la app en blanco: se sigue con lo
       // que haya en memoria. Pero tampoco puede desaparecer, así que primero

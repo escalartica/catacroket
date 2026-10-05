@@ -1,0 +1,31 @@
+rules_version = '2';
+
+// Catacroket no usa Cloud Storage: las fotos viajan reducidas dentro de la
+// propia cata, en Firestore, porque es lo que funciona en el plan gratuito.
+//
+// Pero el bucket existe —viene creado con el proyecto— y la plantilla que
+// Firebase pone por defecto deja leer y escribir a CUALQUIER usuario con
+// sesión. Como el registro es abierto, eso es alojamiento gratis para quien
+// tarde treinta segundos en hacerse una cuenta.
+//
+// ESTE FICHERO NO ESTÁ DESPLEGADO, Y ES CORRECTO QUE NO LO ESTÉ.
+//
+// Al intentar desplegarlo, Firebase contestó que Storage no está activado en
+// el proyecto. O sea que el bucket no existe: no hay ninguna puerta abierta
+// que cerrar, y activarlo sólo para ponerle un candado sería crear la puerta
+// para luego cerrarla. `firebase.json` no lo menciona a propósito.
+//
+// Se queda aquí escrito para el día que haga falta. Si alguna vez se activa
+// Storage —por ejemplo para subir las fotos a tamaño completo en vez de
+// dentro de la cata— lo primero es volver a poner la sección `storage` en
+// `firebase.json` y desplegar esto ANTES de escribir una sola línea que
+// suba nada. La plantilla que Firebase pone por defecto deja leer y escribir
+// a cualquier usuario con sesión, y como el registro es abierto, eso es
+// alojamiento gratis para quien tarde treinta segundos en hacerse una cuenta.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{todo=**} {
+      allow read, write: if false;
+    }
+  }
+}

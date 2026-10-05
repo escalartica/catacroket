@@ -537,12 +537,19 @@ class BorradorNotifier extends StateNotifier<Borrador> {
   void anadirSabor(Sabor sabor) =>
       state = state.copyWith(sabores: <Sabor>[...state.sabores, sabor]);
 
+  /// El índice viene del bucle que pinta la lista, y entre el toque y el
+  /// repintado la lista puede haber cambiado ya: dos toques rápidos en el
+  /// mismo botón mandan el mismo índice dos veces, y el segundo cae fuera.
+  bool _hay(int indice) => indice >= 0 && indice < state.sabores.length;
+
   void quitarSabor(int indice) {
+    if (!_hay(indice)) return;
     final List<Sabor> lista = <Sabor>[...state.sabores]..removeAt(indice);
     state = state.copyWith(sabores: lista);
   }
 
   void veredictoDe(int indice, Veredicto veredicto) {
+    if (!_hay(indice)) return;
     final List<Sabor> lista = <Sabor>[...state.sabores];
     lista[indice] = lista[indice].copyWith(veredicto: veredicto);
     state = state.copyWith(sabores: lista);

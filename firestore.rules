@@ -77,23 +77,40 @@ service cloud.firestore {
       //    lectura también mira esa lista— y acto seguido borrarla entera.
       // 2. La creaste tú: además puedes cambiar la lista de gente, que es
       //    lo que hace falta para invitar o echar a alguien.
-      // 3. Estás entrando con el código. Lo ÚNICO permitido es añadirte a ti
-      //    mismo al final de la lista, y nada más.
-      // 4. Te sales tú: quitarte de la lista y nada más. Faltaba, y sin ella
-      //    nadie podía abandonar una mesa: la borrabas de tu móvil y volvía
-      //    sola al siguiente arranque, porque el servidor te seguía teniendo
-      //    dentro y «las mesas donde estoy» te la devolvía.
+      // 3. Te sales tú: la lista nueva tiene que ser EXACTAMENTE la vieja
+      //    menos tú.
+      //
+      //    Antes aquí sólo se comprobaba que quien escribe no quedara dentro
+      //    de la lista nueva, sin compararla con la vieja. Con eso, cualquier
+      //    miembro podía escribir `miembros: ['elUidDeSuAmigo']` de una sola
+      //    vez: echaba a todo el mundo —al creador incluido—, metía a quien
+      //    quisiera, y el recién metido pasaba a leer todas las catas de la
+      //    mesa, porque la lectura mira esa misma lista. «Salirse» y «echar a
+      //    los demás» se escribían igual.
+      //
+      // 4. Estás entrando con el código. Dos cosas a la vez: añadirte al
+      //    final de la lista, y demostrar que SABES el código escribiéndolo
+      //    en `codigoUsado`, que la regla compara con el de la mesa.
+      //
+      //    Sin esa comprobación, para entrar bastaba con conocer el
+      //    identificador de la mesa: el código no se miraba en ningún sitio.
+      //    Quien hubiera sido miembro alguna vez lo conoce para siempre, así
+      //    que echarle no servía de nada —volvía a entrar en un segundo, sin
+      //    código y sin que nadie se enterara—. Ahora rotar el código es una
+      //    revocación de verdad.
       allow update: if
                     (esMiembro() && !tocadas().hasAny(['miembros', 'creadoPor', 'creada']))
                     || (laCreo() && tocadas().hasOnly(['miembros']))
                     || (
                       esMiembro()
                       && tocadas().hasOnly(['miembros'])
-                      && !(request.auth.uid in request.resource.data.miembros)
+                      && request.resource.data.miembros
+                           == resource.data.miembros.removeAll([request.auth.uid])
                     )
                     || (
                       conSesion()
-                      && tocadas().hasOnly(['miembros'])
+                      && tocadas().hasOnly(['miembros', 'codigoUsado'])
+                      && request.resource.data.codigoUsado == resource.data.codigo
                       && request.resource.data.miembros
                            == resource.data.miembros.concat([request.auth.uid])
                     );

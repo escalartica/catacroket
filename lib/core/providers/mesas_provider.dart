@@ -265,15 +265,20 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
   Future<int> borrar(String id) async {
     if (id == Mesa.libretaId) return 0;
 
-    // Primero el servidor. Si falla, la mesa NO se borra del móvil: antes
-    // esto no se hacía en absoluto, así que el servidor te seguía teniendo
-    // dentro y al siguiente arranque la mesa volvía sola —con su código
-    // activo— pero vacía, porque tus catas ya se habían salido de ella.
     final Mesa? mesa = state.where((Mesa m) => m.id == id).firstOrNull;
-    if (mesa != null && mesa.enLaNube) {
-      await NubeService.salirDe(mesa);
-    }
 
+    // El orden importa, y estaba al revés.
+    //
+    // Sacar tus catas de la mesa es BORRARLAS del servidor, y para borrar en
+    // una mesa hay que ser miembro de ella. Saliendo primero, cada uno de
+    // esos borrados se encontraba un «permiso denegado», caía en la cola de
+    // pendientes y de ahí se tiraba al siguiente reintento, porque la mesa ya
+    // no estaba en el móvil. Resultado: tus catas —con su nota, sus fotos y
+    // sus coordenadas exactas— se quedaban en el servidor para siempre, a la
+    // vista de los que seguían dentro, y sin ninguna forma de borrarlas desde
+    // la app. Justo lo contrario de lo que promete la política de privacidad.
+    //
+    // Así que primero lo tuyo, mientras todavía puedes, y salir al final.
     final List<Cata> suyas = _ref
         .read(catasProvider)
         .where((Cata c) => c.estaEn(id))
@@ -288,6 +293,13 @@ class MesasNotifier extends StateNotifier<List<Mesa>> {
               ],
             ),
           );
+    }
+
+    // Y ahora el servidor. Si esto falla, la mesa NO se borra del móvil: sin
+    // esta llamada el servidor te seguiría teniendo dentro y al siguiente
+    // arranque la mesa volvería sola —con su código activo— pero vacía.
+    if (mesa != null && mesa.enLaNube) {
+      await NubeService.salirDe(mesa);
     }
 
     state = state.where((Mesa m) => m.id != id).toList();

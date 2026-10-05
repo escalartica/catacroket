@@ -2,22 +2,109 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Catacroket no rastrea a nadie. No hay analítica, ni servidor, ni
-	     identificadores de publicidad: las catas viven en el móvil y no salen
-	     de ahí. Lo único que se pide por red son las imágenes del mapa, y eso
-	     no lleva datos de quien las pide. -->
+	<!-- Catacroket no rastrea a nadie: no hay analítica, ni identificadores
+	     de publicidad, ni se cruzan datos con terceros. -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 
-	<!-- Sin dominios de rastreo. -->
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
 
-	<!-- Ningún dato recogido. Ni cuenta, ni correo, ni contactos, ni
-	     ubicación enviada a ninguna parte: el punto de la cata se guarda en el
-	     propio móvil, junto a la cata. -->
+	<!-- Lo que SÍ se recoge, y por qué.
+	     
+	     Este bloque estaba vacío y decía «no hay servidor». Era verdad
+	     cuando se escribió y dejó de serlo el día que entraron las mesas
+	     compartidas: desde entonces hay cuenta de Firebase y lo que apuntas
+	     en una mesa compartida viaja al servidor. Apple mira el binario, ve
+	     FirebaseAuth y Firestore dentro, y lo contrasta con esto; una
+	     declaración que no cuadra es rechazo directo.
+	     
+	     Todo va marcado como «vinculado a la identidad» porque la cuenta lo
+	     vincula de verdad, y ninguno para rastreo ni para publicidad. Estos
+	     seis tipos son exactamente los mismos que hay que marcar en el
+	     formulario de App Store Connect: tienen que coincidir. -->
 	<key>NSPrivacyCollectedDataTypes</key>
-	<array/>
+	<array>
+		<!-- El correo con el que se crea la cuenta. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeEmailAddress</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- El nombre que te pones, para que tu gente sepa cuál eres. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeName</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- El identificador de la cuenta de Firebase. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeUserID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- Las fotos de las croquetas que compartes con tu mesa. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePhotosorVideos</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- Las notas y los textos que escribes en una cata. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<!-- El punto exacto del bar, si lo pones, para que salga en el mapa
+		     de tu mesa. -->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypePreciseLocation</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+	</array>
 
 	<!-- APIs que Apple obliga a justificar. La app en sí no usa ninguna
 	     directamente: las que hacen falta las declara cada complemento en su

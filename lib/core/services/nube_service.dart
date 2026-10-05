@@ -383,11 +383,17 @@ class NubeService {
       }
       final String mesaId = quizaId;
 
-      // Añadirse a sí mismo. Las reglas del servidor comprueban que sea
-      // exactamente eso y nada más: quien tiene un código no puede renombrar
-      // la mesa ni echar a nadie.
+      // Añadirse a sí mismo, y de paso demostrar que se sabe el código.
+      //
+      // `codigoUsado` no es un dato que a nadie le importe: es la prueba.
+      // Las reglas lo comparan con el código de la mesa, porque sin eso para
+      // entrar bastaba con conocer el identificador de la mesa —el código no
+      // se miraba en ningún sitio— y a quien echabas de una mesa volvía a
+      // entrar él solo. Lo demás lo siguen cerrando las reglas: quien tiene
+      // un código no puede renombrar la mesa ni echar a nadie.
       await _conTope(_mesas.doc(mesaId).update(<String, dynamic>{
         'miembros': FieldValue.arrayUnion(<String>[_uid]),
+        'codigoUsado': limpio,
       }));
 
       final DocumentSnapshot<Map<String, dynamic>> doc =
@@ -639,6 +645,65 @@ class NubeService {
   /// Siempre quitándote de la lista, también si la creaste: borrar el
   /// documento entero le quitaría la mesa a los demás sin avisarles, y «me la
   /// quito de encima» no es lo mismo que «que desaparezca para todos».
+  /// Se lleva por delante todo lo que esta cuenta ha subido.
+  ///
+  /// Lo que hay que borrar y en qué orden, porque el orden es el arreglo:
+  ///
+  ///   1. Tus catas de cada mesa compartida. Esto PRIMERO, porque para
+  ///      borrar en una mesa hay que seguir siendo miembro de ella.
+  ///   2. Salirte de cada mesa.
+  ///   3. Tu ficha de `usuarios/{uid}`, que lleva tu nombre.
+  ///
+  /// Y los tres antes de borrar la cuenta en Firebase, porque las reglas se
+  /// apoyan en `request.auth.uid` y sin sesión no se puede tocar nada. Si se
+  /// borra la cuenta primero, lo subido se queda ahí para siempre y además
+  /// irrecuperable: hace falta ser su autor para borrarlo, y ese autor ya no
+  /// existe. Eso es lo que pasaba, y contradice tanto a la política de
+  /// privacidad como a lo que Apple exige desde 2022.
+  ///
+  /// Devuelve lo que NO se ha podido borrar, para poder decirlo en vez de
+  /// prometer una limpieza que no fue. Un fallo suelto no detiene el resto:
+  /// más vale borrar nueve de diez que ninguna.
+  static Future<List<String>> borrarLoMio() async {
+    final List<String> fallaron = <String>[];
+
+    List<Mesa> mesas = const <Mesa>[];
+    try {
+      mesas = await misMesas();
+    } catch (_) {
+      // Sin la lista no se puede limpiar nada de las mesas, pero la ficha de
+      // usuario de abajo sí, y la cuenta también.
+      fallaron.add('las mesas compartidas');
+    }
+
+    for (final Mesa m in mesas) {
+      try {
+        // Las tuyas de esa mesa, mientras todavía puedes.
+        final QuerySnapshot<Map<String, dynamic>> suyas = await _conTope(
+          _mesas
+              .doc(m.id)
+              .collection('catas')
+              .where('autorUid', isEqualTo: _uid)
+              .get(),
+        );
+        for (final QueryDocumentSnapshot<Map<String, dynamic>> d in suyas.docs) {
+          await _conTope(d.reference.delete());
+        }
+        await salirDe(m);
+      } catch (_) {
+        fallaron.add(m.nombre);
+      }
+    }
+
+    try {
+      await _conTope(_db.collection('usuarios').doc(_uid).delete());
+    } catch (_) {
+      fallaron.add('tu nombre');
+    }
+
+    return fallaron;
+  }
+
   static Future<void> salirDe(Mesa mesa) async {
     try {
       await _conTope(_mesas.doc(mesa.id).update(<String, dynamic>{
