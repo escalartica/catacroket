@@ -646,6 +646,82 @@ class _OtraApp extends StatelessWidget {
   }
 }
 
+/// Privacidad y soporte, al pie del Perfil.
+///
+/// No es adorno legal. La App Store exige que la política de privacidad se
+/// alcance DESDE DENTRO de la app, no sólo desde la ficha de la tienda, y
+/// devuelve las que sólo la ponen en App Store Connect. Las direcciones
+/// existían en `Enlaces` desde que se desplegaron, pero no las enseñaba
+/// ninguna pantalla: estaban escritas y no puestas.
+///
+/// Van al pie y no en un panel propio porque es donde la gente las busca, y
+/// el soporte al lado de la privacidad porque quien viene a por una suele
+/// venir a por la otra.
+class _Legal extends StatelessWidget {
+  const _Legal();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        const _EnlacePie(texto: 'Privacidad', url: Enlaces.privacidad),
+        Text(
+          '·',
+          style: AppTypography.cuerpoS
+              .copyWith(fontSize: 12, color: AppColors.tintaSuave),
+        ),
+        const _EnlacePie(texto: 'Soporte', url: Enlaces.soporte),
+      ],
+    );
+  }
+}
+
+class _EnlacePie extends StatelessWidget {
+  const _EnlacePie({required this.texto, required this.url});
+
+  final String texto;
+  final String url;
+
+  Future<void> _abrir() async {
+    try {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } on Object catch (_) {
+      // Sin nada que abra enlaces no hay nada que contar: el usuario ve que
+      // no pasa nada y la dirección también está en la ficha de la tienda.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: '$texto. Abre la página en el navegador',
+      excludeSemantics: true,
+      onTap: _abrir,
+      child: GestureDetector(
+        onTap: _abrir,
+        // El área táctil llega a los 44 px que pide Apple aunque el texto
+        // mida doce: lo que se toca no es lo que se lee.
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.m,
+            vertical: 13,
+          ),
+          child: Text(
+            texto,
+            style: AppTypography.cuerpoS.copyWith(
+              fontSize: 12,
+              color: AppColors.tinta,
+              decoration: TextDecoration.underline,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _Firma extends StatelessWidget {
   const _Firma();
 
@@ -657,6 +733,8 @@ class _Firma extends StatelessWidget {
     // marca, y el texto usa el token que sí está medido (5,24:1).
     return Column(
       children: <Widget>[
+        const _Legal(),
+        const SizedBox(height: AppSpacing.s),
         const Opacity(opacity: 0.55, child: NombreCatacroket(alto: 17)),
         const SizedBox(height: 6),
         Text(
