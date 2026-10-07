@@ -60,7 +60,14 @@ class _PublicadaPageState extends ConsumerState<PublicadaPage>
     final String rango = ref.watch(perfilProvider).rango;
     final double nota = cata.puntuacion;
 
-    return Stack(
+    // Se llega aquí con `go`, así que no hay nada debajo: sin esto, el gesto
+    // de atrás de Android cierra la app justo después de guardar una cata.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool salido, Object? resultado) {
+        if (!salido) context.go('/');
+      },
+      child: Stack(
       children: <Widget>[
         SingleChildScrollView(
           padding: const EdgeInsets.symmetric(
@@ -165,6 +172,7 @@ class _PublicadaPageState extends ConsumerState<PublicadaPage>
         ),
         const Positioned.fill(child: Confeti()),
       ],
+    ),
     );
   }
 }
